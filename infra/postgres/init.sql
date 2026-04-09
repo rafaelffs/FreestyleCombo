@@ -1,0 +1,2 @@
+-- This file is reserved for any manual DB initialisation steps.
+-- EF Core migrations handle the schema automatically on startup.

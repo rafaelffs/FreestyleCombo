@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/api/">
+    <Project Path="api/FreestyleCombo.AI/FreestyleCombo.AI.csproj" />
+    <Project Path="api/FreestyleCombo.API/FreestyleCombo.API.csproj" />
+    <Project Path="api/FreestyleCombo.Core/FreestyleCombo.Core.csproj" />
+    <Project Path="api/FreestyleCombo.Infrastructure/FreestyleCombo.Infrastructure.csproj" />
+    <Project Path="api/FreestyleCombo.Tests/FreestyleCombo.Tests.csproj" />
+  </Folder>
+</Solution>

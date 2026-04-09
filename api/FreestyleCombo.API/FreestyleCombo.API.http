@@ -1,0 +1,6 @@
+@FreestyleCombo.API_HostAddress = http://localhost:5296
+
+GET {{FreestyleCombo.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

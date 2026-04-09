@@ -1,0 +1,153 @@
+using System.Text;
+using FluentValidation;
+using FreestyleCombo.AI.Services;
+using FreestyleCombo.AI.Training;
+using FreestyleCombo.API.Behaviors;
+using FreestyleCombo.API.Middleware;
+using FreestyleCombo.Core.Entities;
+using FreestyleCombo.Core.Interfaces;
+using FreestyleCombo.Infrastructure.Data;
+using FreestyleCombo.Infrastructure.Repositories;
+using FreestyleCombo.Infrastructure.Seed;
+using Hangfire;
+using Hangfire.PostgreSql;
+using MediatR;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+using Serilog;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Serilog
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .CreateLogger();
+builder.Host.UseSerilog();
+
+// Database
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Identity
+builder.Services.AddIdentity<AppUser, IdentityRole<Guid>>(options =>
+{
+    options.Password.RequireDigit = false;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequiredLength = 6;
+})
+.AddEntityFrameworkStores<AppDbContext>()
+.AddDefaultTokenProviders();
+
+// JWT Authentication
+var jwtSecret = builder.Configuration["JwtSettings:Secret"]
+    ?? throw new InvalidOperationException("JwtSettings:Secret is not configured.");
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
+        ValidAudience = builder.Configuration["JwtSettings:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
+    };
+});
+
+builder.Services.AddAuthorization();
+
+// MediatR
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+
+// FluentValidation pipeline
+builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+// Repositories
+builder.Services.AddScoped<ITrickRepository, TrickRepository>();
+builder.Services.AddScoped<IComboRepository, ComboRepository>();
+builder.Services.AddScoped<IComboRatingRepository, ComboRatingRepository>();
+builder.Services.AddScoped<IUserPreferenceRepository, UserPreferenceRepository>();
+
+// AI Services
+builder.Services.AddScoped<IComboEnhancerService, ComboEnhancerService>();
+builder.Services.AddScoped<ComboRatingAggregator>();
+builder.Services.AddScoped<FeedbackLearningService>();
+builder.Services.AddScoped<WeightAdjustmentJob>();
+
+// Hangfire
+var connStr = builder.Configuration.GetConnectionString("DefaultConnection")!;
+builder.Services.AddHangfire(config => config
+    .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connStr)));
+builder.Services.AddHangfireServer();
+
+// HTTP context accessor (needed by GenerateComboHandler)
+builder.Services.AddHttpContextAccessor();
+
+// Controllers
+builder.Services.AddControllers();
+
+// Swagger
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "FreestyleCombo API", Version = "v1" });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme.",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    c.AddSecurityRequirement(_ => new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecuritySchemeReference("Bearer"),
+            new List<string>()
+        }
+    });
+});
+
+var app = builder.Build();
+
+// Run migrations and seed on startup
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
+
+    var trickRepo = scope.ServiceProvider.GetRequiredService<ITrickRepository>();
+    await TrickSeeder.SeedAsync(trickRepo);
+}
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+app.UseSwagger();
+app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "FreestyleCombo API v1"));
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.UseHangfireDashboard("/hangfire");
+
+// Schedule weekly weight adjustment job
+RecurringJob.AddOrUpdate<WeightAdjustmentJob>("weight-adjustment", job => job.ExecuteAsync(), Cron.Weekly);
+
+app.MapControllers();
+
+app.Run();
+
+public partial class Program { }

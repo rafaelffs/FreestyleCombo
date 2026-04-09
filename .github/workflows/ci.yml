@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, "feature/**" ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: freestyle_combo_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+        working-directory: ./api
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+        working-directory: ./api
+
+      - name: Test
+        run: dotnet test --no-build -c Release --verbosity normal
+        working-directory: ./api
+        env:
+          ConnectionStrings__DefaultConnection: "Host=localhost;Database=freestyle_combo_test;Username=postgres;Password=postgres"
+          JwtSettings__Secret: "test-secret-key-here-minimum-32-characters"
+          JwtSettings__Issuer: "FreestyleComboAPI"
+          JwtSettings__Audience: "FreestyleComboApp"
