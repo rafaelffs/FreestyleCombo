@@ -20,7 +20,7 @@ services:
       context: ./api
       dockerfile: FreestyleCombo.API/Dockerfile
     ports:
-      - "5000:8080"
+      - "5050:8080"
     environment:
       ConnectionStrings__DefaultConnection: "Host=db;Database=freestyle_combo;Username=postgres;Password=postgres"
       JwtSettings__Secret: "your-secret-key-here-minimum-32-characters"
