@@ -23,6 +23,7 @@ public class GetMyCombosHandler : IRequestHandler<GetMyCombosQuery, PagedResult<
             Items = items.Select(c => new MyComboDto
             {
                 Id = c.Id,
+                OwnerId = c.OwnerId,
                 AverageDifficulty = c.AverageDifficulty,
                 TrickCount = c.TrickCount,
                 IsPublic = c.IsPublic,

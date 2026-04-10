@@ -131,6 +131,17 @@ using (var scope = app.Services.CreateScope())
 
     var trickRepo = scope.ServiceProvider.GetRequiredService<ITrickRepository>();
     await TrickSeeder.SeedAsync(trickRepo);
+
+    // Ensure Admin role exists and assign it to the owner account
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+
+    if (!await roleManager.RoleExistsAsync("Admin"))
+        await roleManager.CreateAsync(new IdentityRole<Guid>("Admin"));
+
+    var owner = await userManager.FindByNameAsync("rafaelfashola");
+    if (owner != null && !await userManager.IsInRoleAsync(owner, "Admin"))
+        await userManager.AddToRoleAsync(owner, "Admin");
 }
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();

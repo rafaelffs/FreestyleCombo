@@ -91,7 +91,7 @@ export function ComboDetailPage() {
           </div>
 
           <div className="flex gap-2 pt-1">
-            <Badge variant="secondary">Avg difficulty: {combo.averageDifficulty.toFixed(1)}</Badge>
+            <Badge variant="secondary">Avg difficulty: {combo.averageDifficulty?.toFixed(1) ?? '—'}</Badge>
             <Badge variant="secondary">{combo.trickCount} tricks</Badge>
           </div>
 

@@ -13,9 +13,10 @@ FreestyleCombo/
 │   ├── FreestyleCombo.Core/      # Entities, Interfaces, Result<T>
 │   ├── FreestyleCombo.Infrastructure/  # EF Core, Repositories, Seeder, Migrations
 │   ├── FreestyleCombo.AI/        # Anthropic SDK (ComboEnhancerService), Hangfire job
-│   ├── FreestyleCombo.API/       # Controllers-free; MediatR Vertical Slices, Program.cs
+│   ├── FreestyleCombo.API/       # MediatR Vertical Slices, Controllers, Program.cs
 │   └── FreestyleCombo.Tests/     # xUnit + FluentAssertions + Moq
 ├── web/                          # React 19, Vite, TypeScript, Tailwind v4, TanStack Query
+├── mobile/                       # Flutter (Dart), go_router, dio, shared_preferences
 ├── docker-compose.yml            # postgres:16, redis:7, api (host port 5050)
 └── .github/workflows/ci.yml      # Runs on push to main/feature/**
 ```
@@ -131,6 +132,58 @@ docker-compose up
 
 ---
 
+## Mobile — Flutter (Phase 3)
+
+### Tech stack
+- **Flutter 3.19+** · **Dart 3.3+** · **go_router** (navigation) · **dio** (HTTP) · **shared_preferences** (token storage)
+- No external state management library — plain `StatefulWidget` + `FutureBuilder`
+
+### Directory structure
+```
+mobile/lib/
+├── main.dart
+├── core/
+│   ├── api/api_client.dart       # Dio client, all API methods, singleton
+│   ├── auth/auth_service.dart    # Token in SharedPreferences, singleton
+│   └── models/
+│       ├── combo.dart            # ComboDto, ComboTrickDto, PagedResult, GenerateComboOverrides
+│       └── user_preference.dart  # UserPreference with toJson/copyWith
+├── features/
+│   ├── auth/                     # login_screen.dart, register_screen.dart
+│   ├── combos/                   # generate_combo_screen, public_combos_screen,
+│   │                             # my_combos_screen, combo_detail_screen
+│   └── preferences/              # preferences_screen.dart
+├── router/app_router.dart        # GoRouter config, auth redirect
+└── widgets/
+    ├── main_shell.dart           # BottomNavigationBar shell (ShellRoute)
+    ├── combo_card.dart           # Reusable card: display, tricks, AI description, actions
+    └── rate_combo_dialog.dart    # Star rating AlertDialog
+```
+
+### Setup (Flutter must be installed first)
+```bash
+cd mobile
+
+# If no platform folders exist yet, scaffold them:
+flutter create . --org com.rafaelffs --project-name freestyle_combo --platforms android,ios
+
+flutter pub get
+flutter run
+```
+
+### API base URL (edit `lib/core/api/api_client.dart`)
+- Android emulator: `http://10.0.2.2:5050/api` (default)
+- iOS simulator: `http://localhost:5050/api`
+- Physical device: your machine's local IP, e.g. `http://192.168.1.x:5050/api`
+
+### Key design decisions
+- `AuthService` and `ApiClient` are manual singletons (no DI framework) for simplicity
+- `register` returns `201` with no token → app calls `login` immediately after to get the JWT
+- `FutureBuilder` pattern used throughout — no Riverpod/BLoC overhead
+- `withValues(alpha:)` used instead of deprecated `withOpacity` in Flutter 3.19+
+
+---
+
 ## Running locally (without Docker)
 
 ```bash
@@ -141,6 +194,10 @@ dotnet run
 # Web
 cd web
 npm run dev       # → http://localhost:5173
+
+# Mobile
+cd mobile
+flutter run
 ```
 
 ---

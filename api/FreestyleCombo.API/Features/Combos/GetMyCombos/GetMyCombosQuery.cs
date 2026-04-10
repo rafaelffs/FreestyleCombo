@@ -9,6 +9,7 @@ public record GetMyCombosQuery(Guid UserId, int Page, int PageSize, bool? IsPubl
 public class MyComboDto
 {
     public Guid Id { get; set; }
+    public Guid OwnerId { get; set; }
     public double AverageDifficulty { get; set; }
     public int TrickCount { get; set; }
     public bool IsPublic { get; set; }

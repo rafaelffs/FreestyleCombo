@@ -38,7 +38,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
           </div>
           <div className="flex flex-wrap gap-1">
             <Badge variant="secondary">
-              Avg diff: {combo.averageDifficulty.toFixed(1)}
+              Avg diff: {combo.averageDifficulty?.toFixed(1) ?? '—'}
             </Badge>
             {combo.isPublic != null && (
               combo.isPublic ? (
