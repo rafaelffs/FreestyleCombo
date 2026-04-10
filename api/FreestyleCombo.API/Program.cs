@@ -138,8 +138,7 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
 
-    var trickRepo = scope.ServiceProvider.GetRequiredService<ITrickRepository>();
-    await TrickSeeder.SeedAsync(trickRepo);
+    await TrickSeeder.SeedAsync(db);
 
     // Ensure Admin role exists and assign it to the owner account
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
