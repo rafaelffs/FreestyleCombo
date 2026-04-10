@@ -66,7 +66,7 @@ export function GenerateComboPage() {
                 <Input
                   type="number"
                   min={1}
-                  max={20}
+                  max={100}
                   value={overrides.comboLength}
                   onChange={(e) => update('comboLength', Number(e.target.value))}
                 />
@@ -106,7 +106,7 @@ export function GenerateComboPage() {
                 <Input
                   type="number"
                   min={0}
-                  max={10}
+                  max={30}
                   value={overrides.maxConsecutiveNoTouch}
                   onChange={(e) => update('maxConsecutiveNoTouch', Number(e.target.value))}
                 />

@@ -83,8 +83,8 @@ class _GenerateComboScreenState extends State<GenerateComboScreen> {
                         label: 'Combo length: $_comboLength',
                         value: _comboLength.toDouble(),
                         min: 1,
-                        max: 20,
-                        divisions: 19,
+                        max: 100,
+                        divisions: 99,
                         onChanged: (v) =>
                             setState(() => _comboLength = v.round()),
                       ),
@@ -119,8 +119,8 @@ class _GenerateComboScreenState extends State<GenerateComboScreen> {
                         label: 'Max consecutive NT: $_maxConsecNoTouch',
                         value: _maxConsecNoTouch.toDouble(),
                         min: 0,
-                        max: 10,
-                        divisions: 10,
+                        max: 30,
+                        divisions: 30,
                         onChanged: (v) =>
                             setState(() => _maxConsecNoTouch = v.round()),
                       ),

@@ -83,7 +83,7 @@ export function PreferencesPage() {
                   <Input
                     type="number"
                     min={1}
-                    max={20}
+                    max={100}
                     value={form.comboLength}
                     onChange={(e) => update('comboLength', Number(e.target.value))}
                   />
@@ -123,7 +123,7 @@ export function PreferencesPage() {
                   <Input
                     type="number"
                     min={0}
-                    max={10}
+                    max={30}
                     value={form.maxConsecutiveNoTouch}
                     onChange={(e) => update('maxConsecutiveNoTouch', Number(e.target.value))}
                   />

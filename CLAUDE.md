@@ -1,5 +1,7 @@
 # FreestyleCombo — Project Context for Claude
 
+> **Claude instruction:** Whenever you make a change that affects documented behavior (validation limits, architecture, APIs, design decisions, test count, environment variables, etc.), update the relevant section of this file in the same response before finishing.
+
 A full-stack freestyle football combo generator.  
 Users register/login, generate combos (with AI descriptions via Claude), rate each other's public combos, and save preferences. A Hangfire background job weekly adjusts trick `CommonLevel` weights based on aggregate ratings.
 
@@ -65,6 +67,15 @@ AddSecurityRequirement(_ => new OpenApiSecurityRequirement {
     { new OpenApiSecuritySchemeReference("Bearer"), new List<string>() }
 })
 ```
+
+### Validation limits (enforced in FluentValidation + UI)
+| Field | Min | Max | Applied in |
+|---|---|---|---|
+| `ComboLength` | 1 | **100** | `GenerateComboValidator`, `UpdatePreferencesValidator`, all UIs |
+| `MaxConsecutiveNoTouch` | 0 | **30** | `GenerateComboValidator`, `UpdatePreferencesValidator`, all UIs |
+| `MaxDifficulty` | 1 | 10 | all validators + UIs |
+| `StrongFootPercentage` | 0 | 100 | all validators + UIs |
+| `NoTouchPercentage` | 0 | 100 | all validators + UIs |
 
 ### Combo generation algorithm (6 steps)
 1. Filter trick pool (MaxDifficulty, IncludeCrossOver, IncludeKnee, AllowedMotions)
