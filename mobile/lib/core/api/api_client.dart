@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../auth/auth_service.dart';
 import '../models/combo.dart';
+import '../models/trick_submission.dart';
 import '../models/user_preference.dart';
 
 // Change to your machine's local IP when testing on a physical device.
@@ -182,6 +183,74 @@ class ApiClient {
   Future<void> rateCombo(String comboId, int score) async {
     try {
       await _dio.post('/combos/$comboId/ratings', data: {'score': score});
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  // ── Trick Submissions ────────────────────────────────────────────────────
+
+  Future<String> submitTrick({
+    required String name,
+    required String abbreviation,
+    required bool crossOver,
+    required bool knee,
+    required double motion,
+    required int difficulty,
+    required int commonLevel,
+  }) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/trick-submissions',
+        data: {
+          'name': name,
+          'abbreviation': abbreviation,
+          'crossOver': crossOver,
+          'knee': knee,
+          'motion': motion,
+          'difficulty': difficulty,
+          'commonLevel': commonLevel,
+        },
+      );
+      return res.data!['id'] as String;
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<List<TrickSubmissionDto>> getMySubmissions() async {
+    try {
+      final res = await _dio.get<List<dynamic>>('/trick-submissions/mine');
+      return (res.data as List<dynamic>)
+          .map((e) => TrickSubmissionDto.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<List<TrickSubmissionDto>> getPendingSubmissions() async {
+    try {
+      final res = await _dio.get<List<dynamic>>('/trick-submissions/pending');
+      return (res.data as List<dynamic>)
+          .map((e) => TrickSubmissionDto.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> approveSubmission(String id) async {
+    try {
+      await _dio.post('/trick-submissions/$id/approve');
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> rejectSubmission(String id) async {
+    try {
+      await _dio.post('/trick-submissions/$id/reject');
     } on DioException catch (e) {
       throw Exception(_extractMessage(e));
     }

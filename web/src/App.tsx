@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
+import { AdminRoute } from '@/components/layout/AdminRoute'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
 import { GenerateComboPage } from '@/features/combos/GenerateComboPage'
@@ -8,6 +9,8 @@ import { PublicCombosPage } from '@/features/combos/PublicCombosPage'
 import { MyCombosPage } from '@/features/combos/MyCombosPage'
 import { ComboDetailPage } from '@/features/combos/ComboDetailPage'
 import { PreferencesPage } from '@/features/preferences/PreferencesPage'
+import { SubmitTrickPage } from '@/features/tricks/SubmitTrickPage'
+import { AdminSubmissionsPage } from '@/features/tricks/AdminSubmissionsPage'
 
 export default function App() {
   return (
@@ -25,6 +28,12 @@ export default function App() {
             <Route path="/generate" element={<GenerateComboPage />} />
             <Route path="/combos/mine" element={<MyCombosPage />} />
             <Route path="/preferences" element={<PreferencesPage />} />
+            <Route path="/tricks/submit" element={<SubmitTrickPage />} />
+          </Route>
+
+          {/* Admin only */}
+          <Route element={<AdminRoute />}>
+            <Route path="/admin/submissions" element={<AdminSubmissionsPage />} />
           </Route>
 
           <Route path="/" element={<Navigate to="/generate" replace />} />

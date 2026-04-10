@@ -1,10 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { isAuthenticated, clearToken } from '@/lib/auth'
+import { isAuthenticated, isAdmin, clearToken } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 
 export function Navbar() {
   const navigate = useNavigate()
   const authed = isAuthenticated()
+  const admin = isAdmin()
 
   function handleLogout() {
     clearToken()
@@ -33,6 +34,14 @@ export function Navbar() {
                 <Link to="/preferences" className="text-sm text-gray-600 hover:text-gray-900">
                   Preferences
                 </Link>
+                <Link to="/tricks/submit" className="text-sm text-gray-600 hover:text-gray-900">
+                  Submit Trick
+                </Link>
+                {admin && (
+                  <Link to="/admin/submissions" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
+                    Admin
+                  </Link>
+                )}
               </>
             )}
             {!authed && (

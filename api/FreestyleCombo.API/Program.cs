@@ -80,6 +80,7 @@ builder.Services.AddScoped<ITrickRepository, TrickRepository>();
 builder.Services.AddScoped<IComboRepository, ComboRepository>();
 builder.Services.AddScoped<IComboRatingRepository, ComboRatingRepository>();
 builder.Services.AddScoped<IUserPreferenceRepository, UserPreferenceRepository>();
+builder.Services.AddScoped<ITrickSubmissionRepository, TrickSubmissionRepository>();
 
 // AI Services
 builder.Services.AddScoped<IComboEnhancerService, ComboEnhancerService>();

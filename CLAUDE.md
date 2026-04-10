@@ -33,16 +33,34 @@ FreestyleCombo/
 ### Entities (`FreestyleCombo.Core/Entities/`)
 | Entity | Key fields |
 |---|---|
-| `AppUser` | `IdentityUser<Guid>`, has `ICollection<Combo>`, `ICollection<ComboRating>`, `UserPreference?` |
+| `AppUser` | `IdentityUser<Guid>`, has `ICollection<Combo>`, `ICollection<ComboRating>`, `UserPreference?`, `ICollection<TrickSubmission>` |
 | `Trick` | `Id, Name, Abbreviation, CrossOver, Knee, Motion(decimal), Difficulty, CommonLevel` |
 | `Combo` | `Id, OwnerId, TotalDifficulty, TrickCount, IsPublic, CreatedAt, AiDescription` |
 | `ComboTrick` | `Id, ComboId, TrickId, Position, StrongFoot, NoTouch` |
 | `ComboRating` | `Id, ComboId, RatedByUserId, Score, CreatedAt` |
 | `UserPreference` | `Id, UserId, MaxDifficulty, ComboLength, StrongFootPercentage, NoTouchPercentage, MaxConsecutiveNoTouch, IncludeCrossOver, IncludeKnee, AllowedMotions(List<decimal>)` — `AllowedMotions` stored as `jsonb` |
+| `TrickSubmission` | `Id, Name, Abbreviation, CrossOver, Knee, Motion, Difficulty, CommonLevel, Status(enum), SubmittedAt, SubmittedById, ReviewedAt?, ReviewedById?` |
+
+`SubmissionStatus` enum: `Pending = 0`, `Approved = 1`, `Rejected = 2` — stored as int.  
+Approving a submission creates a real `Trick` from the submission fields.
 
 ### Interfaces (`FreestyleCombo.Core/Interfaces/`)
-- `ITrickRepository`, `IComboRepository`, `IComboRatingRepository`, `IUserPreferenceRepository`
+- `ITrickRepository`, `IComboRepository`, `IComboRatingRepository`, `IUserPreferenceRepository`, `ITrickSubmissionRepository`
 - `IComboEnhancerService` — extracted for Moq mockability
+
+### Trick Submission API (`/api/trick-submissions`)
+| Method | Route | Auth | Description |
+|---|---|---|---|
+| `POST` | `/` | Any user | Submit a new trick for review |
+| `GET` | `/mine` | Any user | Get current user's own submissions |
+| `GET` | `/pending` | Admin | Get all pending submissions |
+| `POST` | `/{id}/approve` | Admin | Approve → creates a `Trick` |
+| `POST` | `/{id}/reject` | Admin | Reject the submission |
+
+Validation for `SubmitTrickCommand`: Name NotEmpty MaxLength(100), Abbreviation NotEmpty MaxLength(20), Motion InclusiveBetween(0.5, 10), Difficulty InclusiveBetween(1, 10), CommonLevel InclusiveBetween(1, 10).
+
+### JWT — Role claim
+`LoginHandler.GenerateToken()` now calls `GetRolesAsync(user)` and adds `ClaimTypes.Role` claims. The `Admin` role is included in the JWT for admin users. Web/mobile decode the JWT payload client-side to check `isAdmin` — no extra API call needed.
 
 ### Anthropic SDK (v5.10.0) — Correct usage
 ```csharp
@@ -108,17 +126,20 @@ dotnet ef database update --project FreestyleCombo.Infrastructure --startup-proj
 web/src/
 ├── lib/
 │   ├── api.ts          # axios instance, all API functions + DTO types
-│   ├── auth.ts         # localStorage token management
+│   ├── auth.ts         # localStorage token management + isAdmin() (JWT decode)
 │   └── utils.ts        # cn() helper (clsx + tailwind-merge)
 ├── components/
 │   ├── ui/             # Button, Input, Label, Card, Badge, Textarea, Select, Dialog
-│   └── layout/         # Navbar, Layout (Outlet), ProtectedRoute
+│   └── layout/         # Navbar, Layout (Outlet), ProtectedRoute, AdminRoute
 └── features/
     ├── auth/           # LoginPage, RegisterPage
     ├── combos/         # GenerateComboPage, PublicCombosPage, MyCombosPage,
     │                   # ComboDetailPage, ComboCard, RateComboDialog
-    └── preferences/    # PreferencesPage
+    ├── preferences/    # PreferencesPage
+    └── tricks/         # SubmitTrickPage (/tricks/submit), AdminSubmissionsPage (/admin/submissions)
 ```
+
+`AdminRoute` redirects non-admins to `/generate`. `isAdmin()` decodes the JWT payload (no library, no API call) and checks `ClaimTypes.Role === "Admin"`.
 
 ### Path alias
 `@/` → `web/src/` (configured in `vite.config.ts` + `tsconfig.app.json`)
@@ -155,21 +176,26 @@ mobile/lib/
 ├── main.dart
 ├── core/
 │   ├── api/api_client.dart       # Dio client, all API methods, singleton
-│   ├── auth/auth_service.dart    # Token in SharedPreferences, singleton
+│   ├── auth/auth_service.dart    # Token + isAdmin in SharedPreferences, JWT decode
 │   └── models/
 │       ├── combo.dart            # ComboDto, ComboTrickDto, PagedResult, GenerateComboOverrides
-│       └── user_preference.dart  # UserPreference with toJson/copyWith
+│       ├── user_preference.dart  # UserPreference with toJson/copyWith
+│       └── trick_submission.dart # TrickSubmissionDto with fromJson
 ├── features/
 │   ├── auth/                     # login_screen.dart, register_screen.dart
 │   ├── combos/                   # generate_combo_screen, public_combos_screen,
 │   │                             # my_combos_screen, combo_detail_screen
-│   └── preferences/              # preferences_screen.dart
-├── router/app_router.dart        # GoRouter config, auth redirect
+│   ├── preferences/              # preferences_screen.dart
+│   ├── tricks/                   # submit_trick_screen.dart (/tricks/submit)
+│   └── admin/                    # admin_submissions_screen.dart (/admin/submissions)
+├── router/app_router.dart        # GoRouter config, auth + admin redirect
 └── widgets/
-    ├── main_shell.dart           # BottomNavigationBar shell (ShellRoute)
+    ├── main_shell.dart           # Bottom nav: 5 items always + 6th "Admin" if isAdmin
     ├── combo_card.dart           # Reusable card: display, tricks, AI description, actions
     └── rate_combo_dialog.dart    # Star rating AlertDialog
 ```
+
+`AuthService.isAdmin` decodes the JWT on `setCredentials()` and persists the result in SharedPreferences (`fc_is_admin`). Admin routes (`/admin/*`) are redirect-guarded in the router.
 
 ### Setup (Flutter must be installed first)
 ```bash

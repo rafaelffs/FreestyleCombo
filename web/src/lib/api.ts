@@ -99,6 +99,31 @@ export interface RatingDto {
   createdAt: string
 }
 
+export interface TrickSubmissionDto {
+  id: string
+  name: string
+  abbreviation: string
+  crossOver: boolean
+  knee: boolean
+  motion: number
+  difficulty: number
+  commonLevel: number
+  status: 'Pending' | 'Approved' | 'Rejected'
+  submittedAt: string
+  submittedByUserName: string
+  reviewedAt: string | null
+}
+
+export interface SubmitTrickRequest {
+  name: string
+  abbreviation: string
+  crossOver: boolean
+  knee: boolean
+  motion: number
+  difficulty: number
+  commonLevel: number
+}
+
 // ── Auth ───────────────────────────────────────────────────────────────────
 
 export const authApi = {
@@ -125,6 +150,21 @@ export const combosApi = {
 export const ratingsApi = {
   rate: (comboId: string, score: number) =>
     api.post<RatingDto>(`/combos/${comboId}/ratings`, { score }),
+}
+
+// ── Trick Submissions ─────────────────────────────────────────────────────
+
+export const trickSubmissionsApi = {
+  submit: (data: SubmitTrickRequest) =>
+    api.post<{ id: string }>('/trick-submissions', data),
+  getMine: () =>
+    api.get<TrickSubmissionDto[]>('/trick-submissions/mine'),
+  getPending: () =>
+    api.get<TrickSubmissionDto[]>('/trick-submissions/pending'),
+  approve: (id: string) =>
+    api.post(`/trick-submissions/${id}/approve`),
+  reject: (id: string) =>
+    api.post(`/trick-submissions/${id}/reject`),
 }
 
 // ── Preferences ───────────────────────────────────────────────────────────

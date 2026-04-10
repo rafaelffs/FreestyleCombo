@@ -28,13 +28,14 @@ public class LoginHandler : IRequestHandler<LoginCommand, LoginResponse>
         if (!await _userManager.CheckPasswordAsync(user, request.Password))
             throw new UnauthorizedAccessException("Invalid credentials.");
 
-        var token = GenerateToken(user);
+        var roles = await _userManager.GetRolesAsync(user);
+        var token = GenerateToken(user, roles);
         var expiresAt = DateTime.UtcNow.AddDays(7);
 
         return new LoginResponse(token, expiresAt, user.Id);
     }
 
-    private string GenerateToken(AppUser user)
+    private string GenerateToken(AppUser user, IList<string> roles)
     {
         var secret = _config["JwtSettings:Secret"]!;
         var issuer = _config["JwtSettings:Issuer"]!;
@@ -43,13 +44,14 @@ public class LoginHandler : IRequestHandler<LoginCommand, LoginResponse>
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email!),
-            new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName!),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(JwtRegisteredClaimNames.Email, user.Email!),
+            new(JwtRegisteredClaimNames.UniqueName, user.UserName!),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
+        claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
 
         var token = new JwtSecurityToken(
             issuer: issuer,
