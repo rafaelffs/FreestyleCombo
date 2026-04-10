@@ -12,14 +12,14 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailCtrl = TextEditingController();
+  final _credentialCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _loading = false;
   String? _error;
 
   @override
   void dispose() {
-    _emailCtrl.dispose();
+    _credentialCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
   }
@@ -32,7 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
     try {
       final result = await ApiClient.instance
-          .login(_emailCtrl.text.trim(), _passwordCtrl.text);
+          .login(_credentialCtrl.text.trim(), _passwordCtrl.text);
       await AuthService.instance.setCredentials(result.token, result.userId);
       if (mounted) context.go('/generate');
     } catch (e) {
@@ -72,12 +72,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               )),
                       const SizedBox(height: 24),
                       TextFormField(
-                        controller: _emailCtrl,
+                        controller: _credentialCtrl,
                         decoration: const InputDecoration(
-                          labelText: 'Email',
+                          labelText: 'Email or Username',
                           border: OutlineInputBorder(),
                         ),
-                        keyboardType: TextInputType.emailAddress,
+                        keyboardType: TextInputType.text,
                         autocorrect: false,
                         validator: (v) =>
                             v == null || v.isEmpty ? 'Required' : null,

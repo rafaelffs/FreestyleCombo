@@ -9,12 +9,14 @@ class ComboCard extends StatefulWidget {
   final ComboDto combo;
   final bool showActions;
   final VoidCallback? onRefresh;
+  final VoidCallback? onDeleted;
 
   const ComboCard({
     super.key,
     required this.combo,
     this.showActions = false,
     this.onRefresh,
+    this.onDeleted,
   });
 
   @override
@@ -23,6 +25,35 @@ class ComboCard extends StatefulWidget {
 
 class _ComboCardState extends State<ComboCard> {
   bool _visibilityLoading = false;
+  bool _deleteLoading = false;
+  bool _favLoading = false;
+  late bool _favoured;
+
+  @override
+  void initState() {
+    super.initState();
+    _favoured = widget.combo.isFavourited;
+  }
+
+  Future<void> _toggleFavourite() async {
+    setState(() => _favLoading = true);
+    try {
+      if (_favoured) {
+        await ApiClient.instance.removeFavourite(widget.combo.id);
+      } else {
+        await ApiClient.instance.addFavourite(widget.combo.id);
+      }
+      setState(() => _favoured = !_favoured);
+      widget.onRefresh?.call();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) setState(() => _favLoading = false);
+    }
+  }
 
   Future<void> _toggleVisibility() async {
     setState(() => _visibilityLoading = true);
@@ -37,6 +68,36 @@ class _ComboCardState extends State<ComboCard> {
       }
     } finally {
       if (mounted) setState(() => _visibilityLoading = false);
+    }
+  }
+
+  Future<void> _deleteCombo() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete combo?'),
+        content: const Text('This action cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _deleteLoading = true);
+    try {
+      await ApiClient.instance.deleteCombo(widget.combo.id);
+      widget.onDeleted?.call();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) setState(() => _deleteLoading = false);
     }
   }
 
@@ -55,7 +116,10 @@ class _ComboCardState extends State<ComboCard> {
     final combo = widget.combo;
     final currentUserId = AuthService.instance.userId;
     final isOwner = combo.ownerId == currentUserId;
+    final canDelete = AuthService.instance.isAdmin || isOwner;
     final colorScheme = Theme.of(context).colorScheme;
+
+    final authed = AuthService.instance.userId != null;
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -70,13 +134,26 @@ class _ComboCardState extends State<ComboCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      combo.displayText,
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (combo.name != null && combo.name!.isNotEmpty)
+                          Text(
+                            combo.name!,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          ),
+                        Text(
+                          combo.displayText,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -103,14 +180,18 @@ class _ComboCardState extends State<ComboCard> {
                           color: Colors.amber.shade100,
                         ),
                       ],
+                      if (_favoured) ...[
+                        const SizedBox(height: 4),
+                        _Chip(label: '♥ Favourite', color: Colors.pink.shade50),
+                      ],
                     ],
                   ),
                 ],
               ),
-              if (combo.ownerEmail != null) ...[
+              if (combo.ownerUserName != null) ...[
                 const SizedBox(height: 4),
                 Text(
-                  'by ${combo.ownerEmail}',
+                  'by ${combo.ownerUserName}',
                   style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                 ),
               ],
@@ -151,8 +232,24 @@ class _ComboCardState extends State<ComboCard> {
               ],
               if (widget.showActions) ...[
                 const SizedBox(height: 12),
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
                   children: [
+                    if (authed)
+                      OutlinedButton.icon(
+                        onPressed: _favLoading ? null : _toggleFavourite,
+                        icon: Icon(
+                          _favoured ? Icons.favorite : Icons.favorite_border,
+                          size: 16,
+                          color: _favoured ? Colors.pink : null,
+                        ),
+                        label: Text(_favoured ? 'Unfavourite' : 'Favourite'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _favoured ? Colors.pink : null,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        ),
+                      ),
                     if (!isOwner && currentUserId != null)
                       OutlinedButton.icon(
                         onPressed: _openRating,
@@ -176,6 +273,18 @@ class _ComboCardState extends State<ComboCard> {
                         style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 4)),
+                      ),
+                    ],
+                    if (canDelete) ...[
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        onPressed: _deleteLoading ? null : _deleteCombo,
+                        icon: const Icon(Icons.delete_outline, size: 16),
+                        label: const Text('Delete'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        ),
                       ),
                     ],
                   ],

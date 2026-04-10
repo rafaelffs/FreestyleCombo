@@ -42,7 +42,8 @@ class ApiClient {
   String _extractMessage(DioException e) {
     final data = e.response?.data;
     if (data is Map) {
-      return data['message'] as String? ??
+      return data['error'] as String? ??
+          data['message'] as String? ??
           data['title'] as String? ??
           e.message ??
           'Request failed';
@@ -71,11 +72,11 @@ class ApiClient {
   }
 
   Future<({String token, String userId})> login(
-      String email, String password) async {
+      String credential, String password) async {
     try {
       final res = await _dio.post<Map<String, dynamic>>(
         '/auth/login',
-        data: {'email': email, 'password': password},
+        data: {'credential': credential, 'password': password},
       );
       final d = res.data!;
       return (
@@ -90,13 +91,14 @@ class ApiClient {
   // ── Combos ──────────────────────────────────────────────────────────────
 
   Future<ComboDto> generateCombo(
-      bool usePreferences, GenerateComboOverrides? overrides) async {
+      bool usePreferences, GenerateComboOverrides? overrides, {String? name}) async {
     try {
       final res = await _dio.post<Map<String, dynamic>>(
         '/combos/generate',
         data: {
           'usePreferences': usePreferences,
           if (overrides != null) 'overrides': overrides.toJson(),
+          if (name != null && name.isNotEmpty) 'name': name,
         },
       );
       return ComboDto.fromJson(res.data!);
@@ -178,6 +180,47 @@ class ApiClient {
     }
   }
 
+  Future<ComboDto> buildCombo(
+      List<BuildComboTrickItem> tricks, bool isPublic, {String? name}) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/combos/build',
+        data: {
+          'tricks': tricks.map((t) => t.toJson()).toList(),
+          'isPublic': isPublic,
+          if (name != null && name.isNotEmpty) 'name': name,
+        },
+      );
+      return ComboDto.fromJson(res.data!);
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> addFavourite(String id) async {
+    try {
+      await _dio.post('/combos/$id/favourite');
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> removeFavourite(String id) async {
+    try {
+      await _dio.delete('/combos/$id/favourite');
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> deleteCombo(String id) async {
+    try {
+      await _dio.delete('/combos/$id');
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
   // ── Ratings ─────────────────────────────────────────────────────────────
 
   Future<void> rateCombo(String comboId, int score) async {
@@ -251,6 +294,46 @@ class ApiClient {
   Future<void> rejectSubmission(String id) async {
     try {
       await _dio.post('/trick-submissions/$id/reject');
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  // ── Tricks ───────────────────────────────────────────────────────────────
+
+  Future<List<TrickDto>> getTricks({
+    bool? crossOver,
+    bool? knee,
+    int? maxDifficulty,
+  }) async {
+    try {
+      final res = await _dio.get<List<dynamic>>(
+        '/tricks',
+        queryParameters: {
+          if (crossOver != null) 'crossOver': crossOver,
+          if (knee != null) 'knee': knee,
+          if (maxDifficulty != null) 'maxDifficulty': maxDifficulty,
+        },
+      );
+      return (res.data as List<dynamic>)
+          .map((e) => TrickDto.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> updateTrick(String id, TrickDto trick) async {
+    try {
+      await _dio.put('/tricks/$id', data: trick.toJson());
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> deleteTrick(String id) async {
+    try {
+      await _dio.delete('/tricks/$id');
     } on DioException catch (e) {
       throw Exception(_extractMessage(e));
     }

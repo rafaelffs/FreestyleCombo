@@ -7,6 +7,7 @@ using FreestyleCombo.Core.Entities;
 using FreestyleCombo.Core.Interfaces;
 using FreestyleCombo.Tests.Helpers;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Moq;
 
 namespace FreestyleCombo.Tests.Features;
@@ -18,6 +19,8 @@ public class GenerateComboHandlerTests
     private readonly Mock<IUserPreferenceRepository> _prefRepo = new();
     private readonly Mock<IComboEnhancerService> _enhancer = new();
     private readonly Mock<IHttpContextAccessor> _httpContextAccessor = new();
+    private readonly Mock<UserManager<AppUser>> _userManager = new(
+        Mock.Of<IUserStore<AppUser>>(), null, null, null, null, null, null, null, null);
     private readonly Guid _userId = Guid.NewGuid();
 
     public GenerateComboHandlerTests()
@@ -43,7 +46,8 @@ public class GenerateComboHandlerTests
         _comboRepo.Object,
         _prefRepo.Object,
         _enhancer.Object,
-        _httpContextAccessor.Object
+        _httpContextAccessor.Object,
+        _userManager.Object
     );
 
     [Fact]

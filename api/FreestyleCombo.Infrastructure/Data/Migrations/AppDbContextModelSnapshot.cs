@@ -106,6 +106,9 @@ namespace FreestyleCombo.Infrastructure.Data.Migrations
                     b.Property<bool>("IsPublic")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("Name")
+                        .HasColumnType("text");
+
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
 
@@ -265,6 +268,24 @@ namespace FreestyleCombo.Infrastructure.Data.Migrations
                     b.HasIndex("SubmittedById");
 
                     b.ToTable("TrickSubmissions");
+                });
+
+            modelBuilder.Entity("FreestyleCombo.Core.Entities.UserFavouriteCombo", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ComboId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId", "ComboId");
+
+                    b.HasIndex("ComboId");
+
+                    b.ToTable("UserFavouriteCombos");
                 });
 
             modelBuilder.Entity("FreestyleCombo.Core.Entities.UserPreference", b =>
@@ -499,6 +520,25 @@ namespace FreestyleCombo.Infrastructure.Data.Migrations
                     b.Navigation("SubmittedBy");
                 });
 
+            modelBuilder.Entity("FreestyleCombo.Core.Entities.UserFavouriteCombo", b =>
+                {
+                    b.HasOne("FreestyleCombo.Core.Entities.Combo", "Combo")
+                        .WithMany("FavouritedBy")
+                        .HasForeignKey("ComboId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FreestyleCombo.Core.Entities.AppUser", "User")
+                        .WithMany("FavouriteCombos")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Combo");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("FreestyleCombo.Core.Entities.UserPreference", b =>
                 {
                     b.HasOne("FreestyleCombo.Core.Entities.AppUser", "User")
@@ -565,6 +605,8 @@ namespace FreestyleCombo.Infrastructure.Data.Migrations
                 {
                     b.Navigation("Combos");
 
+                    b.Navigation("FavouriteCombos");
+
                     b.Navigation("Preference");
 
                     b.Navigation("Ratings");
@@ -575,6 +617,8 @@ namespace FreestyleCombo.Infrastructure.Data.Migrations
             modelBuilder.Entity("FreestyleCombo.Core.Entities.Combo", b =>
                 {
                     b.Navigation("ComboTricks");
+
+                    b.Navigation("FavouritedBy");
 
                     b.Navigation("Ratings");
                 });

@@ -1,14 +1,19 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { combosApi } from '@/lib/api'
 import { ComboCard } from './ComboCard'
 import { Button } from '@/components/ui/button'
 import { Link } from 'react-router-dom'
 
 export function MyCombosPage() {
+  const queryClient = useQueryClient()
   const { data, isLoading, error } = useQuery({
     queryKey: ['combos', 'mine'],
     queryFn: () => combosApi.getMine().then((r) => r.data.items),
   })
+
+  function handleDeleted() {
+    void queryClient.invalidateQueries({ queryKey: ['combos', 'mine'] })
+  }
 
   return (
     <div className="space-y-6">
@@ -35,7 +40,7 @@ export function MyCombosPage() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         {data?.map((combo) => (
-          <ComboCard key={combo.id} combo={combo} showActions />
+          <ComboCard key={combo.id} combo={combo} showActions onDeleted={handleDeleted} />
         ))}
       </div>
     </div>

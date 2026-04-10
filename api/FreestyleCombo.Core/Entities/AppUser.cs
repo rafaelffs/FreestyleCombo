@@ -8,4 +8,5 @@ public class AppUser : IdentityUser<Guid>
     public ICollection<ComboRating> Ratings { get; set; } = [];
     public UserPreference? Preference { get; set; }
     public ICollection<TrickSubmission> TrickSubmissions { get; set; } = [];
+    public ICollection<UserFavouriteCombo> FavouriteCombos { get; set; } = [];
 }

@@ -6,6 +6,8 @@ public class PublicComboDto
 {
     public Guid Id { get; set; }
     public Guid OwnerId { get; set; }
+    public string? OwnerUserName { get; set; }
+    public string? Name { get; set; }
     public double AverageDifficulty { get; set; }
     public int TrickCount { get; set; }
     public bool IsPublic { get; set; }
@@ -15,4 +17,5 @@ public class PublicComboDto
     public List<ComboTrickDto> Tricks { get; set; } = [];
     public double AverageRating { get; set; }
     public int TotalRatings { get; set; }
+    public bool IsFavourited { get; set; }
 }

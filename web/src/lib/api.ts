@@ -26,12 +26,32 @@ api.interceptors.response.use(
 
 export default api
 
+// ── Error helper ───────────────────────────────────────────────────────────
+
+// The API returns { "error": "..." } for all errors from the middleware.
+// Use this helper everywhere instead of inline casting.
+export function extractError(err: unknown, fallback: string): string {
+  const e = err as { response?: { data?: { error?: string; message?: string } } }
+  return e?.response?.data?.error ?? e?.response?.data?.message ?? fallback
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export interface AuthResponse {
   token: string
   userId: string
   email: string
+}
+
+export interface TrickDto {
+  id: string
+  name: string
+  abbreviation: string
+  crossOver: boolean
+  knee: boolean
+  motion: number
+  difficulty: number
+  commonLevel: number
 }
 
 export interface ComboTrickDto {
@@ -54,7 +74,8 @@ export interface PagedResult<T> {
 export interface ComboDto {
   id: string
   ownerId: string
-  ownerEmail?: string
+  ownerUserName?: string
+  name?: string
   averageDifficulty: number
   trickCount: number
   isPublic?: boolean
@@ -65,6 +86,7 @@ export interface ComboDto {
   averageRating: number | null
   ratingCount?: number
   totalRatings?: number
+  isFavourited?: boolean
 }
 
 export interface GenerateComboOverrides {
@@ -129,20 +151,32 @@ export interface SubmitTrickRequest {
 export const authApi = {
   register: (email: string, userName: string, password: string) =>
     api.post<AuthResponse>('/auth/register', { email, userName, password }),
-  login: (email: string, password: string) =>
-    api.post<AuthResponse>('/auth/login', { email, password }),
+  login: (credential: string, password: string) =>
+    api.post<AuthResponse>('/auth/login', { credential, password }),
 }
 
 // ── Combos ─────────────────────────────────────────────────────────────────
 
+export interface BuildComboTrickItem {
+  trickId: string
+  position: number
+  strongFoot: boolean
+  noTouch: boolean
+}
+
 export const combosApi = {
-  generate: (usePreferences: boolean, overrides?: GenerateComboOverrides) =>
-    api.post<ComboDto>('/combos/generate', { usePreferences, overrides }),
+  generate: (usePreferences: boolean, overrides?: GenerateComboOverrides, name?: string) =>
+    api.post<ComboDto>('/combos/generate', { usePreferences, overrides, name }),
+  build: (tricks: BuildComboTrickItem[], isPublic = false, name?: string) =>
+    api.post<ComboDto>('/combos/build', { tricks, isPublic, name }),
   getPublic: () => api.get<PagedResult<ComboDto>>('/combos/public'),
   getMine: () => api.get<PagedResult<ComboDto>>('/combos/mine'),
   getById: (id: string) => api.get<ComboDto>(`/combos/${id}`),
   setPublic: (id: string, isPublic: boolean) =>
     api.put(`/combos/${id}/visibility`, { isPublic }),
+  delete: (id: string) => api.delete(`/combos/${id}`),
+  addFavourite: (id: string) => api.post(`/combos/${id}/favourite`),
+  removeFavourite: (id: string) => api.delete(`/combos/${id}/favourite`),
 }
 
 // ── Ratings ────────────────────────────────────────────────────────────────
@@ -165,6 +199,16 @@ export const trickSubmissionsApi = {
     api.post(`/trick-submissions/${id}/approve`),
   reject: (id: string) =>
     api.post(`/trick-submissions/${id}/reject`),
+}
+
+// ── Tricks ────────────────────────────────────────────────────────────────
+
+export const tricksApi = {
+  getAll: (params?: { crossOver?: boolean; knee?: boolean; maxDifficulty?: number }) =>
+    api.get<TrickDto[]>('/tricks', { params }),
+  update: (id: string, data: Omit<TrickDto, 'id'>) =>
+    api.put(`/tricks/${id}`, data),
+  delete: (id: string) => api.delete(`/tricks/${id}`),
 }
 
 // ── Preferences ───────────────────────────────────────────────────────────

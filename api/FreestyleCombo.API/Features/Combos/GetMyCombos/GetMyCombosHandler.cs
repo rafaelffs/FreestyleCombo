@@ -8,12 +8,30 @@ namespace FreestyleCombo.API.Features.Combos.GetMyCombos;
 public class GetMyCombosHandler : IRequestHandler<GetMyCombosQuery, PagedResult<MyComboDto>>
 {
     private readonly IComboRepository _repo;
+    private readonly IUserFavouriteRepository _favRepo;
 
-    public GetMyCombosHandler(IComboRepository repo) => _repo = repo;
+    public GetMyCombosHandler(IComboRepository repo, IUserFavouriteRepository favRepo)
+    {
+        _repo = repo;
+        _favRepo = favRepo;
+    }
 
     public async Task<PagedResult<MyComboDto>> Handle(GetMyCombosQuery request, CancellationToken cancellationToken)
     {
-        var (items, total) = await _repo.GetByOwnerAsync(request.UserId, request.Page, request.PageSize, request.IsPublic, cancellationToken);
+        var allCombos = await _repo.GetAllByOwnerAsync(request.UserId, request.IsPublic, cancellationToken);
+        var favIds = await _favRepo.GetFavouriteComboIdsAsync(request.UserId, cancellationToken);
+
+        // Sort: favourites first, then by CreatedAt DESC
+        var sorted = allCombos
+            .OrderByDescending(c => favIds.Contains(c.Id))
+            .ThenByDescending(c => c.CreatedAt)
+            .ToList();
+
+        var total = sorted.Count;
+        var items = sorted
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToList();
 
         return new PagedResult<MyComboDto>
         {
@@ -24,6 +42,8 @@ public class GetMyCombosHandler : IRequestHandler<GetMyCombosQuery, PagedResult<
             {
                 Id = c.Id,
                 OwnerId = c.OwnerId,
+                OwnerUserName = c.Owner?.UserName,
+                Name = c.Name,
                 AverageDifficulty = c.AverageDifficulty,
                 TrickCount = c.TrickCount,
                 IsPublic = c.IsPublic,
@@ -42,7 +62,8 @@ public class GetMyCombosHandler : IRequestHandler<GetMyCombosQuery, PagedResult<
                     Motion = ct.Trick.Motion
                 }).ToList(),
                 AverageRating = c.Ratings.Any() ? Math.Round(c.Ratings.Average(r => r.Score), 2) : 0,
-                TotalRatings = c.Ratings.Count
+                TotalRatings = c.Ratings.Count,
+                IsFavourited = favIds.Contains(c.Id)
             }).ToList()
         };
     }

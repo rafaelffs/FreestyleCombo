@@ -2,7 +2,7 @@ using MediatR;
 
 namespace FreestyleCombo.API.Features.Combos.GetPublicCombos;
 
-public record GetPublicCombosQuery(int Page, int PageSize, string? SortBy, int? MaxDifficulty) : IRequest<PagedResult<PublicComboDto>>;
+public record GetPublicCombosQuery(int Page, int PageSize, string? SortBy, int? MaxDifficulty, Guid? RequestingUserId = null) : IRequest<PagedResult<PublicComboDto>>;
 
 public class PagedResult<T>
 {

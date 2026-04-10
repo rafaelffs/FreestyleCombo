@@ -40,6 +40,20 @@ public class TrickRepository : ITrickRepository
         await _db.SaveChangesAsync(ct);
     }
 
+    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var trick = await _db.Tricks
+            .Include(t => t.ComboTricks)
+            .FirstOrDefaultAsync(t => t.Id == id, ct)
+            ?? throw new KeyNotFoundException("Trick not found.");
+
+        if (trick.ComboTricks.Count > 0)
+            throw new InvalidOperationException($"This trick is used in {trick.ComboTricks.Count} combo(s) and cannot be deleted.");
+
+        _db.Tricks.Remove(trick);
+        await _db.SaveChangesAsync(ct);
+    }
+
     public async Task<bool> IsEmptyAsync(CancellationToken ct = default) =>
         !await _db.Tricks.AnyAsync(ct);
 }

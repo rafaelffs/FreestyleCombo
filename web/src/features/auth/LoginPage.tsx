@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { authApi } from '@/lib/api'
+import { authApi, extractError } from '@/lib/api'
 import { setToken } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,11 +10,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 
 export function LoginPage() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
+  const [credential, setCredential] = useState('')
   const [password, setPassword] = useState('')
 
   const { mutate, isPending, error } = useMutation({
-    mutationFn: () => authApi.login(email, password),
+    mutationFn: () => authApi.login(credential, password),
     onSuccess: ({ data }) => {
       setToken(data.token, data.userId)
       navigate('/generate')
@@ -26,9 +26,7 @@ export function LoginPage() {
     mutate()
   }
 
-  const errorMessage = error
-    ? (error as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Login failed'
-    : null
+  const errorMessage = error ? extractError(error, 'Login failed') : null
 
   return (
     <div className="flex min-h-[70vh] items-center justify-center">
@@ -40,13 +38,13 @@ export function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="credential">Email or Username</Label>
               <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="credential"
+                type="text"
+                autoComplete="username"
+                value={credential}
+                onChange={(e) => setCredential(e.target.value)}
                 required
               />
             </div>

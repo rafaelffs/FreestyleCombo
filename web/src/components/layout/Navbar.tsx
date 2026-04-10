@@ -20,13 +20,19 @@ export function Navbar() {
             <Link to="/" className="text-xl font-bold text-indigo-600">
               FreestyleCombo
             </Link>
+            <Link to="/combos/public" className="text-sm text-gray-600 hover:text-gray-900">
+              Public Combos
+            </Link>
+            <Link to="/tricks" className="text-sm text-gray-600 hover:text-gray-900">
+              Tricks
+            </Link>
             {authed && (
               <>
                 <Link to="/generate" className="text-sm text-gray-600 hover:text-gray-900">
                   Generate
                 </Link>
-                <Link to="/combos/public" className="text-sm text-gray-600 hover:text-gray-900">
-                  Public Combos
+                <Link to="/combos/build" className="text-sm text-gray-600 hover:text-gray-900">
+                  Build Combo
                 </Link>
                 <Link to="/combos/mine" className="text-sm text-gray-600 hover:text-gray-900">
                   My Combos
@@ -43,11 +49,6 @@ export function Navbar() {
                   </Link>
                 )}
               </>
-            )}
-            {!authed && (
-              <Link to="/combos/public" className="text-sm text-gray-600 hover:text-gray-900">
-                Public Combos
-              </Link>
             )}
           </div>
           <div className="flex items-center gap-3">

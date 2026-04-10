@@ -8,5 +8,6 @@ public interface ITrickRepository
     Task<Trick?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task AddAsync(Trick trick, CancellationToken ct = default);
     Task UpdateAsync(Trick trick, CancellationToken ct = default);
+    Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task<bool> IsEmptyAsync(CancellationToken ct = default);
 }

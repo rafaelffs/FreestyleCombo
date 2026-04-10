@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { preferencesApi, type UserPreference } from '@/lib/api'
+import { preferencesApi, extractError, type UserPreference } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -48,9 +48,7 @@ export function PreferencesPage() {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
-  const errorMessage = error
-    ? (error as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Save failed'
-    : null
+  const errorMessage = error ? extractError(error, 'Save failed') : null
 
   return (
     <div className="space-y-6">

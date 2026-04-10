@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { combosApi, type ComboDto, type GenerateComboOverrides } from '@/lib/api'
+import { combosApi, extractError, type ComboDto, type GenerateComboOverrides } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,9 +22,10 @@ export function GenerateComboPage() {
   const [usePrefs, setUsePrefs] = useState(false)
   const [overrides, setOverrides] = useState<GenerateComboOverrides>(DEFAULTS)
   const [result, setResult] = useState<ComboDto | null>(null)
+  const [comboName, setComboName] = useState('')
 
   const { mutate, isPending, error } = useMutation({
-    mutationFn: () => combosApi.generate(usePrefs, usePrefs ? undefined : overrides),
+    mutationFn: () => combosApi.generate(usePrefs, usePrefs ? undefined : overrides, comboName || undefined),
     onSuccess: ({ data }) => setResult(data),
   })
 
@@ -32,9 +33,7 @@ export function GenerateComboPage() {
     setOverrides((prev) => ({ ...prev, [key]: value }))
   }
 
-  const errorMessage = error
-    ? (error as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Generation failed'
-    : null
+  const errorMessage = error ? extractError(error, 'Generation failed') : null
 
   return (
     <div className="space-y-6">

@@ -2,4 +2,4 @@ using MediatR;
 
 namespace FreestyleCombo.API.Features.Auth.Login;
 
-public record LoginCommand(string Email, string Password) : IRequest<LoginResponse>;
+public record LoginCommand(string Credential, string Password) : IRequest<LoginResponse>;

@@ -1,3 +1,67 @@
+class TrickDto {
+  final String id;
+  final String name;
+  final String abbreviation;
+  final bool crossOver;
+  final bool knee;
+  final double motion;
+  final int difficulty;
+  final int commonLevel;
+
+  const TrickDto({
+    required this.id,
+    required this.name,
+    required this.abbreviation,
+    required this.crossOver,
+    required this.knee,
+    required this.motion,
+    required this.difficulty,
+    required this.commonLevel,
+  });
+
+  factory TrickDto.fromJson(Map<String, dynamic> j) => TrickDto(
+        id: j['id'] as String,
+        name: j['name'] as String,
+        abbreviation: j['abbreviation'] as String,
+        crossOver: j['crossOver'] as bool,
+        knee: j['knee'] as bool,
+        motion: (j['motion'] as num).toDouble(),
+        difficulty: j['difficulty'] as int,
+        commonLevel: j['commonLevel'] as int,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'abbreviation': abbreviation,
+        'crossOver': crossOver,
+        'knee': knee,
+        'motion': motion,
+        'difficulty': difficulty,
+        'commonLevel': commonLevel,
+      };
+}
+
+class BuildComboTrickItem {
+  final String trickId;
+  final int position;
+  final bool strongFoot;
+  final bool noTouch;
+
+  const BuildComboTrickItem({
+    required this.trickId,
+    required this.position,
+    required this.strongFoot,
+    required this.noTouch,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'trickId': trickId,
+        'position': position,
+        'strongFoot': strongFoot,
+        'noTouch': noTouch,
+      };
+}
+
 class ComboTrickDto {
   final String trickId;
   final String name;
@@ -34,7 +98,8 @@ class ComboTrickDto {
 class ComboDto {
   final String id;
   final String ownerId;
-  final String? ownerEmail;
+  final String? ownerUserName;
+  final String? name;
   final double averageDifficulty;
   final int trickCount;
   final bool? isPublic;
@@ -44,11 +109,13 @@ class ComboDto {
   final List<ComboTrickDto>? tricks;
   final double averageRating;
   final int totalRatings;
+  final bool isFavourited;
 
   const ComboDto({
     required this.id,
     required this.ownerId,
-    this.ownerEmail,
+    this.ownerUserName,
+    this.name,
     required this.averageDifficulty,
     required this.trickCount,
     this.isPublic,
@@ -58,12 +125,14 @@ class ComboDto {
     this.tricks,
     required this.averageRating,
     required this.totalRatings,
+    this.isFavourited = false,
   });
 
   factory ComboDto.fromJson(Map<String, dynamic> j) => ComboDto(
         id: j['id'] as String,
         ownerId: j['ownerId'] as String,
-        ownerEmail: j['ownerEmail'] as String?,
+        ownerUserName: j['ownerUserName'] as String?,
+        name: j['name'] as String?,
         averageDifficulty: (j['averageDifficulty'] as num).toDouble(),
         trickCount: j['trickCount'] as int,
         isPublic: j['isPublic'] as bool?,
@@ -75,6 +144,7 @@ class ComboDto {
             .toList(),
         averageRating: (j['averageRating'] as num? ?? 0).toDouble(),
         totalRatings: j['totalRatings'] as int? ?? 0,
+        isFavourited: j['isFavourited'] as bool? ?? false,
       );
 }
 

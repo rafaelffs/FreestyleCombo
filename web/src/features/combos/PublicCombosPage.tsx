@@ -1,13 +1,18 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { combosApi } from '@/lib/api'
 import { ComboCard } from './ComboCard'
 import { isAuthenticated } from '@/lib/auth'
 
 export function PublicCombosPage() {
+  const queryClient = useQueryClient()
   const { data, isLoading, error } = useQuery({
     queryKey: ['combos', 'public'],
     queryFn: () => combosApi.getPublic().then((r) => r.data.items),
   })
+
+  function handleDeleted() {
+    void queryClient.invalidateQueries({ queryKey: ['combos', 'public'] })
+  }
 
   return (
     <div className="space-y-6">
@@ -22,7 +27,7 @@ export function PublicCombosPage() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         {data?.map((combo) => (
-          <ComboCard key={combo.id} combo={combo} showActions={isAuthenticated()} />
+          <ComboCard key={combo.id} combo={combo} showActions={isAuthenticated()} onDeleted={handleDeleted} />
         ))}
       </div>
     </div>

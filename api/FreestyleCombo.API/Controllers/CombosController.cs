@@ -1,8 +1,12 @@
 using System.Security.Claims;
+using FreestyleCombo.API.Features.Combos.AddFavourite;
+using FreestyleCombo.API.Features.Combos.BuildCombo;
+using FreestyleCombo.API.Features.Combos.DeleteCombo;
 using FreestyleCombo.API.Features.Combos.GenerateCombo;
 using FreestyleCombo.API.Features.Combos.GetCombo;
 using FreestyleCombo.API.Features.Combos.GetMyCombos;
 using FreestyleCombo.API.Features.Combos.GetPublicCombos;
+using FreestyleCombo.API.Features.Combos.RemoveFavourite;
 using FreestyleCombo.API.Features.Combos.UpdateVisibility;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -27,6 +31,15 @@ public class CombosController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
+    [HttpPost("build")]
+    [Authorize]
+    [ProducesResponseType(typeof(GenerateComboResponse), StatusCodes.Status201Created)]
+    public async Task<IActionResult> Build([FromBody] BuildComboCommand command, CancellationToken ct)
+    {
+        var result = await _mediator.Send(command, ct);
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+    }
+
     [HttpGet("public")]
     [ProducesResponseType(typeof(PagedResult<PublicComboDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPublic(
@@ -36,7 +49,10 @@ public class CombosController : ControllerBase
         [FromQuery] int? maxDifficulty = null,
         CancellationToken ct = default)
     {
-        var result = await _mediator.Send(new GetPublicCombosQuery(page, pageSize, sortBy, maxDifficulty), ct);
+        Guid? requestingUserId = User.Identity?.IsAuthenticated == true
+            ? Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!)
+            : null;
+        var result = await _mediator.Send(new GetPublicCombosQuery(page, pageSize, sortBy, maxDifficulty, requestingUserId), ct);
         return Ok(result);
     }
 
@@ -73,6 +89,35 @@ public class CombosController : ControllerBase
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         await _mediator.Send(new UpdateVisibilityCommand(id, userId, request.IsPublic), ct);
+        return Ok();
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new DeleteComboCommand(id), ct);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/favourite")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> AddFavourite(Guid id, CancellationToken ct)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        await _mediator.Send(new AddFavouriteCommand(id, userId), ct);
+        return Ok();
+    }
+
+    [HttpDelete("{id:guid}/favourite")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> RemoveFavourite(Guid id, CancellationToken ct)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        await _mediator.Send(new RemoveFavouriteCommand(id, userId), ct);
         return Ok();
     }
 }

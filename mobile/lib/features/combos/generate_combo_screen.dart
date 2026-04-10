@@ -19,10 +19,17 @@ class _GenerateComboScreenState extends State<GenerateComboScreen> {
   int _maxConsecNoTouch = 2;
   bool _includeCrossOver = true;
   bool _includeKnee = true;
+  final _nameCtrl = TextEditingController();
 
   bool _loading = false;
   String? _error;
   ComboDto? _result;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _generate() async {
     setState(() {
@@ -42,8 +49,11 @@ class _GenerateComboScreenState extends State<GenerateComboScreen> {
               includeCrossOver: _includeCrossOver,
               includeKnee: _includeKnee,
             );
-      final combo =
-          await ApiClient.instance.generateCombo(_usePrefs, overrides);
+      final combo = await ApiClient.instance.generateCombo(
+        _usePrefs,
+        overrides,
+        name: _nameCtrl.text.trim().isEmpty ? null : _nameCtrl.text.trim(),
+      );
       setState(() => _result = combo);
     } catch (e) {
       setState(
@@ -70,6 +80,15 @@ class _GenerateComboScreenState extends State<GenerateComboScreen> {
                   children: [
                     Text('Options',
                         style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _nameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Combo name (optional)',
+                        hintText: 'e.g. My signature combo',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     SwitchListTile(
                       title: const Text('Use saved preferences'),

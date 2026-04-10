@@ -10,7 +10,9 @@ import { MyCombosPage } from '@/features/combos/MyCombosPage'
 import { ComboDetailPage } from '@/features/combos/ComboDetailPage'
 import { PreferencesPage } from '@/features/preferences/PreferencesPage'
 import { SubmitTrickPage } from '@/features/tricks/SubmitTrickPage'
+import { TricksPage } from '@/features/tricks/TricksPage'
 import { AdminSubmissionsPage } from '@/features/tricks/AdminSubmissionsPage'
+import { BuildComboPage } from '@/features/combos/BuildComboPage'
 
 export default function App() {
   return (
@@ -22,10 +24,12 @@ export default function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/combos/public" element={<PublicCombosPage />} />
           <Route path="/combos/:id" element={<ComboDetailPage />} />
+          <Route path="/tricks" element={<TricksPage />} />
 
           {/* Protected */}
           <Route element={<ProtectedRoute />}>
             <Route path="/generate" element={<GenerateComboPage />} />
+            <Route path="/combos/build" element={<BuildComboPage />} />
             <Route path="/combos/mine" element={<MyCombosPage />} />
             <Route path="/preferences" element={<PreferencesPage />} />
             <Route path="/tricks/submit" element={<SubmitTrickPage />} />

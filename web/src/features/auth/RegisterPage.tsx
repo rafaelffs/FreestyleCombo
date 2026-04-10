@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { authApi } from '@/lib/api'
+import { authApi, extractError } from '@/lib/api'
 import { setToken } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,9 +27,7 @@ export function RegisterPage() {
     mutate()
   }
 
-  const errorMessage = error
-    ? (error as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Registration failed'
-    : null
+  const errorMessage = error ? extractError(error, 'Registration failed') : null
 
   return (
     <div className="flex min-h-[70vh] items-center justify-center">

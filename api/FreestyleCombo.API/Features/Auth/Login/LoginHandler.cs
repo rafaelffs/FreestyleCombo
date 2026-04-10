@@ -22,7 +22,8 @@ public class LoginHandler : IRequestHandler<LoginCommand, LoginResponse>
 
     public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        var user = await _userManager.FindByEmailAsync(request.Email)
+        var user = await _userManager.FindByEmailAsync(request.Credential)
+            ?? await _userManager.FindByNameAsync(request.Credential)
             ?? throw new UnauthorizedAccessException("Invalid credentials.");
 
         if (!await _userManager.CheckPasswordAsync(user, request.Password))

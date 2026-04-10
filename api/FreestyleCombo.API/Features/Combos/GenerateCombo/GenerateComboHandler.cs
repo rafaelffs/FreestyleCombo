@@ -6,6 +6,7 @@ using FreestyleCombo.Core.Entities;
 using FreestyleCombo.Core.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 
 namespace FreestyleCombo.API.Features.Combos.GenerateCombo;
 
@@ -16,24 +17,28 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
     private readonly IUserPreferenceRepository _prefRepo;
     private readonly IComboEnhancerService _enhancer;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly UserManager<AppUser> _userManager;
 
     public GenerateComboHandler(
         ITrickRepository trickRepo,
         IComboRepository comboRepo,
         IUserPreferenceRepository prefRepo,
         IComboEnhancerService enhancer,
-        IHttpContextAccessor httpContextAccessor)
+        IHttpContextAccessor httpContextAccessor,
+        UserManager<AppUser> userManager)
     {
         _trickRepo = trickRepo;
         _comboRepo = comboRepo;
         _prefRepo = prefRepo;
         _enhancer = enhancer;
         _httpContextAccessor = httpContextAccessor;
+        _userManager = userManager;
     }
 
     public async Task<GenerateComboResponse> Handle(GenerateComboCommand request, CancellationToken cancellationToken)
     {
         var userId = Guid.Parse(_httpContextAccessor.HttpContext!.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var user = await _userManager.FindByIdAsync(userId.ToString());
 
         // Resolve effective preferences
         UserPreference? savedPref = null;
@@ -139,6 +144,7 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
         {
             Id = Guid.NewGuid(),
             OwnerId = userId,
+            Name = string.IsNullOrWhiteSpace(request.Name) ? null : request.Name.Trim(),
             AverageDifficulty = enhancementReq.AverageDifficulty,
             TrickCount = comboTricks.Count,
             IsPublic = false,
@@ -160,6 +166,8 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
         {
             Id = combo.Id,
             OwnerId = combo.OwnerId,
+            OwnerUserName = user?.UserName,
+            Name = combo.Name,
             AverageDifficulty = combo.AverageDifficulty,
             TrickCount = combo.TrickCount,
             IsPublic = combo.IsPublic,

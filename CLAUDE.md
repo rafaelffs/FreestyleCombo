@@ -33,20 +33,53 @@ FreestyleCombo/
 ### Entities (`FreestyleCombo.Core/Entities/`)
 | Entity | Key fields |
 |---|---|
-| `AppUser` | `IdentityUser<Guid>`, has `ICollection<Combo>`, `ICollection<ComboRating>`, `UserPreference?`, `ICollection<TrickSubmission>` |
+| `AppUser` | `IdentityUser<Guid>`, has `ICollection<Combo>`, `ICollection<ComboRating>`, `UserPreference?`, `ICollection<TrickSubmission>`, `ICollection<UserFavouriteCombo>` |
 | `Trick` | `Id, Name, Abbreviation, CrossOver, Knee, Motion(decimal), Difficulty, CommonLevel` |
-| `Combo` | `Id, OwnerId, TotalDifficulty, TrickCount, IsPublic, CreatedAt, AiDescription` |
+| `Combo` | `Id, OwnerId, Name?, TotalDifficulty, TrickCount, IsPublic, CreatedAt, AiDescription, ICollection<UserFavouriteCombo>` |
 | `ComboTrick` | `Id, ComboId, TrickId, Position, StrongFoot, NoTouch` |
 | `ComboRating` | `Id, ComboId, RatedByUserId, Score, CreatedAt` |
 | `UserPreference` | `Id, UserId, MaxDifficulty, ComboLength, StrongFootPercentage, NoTouchPercentage, MaxConsecutiveNoTouch, IncludeCrossOver, IncludeKnee, AllowedMotions(List<decimal>)` — `AllowedMotions` stored as `jsonb` |
 | `TrickSubmission` | `Id, Name, Abbreviation, CrossOver, Knee, Motion, Difficulty, CommonLevel, Status(enum), SubmittedAt, SubmittedById, ReviewedAt?, ReviewedById?` |
+| `UserFavouriteCombo` | Composite PK `(UserId, ComboId)`, `CreatedAt` — cascade deletes on both FK |
 
 `SubmissionStatus` enum: `Pending = 0`, `Approved = 1`, `Rejected = 2` — stored as int.  
 Approving a submission creates a real `Trick` from the submission fields.
 
 ### Interfaces (`FreestyleCombo.Core/Interfaces/`)
-- `ITrickRepository`, `IComboRepository`, `IComboRatingRepository`, `IUserPreferenceRepository`, `ITrickSubmissionRepository`
+- `ITrickRepository` (includes `DeleteAsync` — checks ComboTricks before deleting)
+- `IComboRepository` (includes `DeleteAsync`, `GetAllByOwnerAsync` — no pagination, includes Owner nav)
+- `IComboRatingRepository`, `IUserPreferenceRepository`, `ITrickSubmissionRepository`
+- `IUserFavouriteRepository` — `AddAsync`, `RemoveAsync`, `GetFavouriteComboIdsAsync`, `ExistsAsync`
 - `IComboEnhancerService` — extracted for Moq mockability
+
+### Tricks API (`/api/tricks`)
+| Method | Route | Auth | Description |
+|---|---|---|---|
+| `GET` | `/` | Public | Get all tricks (optional filters: `crossOver`, `knee`, `maxDifficulty`) |
+| `PUT` | `/{id}` | Admin | Update trick — all fields editable |
+| `DELETE` | `/{id}` | Admin | Delete trick — 409 Conflict if used in any combo |
+
+Trick delete throws `InvalidOperationException` ("This trick is used in X combo(s)...") if any `ComboTrick` references it → middleware returns 400.
+
+### Combos extra endpoints
+| Method | Route | Auth | Description |
+|---|---|---|---|
+| `POST` | `/api/combos/build` | User | Build combo manually — accepts optional `name`; no AI description (`AiDescription = null`) |
+| `DELETE` | `/api/combos/{id}` | User/Admin | Owner or Admin can delete; 403 otherwise |
+| `POST` | `/api/combos/{id}/favourite` | User | Add combo to favourites |
+| `DELETE` | `/api/combos/{id}/favourite` | User | Remove combo from favourites |
+
+`BuildComboCommand` validates: `Tricks` NotEmpty, each `Position >= 1`, NoTouch only on `CrossOver = true` tricks (handler throws `InvalidOperationException` if violated).
+
+`GenerateComboCommand` accepts optional `Name` (top-level, not inside `Overrides`). Saved as `null` if blank/whitespace.
+
+All combo DTOs (`GenerateComboResponse`, `PublicComboDto`, `MyComboDto`, `ComboDetailDto`) now include `Name?`, `OwnerUserName?`, `IsFavourited`. Combos in `GET /mine` sort favourites first, then by `CreatedAt DESC`.
+
+### Login with username or email
+`LoginCommand` field renamed `Email` → `Credential`. Handler tries `FindByEmailAsync` first, then `FindByNameAsync`. Validator uses `NotEmpty` + `MaximumLength(256)` only (no `EmailAddress()` rule).
+
+### Error format
+API middleware always returns `{ "error": "..." }`. Web uses `extractError(err, fallback)` helper from `lib/api.ts`. Mobile `_extractMessage` checks `data['error']` first, then `data['message']`, then `data['title']`.
 
 ### Trick Submission API (`/api/trick-submissions`)
 | Method | Route | Auth | Description |
@@ -125,21 +158,36 @@ dotnet ef database update --project FreestyleCombo.Infrastructure --startup-proj
 ```
 web/src/
 ├── lib/
-│   ├── api.ts          # axios instance, all API functions + DTO types
+│   ├── api.ts          # axios instance, all API functions + DTO types + extractError()
 │   ├── auth.ts         # localStorage token management + isAdmin() (JWT decode)
 │   └── utils.ts        # cn() helper (clsx + tailwind-merge)
 ├── components/
 │   ├── ui/             # Button, Input, Label, Card, Badge, Textarea, Select, Dialog
 │   └── layout/         # Navbar, Layout (Outlet), ProtectedRoute, AdminRoute
 └── features/
-    ├── auth/           # LoginPage, RegisterPage
-    ├── combos/         # GenerateComboPage, PublicCombosPage, MyCombosPage,
-    │                   # ComboDetailPage, ComboCard, RateComboDialog
+    ├── auth/           # LoginPage (email or username), RegisterPage
+    ├── combos/         # GenerateComboPage, BuildComboPage (/combos/build),
+    │                   # PublicCombosPage, MyCombosPage,
+    │                   # ComboDetailPage, ComboCard (+ delete for owner/admin), RateComboDialog
     ├── preferences/    # PreferencesPage
-    └── tricks/         # SubmitTrickPage (/tricks/submit), AdminSubmissionsPage (/admin/submissions)
+    └── tricks/         # TricksPage (/tricks, public), SubmitTrickPage, AdminSubmissionsPage
 ```
 
+Routes: `/tricks` (public), `/combos/build` (protected). `ComboCard` accepts `onDeleted` callback; delete button shown for owner or admin.
+
 `AdminRoute` redirects non-admins to `/generate`. `isAdmin()` decodes the JWT payload (no library, no API call) and checks `ClaimTypes.Role === "Admin"`.
+
+### ComboCard features
+- Shows `combo.name` (bold, above displayText) when present
+- Shows `combo.ownerUserName` (not ownerEmail)
+- Favourite toggle button (♥/♡) visible when authenticated — calls `addFavourite`/`removeFavourite`, invalidates `['combos']` query
+- Delete button for owner or admin
+
+### Difficulty badge
+- No "d" prefix — just the number
+- Color-coded: `bg-green-100 text-green-800` (1–4), `bg-yellow-100 text-yellow-800` (5–7), `bg-red-100 text-red-800` (8–10)
+- Applied in `BuildComboPage` (trick picker) and `TricksPage` (Diff column)
+- `TricksPage` no longer shows a "Level" (commonLevel) column in the table
 
 ### Path alias
 `@/` → `web/src/` (configured in `vite.config.ts` + `tsconfig.app.json`)
@@ -176,26 +224,40 @@ mobile/lib/
 ├── main.dart
 ├── core/
 │   ├── api/api_client.dart       # Dio client, all API methods, singleton
+│   │                             # _extractMessage checks data['error'] first
 │   ├── auth/auth_service.dart    # Token + isAdmin in SharedPreferences, JWT decode
 │   └── models/
-│       ├── combo.dart            # ComboDto, ComboTrickDto, PagedResult, GenerateComboOverrides
+│       ├── combo.dart            # TrickDto, BuildComboTrickItem, ComboDto, ComboTrickDto,
+│       │                         # PagedResult, GenerateComboOverrides
 │       ├── user_preference.dart  # UserPreference with toJson/copyWith
 │       └── trick_submission.dart # TrickSubmissionDto with fromJson
 ├── features/
-│   ├── auth/                     # login_screen.dart, register_screen.dart
-│   ├── combos/                   # generate_combo_screen, public_combos_screen,
-│   │                             # my_combos_screen, combo_detail_screen
+│   ├── auth/                     # login_screen.dart (credential field), register_screen.dart
+│   ├── combos/                   # generate_combo_screen, build_combo_screen (/combos/build),
+│   │                             # public_combos_screen, my_combos_screen, combo_detail_screen
 │   ├── preferences/              # preferences_screen.dart
-│   ├── tricks/                   # submit_trick_screen.dart (/tricks/submit)
+│   ├── tricks/                   # tricks_screen.dart (/tricks, public), submit_trick_screen.dart
 │   └── admin/                    # admin_submissions_screen.dart (/admin/submissions)
 ├── router/app_router.dart        # GoRouter config, auth + admin redirect
 └── widgets/
-    ├── main_shell.dart           # Bottom nav: 5 items always + 6th "Admin" if isAdmin
-    ├── combo_card.dart           # Reusable card: display, tricks, AI description, actions
+    ├── main_shell.dart           # Bottom nav: 7 items always + 8th "Admin" if isAdmin
+    │                             # order: Explore, Tricks, Generate, Build, Mine, Settings, Submit
+    ├── combo_card.dart           # name display, ownerUserName, fav toggle, delete for owner/admin
     └── rate_combo_dialog.dart    # Star rating AlertDialog
 ```
 
 `AuthService.isAdmin` decodes the JWT on `setCredentials()` and persists the result in SharedPreferences (`fc_is_admin`). Admin routes (`/admin/*`) are redirect-guarded in the router.
+
+### combo_card.dart features
+- Shows `combo.name` (bold) above `displayText` when present
+- Shows `combo.ownerUserName` (not ownerEmail)
+- Favourite toggle button (Icons.favorite / Icons.favorite_border) visible when authenticated — calls `addFavourite`/`removeFavourite`, triggers `onRefresh`
+- Delete button for owner or admin
+
+### Difficulty chip (mobile)
+- `_DiffChip` widget: colored chip — green.shade100/800 (1–4), yellow.shade100/900 (5–7), red.shade100/800 (8–10)
+- Used in `tricks_screen.dart` (trailing) and `build_combo_screen.dart` (trick picker trailing)
+- `tricks_screen.dart` subtitle no longer shows common level (`lvl X`)
 
 ### Setup (Flutter must be installed first)
 ```bash

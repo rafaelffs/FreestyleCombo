@@ -7,12 +7,21 @@ namespace FreestyleCombo.API.Features.Combos.GetPublicCombos;
 public class GetPublicCombosHandler : IRequestHandler<GetPublicCombosQuery, PagedResult<PublicComboDto>>
 {
     private readonly IComboRepository _repo;
+    private readonly IUserFavouriteRepository _favRepo;
 
-    public GetPublicCombosHandler(IComboRepository repo) => _repo = repo;
+    public GetPublicCombosHandler(IComboRepository repo, IUserFavouriteRepository favRepo)
+    {
+        _repo = repo;
+        _favRepo = favRepo;
+    }
 
     public async Task<PagedResult<PublicComboDto>> Handle(GetPublicCombosQuery request, CancellationToken cancellationToken)
     {
         var (items, total) = await _repo.GetPublicAsync(request.Page, request.PageSize, request.SortBy, request.MaxDifficulty, cancellationToken);
+
+        var favIds = request.RequestingUserId.HasValue
+            ? await _favRepo.GetFavouriteComboIdsAsync(request.RequestingUserId.Value, cancellationToken)
+            : [];
 
         return new PagedResult<PublicComboDto>
         {
@@ -23,6 +32,8 @@ public class GetPublicCombosHandler : IRequestHandler<GetPublicCombosQuery, Page
             {
                 Id = c.Id,
                 OwnerId = c.OwnerId,
+                OwnerUserName = c.Owner?.UserName,
+                Name = c.Name,
                 AverageDifficulty = c.AverageDifficulty,
                 TrickCount = c.TrickCount,
                 IsPublic = c.IsPublic,
@@ -41,7 +52,8 @@ public class GetPublicCombosHandler : IRequestHandler<GetPublicCombosQuery, Page
                     Motion = ct.Trick.Motion
                 }).ToList(),
                 AverageRating = c.Ratings.Any() ? Math.Round(c.Ratings.Average(r => r.Score), 2) : 0,
-                TotalRatings = c.Ratings.Count
+                TotalRatings = c.Ratings.Count,
+                IsFavourited = favIds.Contains(c.Id)
             }).ToList()
         };
     }
