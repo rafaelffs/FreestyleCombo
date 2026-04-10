@@ -24,8 +24,8 @@ class UserPreference {
   });
 
   factory UserPreference.fromJson(Map<String, dynamic> j) => UserPreference(
-        id: j['id'] as String,
-        userId: j['userId'] as String,
+        id: (j['id'] as String?) ?? '',
+        userId: (j['userId'] as String?) ?? '',
         comboLength: j['comboLength'] as int,
         maxDifficulty: j['maxDifficulty'] as int,
         strongFootPercentage: j['strongFootPercentage'] as int,
@@ -33,7 +33,7 @@ class UserPreference {
         maxConsecutiveNoTouch: j['maxConsecutiveNoTouch'] as int,
         includeCrossOver: j['includeCrossOver'] as bool,
         includeKnee: j['includeKnee'] as bool,
-        allowedMotions: (j['allowedMotions'] as List<dynamic>)
+        allowedMotions: ((j['allowedMotions'] as List<dynamic>?) ?? [])
             .map((m) => (m as num).toDouble())
             .toList(),
       );

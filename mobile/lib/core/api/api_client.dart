@@ -6,7 +6,7 @@ import '../models/user_preference.dart';
 // Change to your machine's local IP when testing on a physical device.
 // Android emulator: http://10.0.2.2:5050
 // iOS simulator / web: http://localhost:5050
-const String kBaseUrl = 'http://localhost:5050';
+const String kBaseUrl = 'http://localhost:5050/api';
 
 class ApiClient {
   static ApiClient? _instance;
