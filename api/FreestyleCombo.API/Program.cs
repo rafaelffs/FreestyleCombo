@@ -93,6 +93,15 @@ builder.Services.AddHangfire(config => config
     .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connStr)));
 builder.Services.AddHangfireServer();
 
+// CORS — allow web dev servers and the Flutter web app
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+        policy.SetIsOriginAllowed(_ => true)
+              .AllowAnyHeader()
+              .AllowAnyMethod());
+});
+
 // HTTP context accessor (needed by GenerateComboHandler)
 builder.Services.AddHttpContextAccessor();
 
@@ -143,6 +152,8 @@ using (var scope = app.Services.CreateScope())
     if (owner != null && !await userManager.IsInRoleAsync(owner, "Admin"))
         await userManager.AddToRoleAsync(owner, "Admin");
 }
+
+app.UseCors();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
