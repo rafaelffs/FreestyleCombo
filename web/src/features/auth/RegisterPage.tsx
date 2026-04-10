@@ -11,10 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 export function RegisterPage() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
+  const [userName, setUserName] = useState('')
   const [password, setPassword] = useState('')
 
   const { mutate, isPending, error } = useMutation({
-    mutationFn: () => authApi.register(email, password),
+    mutationFn: () => authApi.register(email, userName, password),
     onSuccess: ({ data }) => {
       setToken(data.token, data.userId)
       navigate('/generate')
@@ -48,6 +49,19 @@ export function RegisterPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="userName">Username</Label>
+              <Input
+                id="userName"
+                type="text"
+                autoComplete="username"
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                required
+                minLength={3}
+                maxLength={50}
               />
             </div>
             <div className="space-y-1">

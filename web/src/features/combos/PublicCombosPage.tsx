@@ -6,7 +6,7 @@ import { isAuthenticated } from '@/lib/auth'
 export function PublicCombosPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['combos', 'public'],
-    queryFn: () => combosApi.getPublic().then((r) => r.data),
+    queryFn: () => combosApi.getPublic().then((r) => r.data.items),
   })
 
   return (

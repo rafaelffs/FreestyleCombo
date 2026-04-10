@@ -3,7 +3,7 @@ namespace FreestyleCombo.AI.Models;
 public class ComboEnhancementRequest
 {
     public List<TrickInfo> Tricks { get; set; } = [];
-    public int TotalDifficulty { get; set; }
+    public double AverageDifficulty { get; set; }
 }
 
 public class TrickInfo

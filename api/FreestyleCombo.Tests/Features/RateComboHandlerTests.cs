@@ -22,7 +22,7 @@ public class RateComboHandlerTests
         OwnerId = _ownerId,
         IsPublic = true,
         TrickCount = 3,
-        TotalDifficulty = 5,
+        AverageDifficulty = 5,
         CreatedAt = DateTime.UtcNow,
         Ratings = []
     };

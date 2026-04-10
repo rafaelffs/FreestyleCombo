@@ -29,7 +29,7 @@ public class GetComboHandler : IRequestHandler<GetComboQuery, ComboDetailDto>
         {
             Id = combo.Id,
             OwnerId = combo.OwnerId,
-            TotalDifficulty = combo.TotalDifficulty,
+            AverageDifficulty = combo.AverageDifficulty,
             TrickCount = combo.TrickCount,
             IsPublic = combo.IsPublic,
             CreatedAt = combo.CreatedAt,

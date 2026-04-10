@@ -40,7 +40,7 @@ public class ComboEnhancerService : IComboEnhancerService
                 highlighting the flow, difficulty and any notable transitions.
 
                 Combo: {comboDisplay}
-                Total difficulty: {request.TotalDifficulty}
+                Average difficulty: {request.AverageDifficulty:F1}
 
                 Tricks:
                 {string.Join("\n", request.Tricks.OrderBy(t => t.Position).Select(t =>

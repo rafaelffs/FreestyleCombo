@@ -6,7 +6,7 @@ public class ComboDetailDto
 {
     public Guid Id { get; set; }
     public Guid OwnerId { get; set; }
-    public int TotalDifficulty { get; set; }
+    public double AverageDifficulty { get; set; }
     public int TrickCount { get; set; }
     public bool IsPublic { get; set; }
     public DateTime CreatedAt { get; set; }

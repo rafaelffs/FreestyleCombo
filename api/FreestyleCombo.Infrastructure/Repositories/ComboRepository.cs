@@ -25,11 +25,11 @@ public class ComboRepository : IComboRepository
             .Where(c => c.IsPublic);
 
         if (maxDifficulty.HasValue)
-            query = query.Where(c => c.TotalDifficulty <= maxDifficulty.Value);
+            query = query.Where(c => c.AverageDifficulty <= maxDifficulty.Value);
 
         query = sortBy switch
         {
-            "difficulty" => query.OrderByDescending(c => c.TotalDifficulty),
+            "difficulty" => query.OrderByDescending(c => c.AverageDifficulty),
             "rating" => query.OrderByDescending(c => c.Ratings.Any() ? c.Ratings.Average(r => r.Score) : 0),
             _ => query.OrderByDescending(c => c.CreatedAt)
         };

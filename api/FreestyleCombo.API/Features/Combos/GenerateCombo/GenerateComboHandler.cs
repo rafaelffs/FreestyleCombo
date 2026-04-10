@@ -118,7 +118,7 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
         // Step 6 — Get AI description
         var enhancementReq = new ComboEnhancementRequest
         {
-            TotalDifficulty = comboTricks.Sum(ct2 => ct2.Trick.Difficulty),
+            AverageDifficulty = Math.Round((double)comboTricks.Sum(ct2 => ct2.Trick.Difficulty) / comboTricks.Count, 1),
             Tricks = comboTricks.Select(ct2 => new TrickInfo
             {
                 Name = ct2.Trick.Name,
@@ -139,7 +139,7 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
         {
             Id = Guid.NewGuid(),
             OwnerId = userId,
-            TotalDifficulty = enhancementReq.TotalDifficulty,
+            AverageDifficulty = enhancementReq.AverageDifficulty,
             TrickCount = comboTricks.Count,
             IsPublic = false,
             CreatedAt = DateTime.UtcNow,
@@ -159,7 +159,7 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
         return new GenerateComboResponse
         {
             Id = combo.Id,
-            TotalDifficulty = combo.TotalDifficulty,
+            AverageDifficulty = combo.AverageDifficulty,
             TrickCount = combo.TrickCount,
             IsPublic = combo.IsPublic,
             CreatedAt = combo.CreatedAt,

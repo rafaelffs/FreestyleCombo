@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="FreestyleCombo.AI/FreestyleCombo.AI.csproj" />
+  <Project Path="FreestyleCombo.API/FreestyleCombo.API.csproj" />
+  <Project Path="FreestyleCombo.Core/FreestyleCombo.Core.csproj" />
+  <Project Path="FreestyleCombo.Infrastructure/FreestyleCombo.Infrastructure.csproj" />
+  <Project Path="FreestyleCombo.Tests/FreestyleCombo.Tests.csproj" />
+</Solution>

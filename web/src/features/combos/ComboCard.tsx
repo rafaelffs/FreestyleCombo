@@ -32,20 +32,24 @@ export function ComboCard({ combo, showActions = false }: Props) {
         <div className="flex items-start justify-between gap-2">
           <div>
             <CardTitle className="text-base font-mono">{combo.displayText}</CardTitle>
-            <p className="mt-0.5 text-xs text-gray-500">by {combo.ownerEmail}</p>
+            {combo.ownerEmail && (
+              <p className="mt-0.5 text-xs text-gray-500">by {combo.ownerEmail}</p>
+            )}
           </div>
           <div className="flex flex-wrap gap-1">
             <Badge variant="secondary">
-              Diff: {combo.totalDifficulty.toFixed(1)}
+              Avg diff: {combo.averageDifficulty.toFixed(1)}
             </Badge>
-            {combo.isPublic ? (
-              <Badge>Public</Badge>
-            ) : (
-              <Badge variant="outline">Private</Badge>
+            {combo.isPublic != null && (
+              combo.isPublic ? (
+                <Badge>Public</Badge>
+              ) : (
+                <Badge variant="outline">Private</Badge>
+              )
             )}
-            {combo.averageRating !== null && (
+            {combo.averageRating != null && combo.averageRating > 0 && (
               <Badge variant="secondary">
-                ★ {combo.averageRating.toFixed(1)} ({combo.ratingCount})
+                ★ {combo.averageRating.toFixed(1)} ({combo.totalRatings ?? combo.ratingCount ?? 0})
               </Badge>
             )}
           </div>
@@ -54,7 +58,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
       <CardContent className="space-y-3">
         {/* Trick list */}
         <div className="flex flex-wrap gap-1.5">
-          {combo.tricks.map((t) => (
+          {combo.tricks?.map((t) => (
             <span
               key={t.position}
               className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"

@@ -44,19 +44,27 @@ export interface ComboTrickDto {
   difficulty: number
 }
 
+export interface PagedResult<T> {
+  items: T[]
+  totalCount: number
+  page: number
+  pageSize: number
+}
+
 export interface ComboDto {
   id: string
   ownerId: string
-  ownerEmail: string
-  totalDifficulty: number
+  ownerEmail?: string
+  averageDifficulty: number
   trickCount: number
-  isPublic: boolean
+  isPublic?: boolean
   createdAt: string
   displayText: string
   aiDescription: string | null
-  tricks: ComboTrickDto[]
+  tricks?: ComboTrickDto[]
   averageRating: number | null
-  ratingCount: number
+  ratingCount?: number
+  totalRatings?: number
 }
 
 export interface GenerateComboOverrides {
@@ -94,8 +102,8 @@ export interface RatingDto {
 // ── Auth ───────────────────────────────────────────────────────────────────
 
 export const authApi = {
-  register: (email: string, password: string) =>
-    api.post<AuthResponse>('/auth/register', { email, password }),
+  register: (email: string, userName: string, password: string) =>
+    api.post<AuthResponse>('/auth/register', { email, userName, password }),
   login: (email: string, password: string) =>
     api.post<AuthResponse>('/auth/login', { email, password }),
 }
@@ -105,18 +113,18 @@ export const authApi = {
 export const combosApi = {
   generate: (usePreferences: boolean, overrides?: GenerateComboOverrides) =>
     api.post<ComboDto>('/combos/generate', { usePreferences, overrides }),
-  getPublic: () => api.get<ComboDto[]>('/combos/public'),
-  getMine: () => api.get<ComboDto[]>('/combos/mine'),
+  getPublic: () => api.get<PagedResult<ComboDto>>('/combos/public'),
+  getMine: () => api.get<PagedResult<ComboDto>>('/combos/mine'),
   getById: (id: string) => api.get<ComboDto>(`/combos/${id}`),
   setPublic: (id: string, isPublic: boolean) =>
-    api.patch(`/combos/${id}/visibility`, { isPublic }),
+    api.put(`/combos/${id}/visibility`, { isPublic }),
 }
 
 // ── Ratings ────────────────────────────────────────────────────────────────
 
 export const ratingsApi = {
   rate: (comboId: string, score: number) =>
-    api.post<RatingDto>('/ratings', { comboId, score }),
+    api.post<RatingDto>(`/combos/${comboId}/ratings`, { score }),
 }
 
 // ── Preferences ───────────────────────────────────────────────────────────

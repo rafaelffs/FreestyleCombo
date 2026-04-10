@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom'
 export function MyCombosPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['combos', 'mine'],
-    queryFn: () => combosApi.getMine().then((r) => r.data),
+    queryFn: () => combosApi.getMine().then((r) => r.data.items),
   })
 
   return (
