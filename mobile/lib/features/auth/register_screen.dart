@@ -42,7 +42,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final login = await ApiClient.instance
           .login(_emailCtrl.text.trim(), _passwordCtrl.text);
       await AuthService.instance.setCredentials(login.token, login.userId);
-      if (mounted) context.go('/generate');
+      if (mounted) context.go('/combos');
     } catch (e) {
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -53,7 +53,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create account')),
+      appBar: AppBar(
+        title: const Text('Create account'),
+        leading: context.canPop()
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => context.go('/combos'),
+              ),
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),

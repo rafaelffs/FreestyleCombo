@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { tricksApi, extractError, type TrickDto } from '@/lib/api'
-import { isAdmin } from '@/lib/auth'
+import { tricksApi, trickSubmissionsApi, extractError, type TrickDto, type SubmitTrickRequest } from '@/lib/api'
+import { isAdmin, isAuthenticated } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,6 +13,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+
+const SUBMIT_DEFAULTS: SubmitTrickRequest = {
+  name: '',
+  abbreviation: '',
+  crossOver: false,
+  knee: false,
+  motion: 1,
+  difficulty: 1,
+  commonLevel: 5,
+}
 
 function diffColor(d: number): string {
   if (d <= 4) return 'bg-green-100 text-green-800'
@@ -33,6 +43,7 @@ const EMPTY_FORM: Omit<TrickDto, 'id'> = {
 export function TricksPage() {
   const queryClient = useQueryClient()
   const admin = isAdmin()
+  const authed = isAuthenticated()
 
   const [search, setSearch] = useState('')
   const [filterCrossOver, setFilterCrossOver] = useState<boolean | undefined>(undefined)
@@ -43,6 +54,24 @@ export function TricksPage() {
   const [editForm, setEditForm] = useState<Omit<TrickDto, 'id'>>(EMPTY_FORM)
   const [editError, setEditError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  const [showSubmit, setShowSubmit] = useState(false)
+  const [submitForm, setSubmitForm] = useState<SubmitTrickRequest>(SUBMIT_DEFAULTS)
+  const [submitted, setSubmitted] = useState(false)
+
+  function updateSubmit<K extends keyof SubmitTrickRequest>(key: K, value: SubmitTrickRequest[K]) {
+    setSubmitForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const submitMutation = useMutation({
+    mutationFn: () => trickSubmissionsApi.submit(submitForm),
+    onSuccess: () => {
+      setSubmitForm(SUBMIT_DEFAULTS)
+      setSubmitted(true)
+      setShowSubmit(false)
+      setTimeout(() => setSubmitted(false), 3000)
+    },
+  })
 
   const { data: tricks = [], isLoading } = useQuery({
     queryKey: ['tricks', filterCrossOver, filterKnee, maxDiff],
@@ -94,10 +123,71 @@ export function TricksPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Tricks</h1>
-        <p className="mt-1 text-sm text-gray-500">Browse all freestyle football tricks.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Tricks</h1>
+          <p className="mt-1 text-sm text-gray-500">Browse all freestyle football tricks.</p>
+        </div>
+        {authed && (
+          <Button variant={showSubmit ? 'outline' : 'default'} onClick={() => setShowSubmit((v) => !v)}>
+            {showSubmit ? 'Cancel' : '+ Submit a Trick'}
+          </Button>
+        )}
       </div>
+
+      {submitted && <p className="text-sm text-green-600">Trick submitted! It will be reviewed by an admin.</p>}
+
+      {/* Inline submit form — above filters */}
+      {showSubmit && (
+        <Card>
+          <CardHeader><CardTitle>Submit a Trick</CardTitle></CardHeader>
+          <CardContent>
+            <form
+              onSubmit={(e) => { e.preventDefault(); submitMutation.mutate() }}
+              className="space-y-4"
+            >
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <Label>Name</Label>
+                  <Input value={submitForm.name} onChange={(e) => updateSubmit('name', e.target.value)} placeholder="e.g. Crossover" required />
+                </div>
+                <div className="space-y-1">
+                  <Label>Abbreviation</Label>
+                  <Input value={submitForm.abbreviation} onChange={(e) => updateSubmit('abbreviation', e.target.value)} placeholder="e.g. CO" required />
+                </div>
+                <div className="space-y-1">
+                  <Label>Motion</Label>
+                  <Input type="number" min={0.5} max={10} step={0.5} value={submitForm.motion} onChange={(e) => updateSubmit('motion', Number(e.target.value))} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Difficulty (1–10)</Label>
+                  <Input type="number" min={1} max={10} value={submitForm.difficulty} onChange={(e) => updateSubmit('difficulty', Number(e.target.value))} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Common Level (1–10)</Label>
+                  <Input type="number" min={1} max={10} value={submitForm.commonLevel} onChange={(e) => updateSubmit('commonLevel', Number(e.target.value))} />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center gap-2">
+                  <input id="sub-crossover" type="checkbox" checked={submitForm.crossOver} onChange={(e) => updateSubmit('crossOver', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600" />
+                  <Label htmlFor="sub-crossover">CrossOver</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input id="sub-knee" type="checkbox" checked={submitForm.knee} onChange={(e) => updateSubmit('knee', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600" />
+                  <Label htmlFor="sub-knee">Knee</Label>
+                </div>
+              </div>
+              {submitMutation.error && (
+                <p className="text-sm text-red-600">{extractError(submitMutation.error, 'Submission failed.')}</p>
+              )}
+              <Button type="submit" disabled={submitMutation.isPending}>
+                {submitMutation.isPending ? 'Submitting…' : 'Submit Trick'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <Card>

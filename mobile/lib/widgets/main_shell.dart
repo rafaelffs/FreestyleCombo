@@ -12,50 +12,53 @@ class MainShell extends StatelessWidget {
     final admin = AuthService.instance.isAdmin;
     final location = GoRouterState.of(context).matchedLocation;
 
-    // Build destinations dynamically
+    // Authenticated:   Combos(0), Create(1), Tricks(2), Settings(3), Admin(4, admin)
+    // Unauthenticated: Combos(0), Tricks(1), Login(2)
     final destinations = <NavigationDestination>[
-      const NavigationDestination(icon: Icon(Icons.public), label: 'Explore'),
+      const NavigationDestination(icon: Icon(Icons.sports_soccer_outlined), label: 'Combos'),
+      if (authed)
+        const NavigationDestination(icon: Icon(Icons.add_circle_outline), label: 'Create'),
       const NavigationDestination(icon: Icon(Icons.list_alt_outlined), label: 'Tricks'),
-      const NavigationDestination(icon: Icon(Icons.add_circle_outline), label: 'Generate'),
-      const NavigationDestination(icon: Icon(Icons.build_outlined), label: 'Build'),
-      const NavigationDestination(icon: Icon(Icons.bookmark_outline), label: 'Mine'),
-      const NavigationDestination(icon: Icon(Icons.tune), label: 'Settings'),
-      const NavigationDestination(icon: Icon(Icons.upload_outlined), label: 'Submit'),
+      if (authed)
+        const NavigationDestination(icon: Icon(Icons.tune), label: 'Settings'),
+      if (!authed)
+        const NavigationDestination(icon: Icon(Icons.login), label: 'Login'),
       if (admin)
         const NavigationDestination(icon: Icon(Icons.admin_panel_settings_outlined), label: 'Admin'),
     ];
 
     int selectedIndex = 0;
-    if (location.startsWith('/tricks') && !location.startsWith('/tricks/submit')) selectedIndex = 1;
-    if (location.startsWith('/generate')) selectedIndex = 2;
-    if (location.startsWith('/combos/build')) selectedIndex = 3;
-    if (location.startsWith('/mine')) selectedIndex = 4;
-    if (location.startsWith('/preferences')) selectedIndex = 5;
-    if (location.startsWith('/tricks/submit')) selectedIndex = 6;
-    if (admin && location.startsWith('/admin')) selectedIndex = 7;
+    if (authed) {
+      if (location.startsWith('/combos/create')) selectedIndex = 1;
+      if (location.startsWith('/tricks')) selectedIndex = 2;
+      if (location.startsWith('/preferences')) selectedIndex = 3;
+      if (admin && location.startsWith('/admin')) selectedIndex = 4;
+    } else {
+      if (location.startsWith('/tricks')) selectedIndex = 1;
+      if (location == '/login' || location == '/register') selectedIndex = 2;
+    }
 
     return Scaffold(
       body: child,
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex,
         onDestinationSelected: (i) {
+          if (!authed) {
+            // Unauthenticated: Combos(0), Tricks(1), Login(2)
+            switch (i) {
+              case 0: context.go('/combos');
+              case 1: context.go('/tricks');
+              case 2: context.go('/login');
+            }
+            return;
+          }
+          // Authenticated: Combos(0), Create(1), Tricks(2), Settings(3), Admin(4)
           switch (i) {
-            case 0:
-              context.go('/public');
-            case 1:
-              context.go('/tricks');
-            case 2:
-              authed ? context.go('/generate') : context.go('/login');
-            case 3:
-              authed ? context.go('/combos/build') : context.go('/login');
-            case 4:
-              authed ? context.go('/mine') : context.go('/login');
-            case 5:
-              authed ? context.go('/preferences') : context.go('/login');
-            case 6:
-              authed ? context.go('/tricks/submit') : context.go('/login');
-            case 7:
-              if (admin) context.go('/admin/submissions');
+            case 0: context.go('/combos');
+            case 1: context.go('/combos/create');
+            case 2: context.go('/tricks');
+            case 3: context.go('/preferences');
+            case 4: if (admin) context.go('/admin/submissions');
           }
         },
         destinations: destinations,

@@ -16,6 +16,7 @@ class _TricksScreenState extends State<TricksScreen> {
   String? _error;
   final _searchCtrl = TextEditingController();
   String _search = '';
+  bool _showSubmit = false;
 
   @override
   void initState() {
@@ -72,6 +73,10 @@ class _TricksScreenState extends State<TricksScreen> {
     }
   }
 
+  void _toggleSubmit() {
+    setState(() => _showSubmit = !_showSubmit);
+  }
+
   void _openEdit(TrickDto trick) {
     showDialog<void>(
       context: context,
@@ -96,15 +101,34 @@ class _TricksScreenState extends State<TricksScreen> {
   Widget build(BuildContext context) {
     final admin = AuthService.instance.isAdmin;
 
+    final authed = AuthService.instance.isAuthenticated;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tricks'),
         actions: [
+          if (authed)
+            TextButton.icon(
+              onPressed: _toggleSubmit,
+              icon: Icon(_showSubmit ? Icons.close : Icons.add),
+              label: Text(_showSubmit ? 'Cancel' : 'Submit Trick'),
+            ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
         ],
       ),
       body: Column(
         children: [
+          // Inline submit form — appears above search bar
+          if (_showSubmit)
+            _InlineSubmitForm(
+              onSubmitted: () {
+                setState(() => _showSubmit = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Trick submitted for review!')),
+                );
+              },
+            ),
+          // Search bar
           Padding(
             padding: const EdgeInsets.all(12),
             child: TextField(
@@ -131,6 +155,7 @@ class _TricksScreenState extends State<TricksScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(_error!, style: const TextStyle(color: Colors.red)),
             ),
+          // Tricks list
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
@@ -221,6 +246,136 @@ class _Tag extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
+    );
+  }
+}
+
+class _InlineSubmitForm extends StatefulWidget {
+  final VoidCallback onSubmitted;
+  const _InlineSubmitForm({required this.onSubmitted});
+
+  @override
+  State<_InlineSubmitForm> createState() => _InlineSubmitFormState();
+}
+
+class _InlineSubmitFormState extends State<_InlineSubmitForm> {
+  final _nameCtrl = TextEditingController();
+  final _abbrevCtrl = TextEditingController();
+  double _motion = 1;
+  int _difficulty = 1;
+  int _commonLevel = 5;
+  bool _crossOver = false;
+  bool _knee = false;
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _abbrevCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_nameCtrl.text.trim().isEmpty || _abbrevCtrl.text.trim().isEmpty) {
+      setState(() => _error = 'Name and abbreviation are required.');
+      return;
+    }
+    setState(() { _loading = true; _error = null; });
+    try {
+      await ApiClient.instance.submitTrick(
+        name: _nameCtrl.text.trim(),
+        abbreviation: _abbrevCtrl.text.trim(),
+        crossOver: _crossOver,
+        knee: _knee,
+        motion: _motion,
+        difficulty: _difficulty,
+        commonLevel: _commonLevel,
+      );
+      if (mounted) widget.onSubmitted();
+    } catch (e) {
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Submit a Trick', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _nameCtrl,
+                    decoration: const InputDecoration(labelText: 'Name', hintText: 'e.g. Crossover', isDense: true),
+                    textCapitalization: TextCapitalization.words,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 120,
+                  child: TextField(
+                    controller: _abbrevCtrl,
+                    decoration: const InputDecoration(labelText: 'Abbreviation', hintText: 'e.g. CO', isDense: true),
+                    textCapitalization: TextCapitalization.characters,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(children: [
+              const Text('Motion', style: TextStyle(fontSize: 12)),
+              const SizedBox(width: 8),
+              Text(_motion.toStringAsFixed(1), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              Expanded(
+                child: Slider(
+                  value: _motion, min: 0.5, max: 10, divisions: 19,
+                  onChanged: (v) => setState(() => _motion = v),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text('Diff', style: TextStyle(fontSize: 12)),
+              const SizedBox(width: 8),
+              Text('$_difficulty', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              Expanded(
+                child: Slider(
+                  value: _difficulty.toDouble(), min: 1, max: 10, divisions: 9,
+                  onChanged: (v) => setState(() => _difficulty = v.round()),
+                ),
+              ),
+            ]),
+            Row(
+              children: [
+                Switch(value: _crossOver, onChanged: (v) => setState(() => _crossOver = v)),
+                const Text('CO', style: TextStyle(fontSize: 12)),
+                const SizedBox(width: 8),
+                Switch(value: _knee, onChanged: (v) => setState(() => _knee = v)),
+                const Text('Knee', style: TextStyle(fontSize: 12)),
+                const Spacer(),
+                if (_error != null)
+                  Expanded(
+                    child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 11)),
+                  ),
+                FilledButton(
+                  onPressed: _loading ? null : _submit,
+                  child: _loading
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('Submit'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

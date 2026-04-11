@@ -71,8 +71,8 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    if (combo.ownerEmail != null)
-                      Text('by ${combo.ownerEmail}',
+                    if (combo.ownerUserName != null)
+                      Text('by ${combo.ownerUserName}',
                           style: TextStyle(
                               fontSize: 12, color: Colors.grey[600])),
                     const SizedBox(width: 8),

@@ -166,16 +166,24 @@ web/src/
 │   └── layout/         # Navbar, Layout (Outlet), ProtectedRoute, AdminRoute
 └── features/
     ├── auth/           # LoginPage (email or username), RegisterPage
-    ├── combos/         # GenerateComboPage, BuildComboPage (/combos/build),
-    │                   # PublicCombosPage, MyCombosPage,
+    ├── combos/         # CombosPage (tabbed: Public + Mine), CreateComboPage (mode: choose/generate/build),
     │                   # ComboDetailPage, ComboCard (+ delete for owner/admin), RateComboDialog
     ├── preferences/    # PreferencesPage
-    └── tricks/         # TricksPage (/tricks, public), SubmitTrickPage, AdminSubmissionsPage
+    └── tricks/         # TricksPage (/tricks, public, inline submit form), AdminSubmissionsPage
 ```
 
-Routes: `/tricks` (public), `/combos/build` (protected). `ComboCard` accepts `onDeleted` callback; delete button shown for owner or admin.
+Routes: `/combos` (public, tabbed), `/combos/create` (protected, mode selector). `ComboCard` accepts `onDeleted` callback; delete button shown for owner or admin.
 
-`AdminRoute` redirects non-admins to `/generate`. `isAdmin()` decodes the JWT payload (no library, no API call) and checks `ClaimTypes.Role === "Admin"`.
+`AdminRoute` redirects non-admins to `/combos`. `isAdmin()` decodes the JWT payload (no library, no API call) and checks `ClaimTypes.Role === "Admin"`.
+
+### Web Navigation (post-merge)
+| Link | Route | Visible |
+|---|---|---|
+| Combos | `/combos` | Always |
+| Tricks | `/tricks` | Always |
+| Create Combo | `/combos/create` | Authenticated |
+| Preferences | `/preferences` | Authenticated |
+| Admin | `/admin/submissions` | Admin only |
 
 ### ComboCard features
 - Shows `combo.name` (bold, above displayText) when present
@@ -186,7 +194,7 @@ Routes: `/tricks` (public), `/combos/build` (protected). `ComboCard` accepts `on
 ### Difficulty badge
 - No "d" prefix — just the number
 - Color-coded: `bg-green-100 text-green-800` (1–4), `bg-yellow-100 text-yellow-800` (5–7), `bg-red-100 text-red-800` (8–10)
-- Applied in `BuildComboPage` (trick picker) and `TricksPage` (Diff column)
+- Applied in `CreateComboPage` build mode (trick picker) and `TricksPage` (Diff column)
 - `TricksPage` no longer shows a "Level" (commonLevel) column in the table
 
 ### Path alias
@@ -233,20 +241,29 @@ mobile/lib/
 │       └── trick_submission.dart # TrickSubmissionDto with fromJson
 ├── features/
 │   ├── auth/                     # login_screen.dart (credential field), register_screen.dart
-│   ├── combos/                   # generate_combo_screen, build_combo_screen (/combos/build),
-│   │                             # public_combos_screen, my_combos_screen, combo_detail_screen
+│   ├── combos/                   # combos_screen.dart (tabbed: Public + Mine),
+│   │                             # create_combo_screen.dart (mode: choose/generate/build),
+│   │                             # combo_detail_screen.dart
 │   ├── preferences/              # preferences_screen.dart
-│   ├── tricks/                   # tricks_screen.dart (/tricks, public), submit_trick_screen.dart
+│   ├── tricks/                   # tricks_screen.dart (/tricks, public, FAB → submit bottom sheet)
 │   └── admin/                    # admin_submissions_screen.dart (/admin/submissions)
-├── router/app_router.dart        # GoRouter config, auth + admin redirect
+├── router/app_router.dart        # GoRouter config, auth + admin redirect; initialLocation: /combos
 └── widgets/
-    ├── main_shell.dart           # Bottom nav: 7 items always + 8th "Admin" if isAdmin
-    │                             # order: Explore, Tricks, Generate, Build, Mine, Settings, Submit
+    ├── main_shell.dart           # Bottom nav: Combos, Tricks, Create (auth), Settings (auth), Admin (admin)
     ├── combo_card.dart           # name display, ownerUserName, fav toggle, delete for owner/admin
     └── rate_combo_dialog.dart    # Star rating AlertDialog
 ```
 
 `AuthService.isAdmin` decodes the JWT on `setCredentials()` and persists the result in SharedPreferences (`fc_is_admin`). Admin routes (`/admin/*`) are redirect-guarded in the router.
+
+### Mobile Navigation (post-merge)
+| Index | Label | Route | Auth |
+|---|---|---|---|
+| 0 | Combos | `/combos` | No |
+| 1 | Tricks | `/tricks` | No |
+| 2 | Create | `/combos/create` | Yes |
+| 3 | Settings | `/preferences` | Yes |
+| 4 | Admin | `/admin/submissions` | Admin only |
 
 ### combo_card.dart features
 - Shows `combo.name` (bold) above `displayText` when present

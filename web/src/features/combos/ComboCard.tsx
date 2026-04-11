@@ -23,6 +23,7 @@ export function ComboCard({ combo, showActions = false, onDeleted }: Props) {
   const [ratingOpen, setRatingOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [favoured, setFavoured] = useState(combo.isFavourited ?? false)
+  const [favError, setFavError] = useState<string | null>(null)
 
   const visibilityMutation = useMutation({
     mutationFn: (isPublic: boolean) => combosApi.setPublic(combo.id, isPublic),
@@ -44,8 +45,10 @@ export function ComboCard({ combo, showActions = false, onDeleted }: Props) {
     mutationFn: () => favoured ? combosApi.removeFavourite(combo.id) : combosApi.addFavourite(combo.id),
     onSuccess: () => {
       setFavoured((f) => !f)
+      setFavError(null)
       void queryClient.invalidateQueries({ queryKey: ['combos'] })
     },
+    onError: (err) => setFavError(extractError(err, 'Could not update favourite')),
   })
 
   return (
@@ -145,6 +148,7 @@ export function ComboCard({ combo, showActions = false, onDeleted }: Props) {
                 Delete
               </Button>
             )}
+            {favError && <p className="w-full text-xs text-red-600">{favError}</p>}
             {deleteError && <p className="w-full text-xs text-red-600">{deleteError}</p>}
           </div>
         )}

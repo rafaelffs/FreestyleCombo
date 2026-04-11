@@ -20,28 +20,21 @@ export function Navbar() {
             <Link to="/" className="text-xl font-bold text-indigo-600">
               FreestyleCombo
             </Link>
-            <Link to="/combos/public" className="text-sm text-gray-600 hover:text-gray-900">
-              Public Combos
+            <Link to="/combos" className="text-sm text-gray-600 hover:text-gray-900">
+              Combos
             </Link>
+            {authed && (
+              <Link to="/combos/create" className="text-sm text-gray-600 hover:text-gray-900">
+                Create Combo
+              </Link>
+            )}
             <Link to="/tricks" className="text-sm text-gray-600 hover:text-gray-900">
               Tricks
             </Link>
             {authed && (
               <>
-                <Link to="/generate" className="text-sm text-gray-600 hover:text-gray-900">
-                  Generate
-                </Link>
-                <Link to="/combos/build" className="text-sm text-gray-600 hover:text-gray-900">
-                  Build Combo
-                </Link>
-                <Link to="/combos/mine" className="text-sm text-gray-600 hover:text-gray-900">
-                  My Combos
-                </Link>
                 <Link to="/preferences" className="text-sm text-gray-600 hover:text-gray-900">
                   Preferences
-                </Link>
-                <Link to="/tricks/submit" className="text-sm text-gray-600 hover:text-gray-900">
-                  Submit Trick
                 </Link>
                 {admin && (
                   <Link to="/admin/submissions" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">

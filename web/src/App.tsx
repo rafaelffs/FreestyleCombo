@@ -4,15 +4,12 @@ import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
 import { AdminRoute } from '@/components/layout/AdminRoute'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
-import { GenerateComboPage } from '@/features/combos/GenerateComboPage'
-import { PublicCombosPage } from '@/features/combos/PublicCombosPage'
-import { MyCombosPage } from '@/features/combos/MyCombosPage'
+import { CombosPage } from '@/features/combos/CombosPage'
+import { CreateComboPage } from '@/features/combos/CreateComboPage'
 import { ComboDetailPage } from '@/features/combos/ComboDetailPage'
 import { PreferencesPage } from '@/features/preferences/PreferencesPage'
-import { SubmitTrickPage } from '@/features/tricks/SubmitTrickPage'
 import { TricksPage } from '@/features/tricks/TricksPage'
 import { AdminSubmissionsPage } from '@/features/tricks/AdminSubmissionsPage'
-import { BuildComboPage } from '@/features/combos/BuildComboPage'
 
 export default function App() {
   return (
@@ -22,17 +19,14 @@ export default function App() {
           {/* Public */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/combos/public" element={<PublicCombosPage />} />
+          <Route path="/combos" element={<CombosPage />} />
           <Route path="/combos/:id" element={<ComboDetailPage />} />
           <Route path="/tricks" element={<TricksPage />} />
 
           {/* Protected */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/generate" element={<GenerateComboPage />} />
-            <Route path="/combos/build" element={<BuildComboPage />} />
-            <Route path="/combos/mine" element={<MyCombosPage />} />
+            <Route path="/combos/create" element={<CreateComboPage />} />
             <Route path="/preferences" element={<PreferencesPage />} />
-            <Route path="/tricks/submit" element={<SubmitTrickPage />} />
           </Route>
 
           {/* Admin only */}
@@ -40,7 +34,14 @@ export default function App() {
             <Route path="/admin/submissions" element={<AdminSubmissionsPage />} />
           </Route>
 
-          <Route path="/" element={<Navigate to="/generate" replace />} />
+          {/* Redirects for old routes */}
+          <Route path="/combos/public" element={<Navigate to="/combos" replace />} />
+          <Route path="/combos/mine" element={<Navigate to="/combos" replace />} />
+          <Route path="/generate" element={<Navigate to="/combos/create" replace />} />
+          <Route path="/combos/build" element={<Navigate to="/combos/create" replace />} />
+          <Route path="/tricks/submit" element={<Navigate to="/tricks" replace />} />
+
+          <Route path="/" element={<Navigate to="/combos" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
