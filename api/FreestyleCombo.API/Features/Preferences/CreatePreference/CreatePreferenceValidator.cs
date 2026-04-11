@@ -1,10 +1,10 @@
 using FluentValidation;
 
-namespace FreestyleCombo.API.Features.Preferences.UpdatePreferences;
+namespace FreestyleCombo.API.Features.Preferences.CreatePreference;
 
-public class UpdatePreferencesValidator : AbstractValidator<UpdatePreferencesCommand>
+public class CreatePreferenceValidator : AbstractValidator<CreatePreferenceCommand>
 {
-    public UpdatePreferencesValidator()
+    public CreatePreferenceValidator()
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
         RuleFor(x => x.MaxDifficulty).InclusiveBetween(1, 10);

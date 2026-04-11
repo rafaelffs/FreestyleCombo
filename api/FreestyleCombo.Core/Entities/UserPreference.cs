@@ -4,6 +4,7 @@ public class UserPreference
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
+    public string Name { get; set; } = string.Empty;
     public int MaxDifficulty { get; set; } = 10;
     public int ComboLength { get; set; } = 6;
     public int StrongFootPercentage { get; set; } = 60;

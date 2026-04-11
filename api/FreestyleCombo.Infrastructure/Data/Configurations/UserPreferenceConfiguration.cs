@@ -11,7 +11,7 @@ public class UserPreferenceConfiguration : IEntityTypeConfiguration<UserPreferen
         builder.HasKey(p => p.Id);
         builder.Property(p => p.Id).ValueGeneratedOnAdd();
 
-        builder.HasIndex(p => p.UserId).IsUnique();
+        builder.Property(p => p.Name).IsRequired().HasMaxLength(100);
 
         builder.Property(p => p.AllowedRevolutions)
             .HasColumnType("jsonb")
@@ -21,8 +21,8 @@ public class UserPreferenceConfiguration : IEntityTypeConfiguration<UserPreferen
             );
 
         builder.HasOne(p => p.User)
-            .WithOne(u => u.Preference)
-            .HasForeignKey<UserPreference>(p => p.UserId)
+            .WithMany(u => u.Preferences)
+            .HasForeignKey(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

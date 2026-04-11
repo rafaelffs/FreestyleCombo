@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { combosApi, tricksApi, extractError, type GenerateComboOverrides, type TrickDto, type BuildComboTrickItem } from '@/lib/api'
+import { combosApi, tricksApi, preferencesApi, extractError, type GenerateComboOverrides, type TrickDto, type BuildComboTrickItem } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -38,7 +38,7 @@ export function CreateComboPage() {
   const [name, setName] = useState('')
 
   // Generate state
-  const [usePrefs, setUsePrefs] = useState(false)
+  const [selectedPrefId, setSelectedPrefId] = useState<string | null>(null)
   const [overrides, setOverrides] = useState<GenerateComboOverrides>(GENERATE_DEFAULTS)
   const [previewWarnings, setPreviewWarnings] = useState<string[]>([])
 
@@ -54,8 +54,17 @@ export function CreateComboPage() {
     enabled: mode === 'build',
   })
 
+  const { data: savedPrefs = [] } = useQuery({
+    queryKey: ['preferences'],
+    queryFn: () => preferencesApi.getAll().then((r) => r.data),
+    enabled: mode === 'generate',
+  })
+
+  // When a preference is selected, find its values for the read-only display
+  const selectedPref = selectedPrefId ? savedPrefs.find((p) => p.id === selectedPrefId) ?? null : null
+
   const previewMutation = useMutation({
-    mutationFn: () => combosApi.preview(usePrefs, usePrefs ? undefined : overrides),
+    mutationFn: () => combosApi.preview(selectedPrefId, selectedPrefId ? undefined : overrides),
     onSuccess: ({ data }) => {
       setPreviewWarnings(data.warnings)
       setSlots(
@@ -179,50 +188,107 @@ export function CreateComboPage() {
         <Card>
           <CardHeader><CardTitle>Options</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-3">
-              <input
-                id="gen-usePrefs"
-                type="checkbox"
-                checked={usePrefs}
-                onChange={(e) => setUsePrefs(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-indigo-600"
-              />
-              <Label htmlFor="gen-usePrefs">Use my saved preferences</Label>
+            {/* Preference selector */}
+            <div className="space-y-1">
+              <Label htmlFor="gen-pref">Preference</Label>
+              <select
+                id="gen-pref"
+                value={selectedPrefId ?? ''}
+                onChange={(e) => setSelectedPrefId(e.target.value || null)}
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              >
+                <option value="">Custom</option>
+                {savedPrefs.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
             </div>
 
-            {!usePrefs && (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                <div className="space-y-1">
-                  <Label>Combo Length</Label>
-                  <Input type="number" min={1} max={100} value={overrides.comboLength} onChange={(e) => updateOverride('comboLength', Number(e.target.value))} />
+            {/* Fields — editable when Custom, read-only when preference selected */}
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <div className="space-y-1">
+                <Label>Combo Length</Label>
+                <Input
+                  type="number" min={1} max={100}
+                  value={selectedPref ? selectedPref.comboLength : overrides.comboLength}
+                  readOnly={!!selectedPref}
+                  disabled={!!selectedPref}
+                  onChange={(e) => updateOverride('comboLength', Number(e.target.value))}
+                  className={selectedPref ? 'bg-gray-50 text-gray-500' : ''}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Max Difficulty</Label>
+                <Input
+                  type="number" min={1} max={10}
+                  value={selectedPref ? selectedPref.maxDifficulty : overrides.maxDifficulty}
+                  readOnly={!!selectedPref}
+                  disabled={!!selectedPref}
+                  onChange={(e) => updateOverride('maxDifficulty', Number(e.target.value))}
+                  className={selectedPref ? 'bg-gray-50 text-gray-500' : ''}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Strong Foot %</Label>
+                <Input
+                  type="number" min={0} max={100}
+                  value={selectedPref ? selectedPref.strongFootPercentage : overrides.strongFootPercentage}
+                  readOnly={!!selectedPref}
+                  disabled={!!selectedPref}
+                  onChange={(e) => updateOverride('strongFootPercentage', Number(e.target.value))}
+                  className={selectedPref ? 'bg-gray-50 text-gray-500' : ''}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>No-Touch %</Label>
+                <Input
+                  type="number" min={0} max={100}
+                  value={selectedPref ? selectedPref.noTouchPercentage : overrides.noTouchPercentage}
+                  readOnly={!!selectedPref}
+                  disabled={!!selectedPref}
+                  onChange={(e) => updateOverride('noTouchPercentage', Number(e.target.value))}
+                  className={selectedPref ? 'bg-gray-50 text-gray-500' : ''}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Max Consecutive NT</Label>
+                <Input
+                  type="number" min={0} max={30}
+                  value={selectedPref ? selectedPref.maxConsecutiveNoTouch : overrides.maxConsecutiveNoTouch}
+                  readOnly={!!selectedPref}
+                  disabled={!!selectedPref}
+                  onChange={(e) => updateOverride('maxConsecutiveNoTouch', Number(e.target.value))}
+                  className={selectedPref ? 'bg-gray-50 text-gray-500' : ''}
+                />
+              </div>
+              <div className="flex flex-col gap-2 pt-1">
+                <div className="flex items-center gap-2">
+                  <input
+                    id="gen-crossover" type="checkbox"
+                    checked={selectedPref ? selectedPref.includeCrossOver : (overrides.includeCrossOver ?? true)}
+                    disabled={!!selectedPref}
+                    onChange={(e) => updateOverride('includeCrossOver', e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 disabled:opacity-50"
+                  />
+                  <Label htmlFor="gen-crossover" className={selectedPref ? 'text-gray-400' : ''}>Include Crossover</Label>
                 </div>
-                <div className="space-y-1">
-                  <Label>Max Difficulty</Label>
-                  <Input type="number" min={1} max={10} value={overrides.maxDifficulty} onChange={(e) => updateOverride('maxDifficulty', Number(e.target.value))} />
-                </div>
-                <div className="space-y-1">
-                  <Label>Strong Foot %</Label>
-                  <Input type="number" min={0} max={100} value={overrides.strongFootPercentage} onChange={(e) => updateOverride('strongFootPercentage', Number(e.target.value))} />
-                </div>
-                <div className="space-y-1">
-                  <Label>No-Touch %</Label>
-                  <Input type="number" min={0} max={100} value={overrides.noTouchPercentage} onChange={(e) => updateOverride('noTouchPercentage', Number(e.target.value))} />
-                </div>
-                <div className="space-y-1">
-                  <Label>Max Consecutive NT</Label>
-                  <Input type="number" min={0} max={30} value={overrides.maxConsecutiveNoTouch} onChange={(e) => updateOverride('maxConsecutiveNoTouch', Number(e.target.value))} />
-                </div>
-                <div className="flex flex-col gap-2 pt-1">
-                  <div className="flex items-center gap-2">
-                    <input id="gen-crossover" type="checkbox" checked={overrides.includeCrossOver} onChange={(e) => updateOverride('includeCrossOver', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600" />
-                    <Label htmlFor="gen-crossover">Include Crossover</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input id="gen-knee" type="checkbox" checked={overrides.includeKnee} onChange={(e) => updateOverride('includeKnee', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600" />
-                    <Label htmlFor="gen-knee">Include Knee</Label>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="gen-knee" type="checkbox"
+                    checked={selectedPref ? selectedPref.includeKnee : (overrides.includeKnee ?? true)}
+                    disabled={!!selectedPref}
+                    onChange={(e) => updateOverride('includeKnee', e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 disabled:opacity-50"
+                  />
+                  <Label htmlFor="gen-knee" className={selectedPref ? 'text-gray-400' : ''}>Include Knee</Label>
                 </div>
               </div>
+            </div>
+
+            {selectedPref && (
+              <p className="text-xs text-gray-400">
+                Fields are locked to the "{selectedPref.name}" preference. Select "Custom" to edit.
+              </p>
             )}
 
             {previewError && <p className="text-sm text-red-600">{previewError}</p>}

@@ -3,7 +3,7 @@ using MediatR;
 namespace FreestyleCombo.API.Features.Combos.GenerateCombo;
 
 public record GenerateComboCommand(
-    bool UsePreferences,
+    Guid? PreferenceId,
     GenerateComboOverrides? Overrides,
     string? Name = null
 ) : IRequest<GenerateComboResponse>;

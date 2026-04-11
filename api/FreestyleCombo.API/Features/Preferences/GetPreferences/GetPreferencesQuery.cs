@@ -2,11 +2,12 @@ using MediatR;
 
 namespace FreestyleCombo.API.Features.Preferences.GetPreferences;
 
-public record GetPreferencesQuery(Guid UserId) : IRequest<PreferenceDto>;
+public record GetPreferencesQuery(Guid UserId) : IRequest<List<PreferenceDto>>;
 
 public class PreferenceDto
 {
     public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
     public int MaxDifficulty { get; set; }
     public int ComboLength { get; set; }
     public int StrongFootPercentage { get; set; }

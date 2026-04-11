@@ -1,34 +1,47 @@
-using FreestyleCombo.Core.Entities;
+using FreestyleCombo.API.Features.Preferences.GetPreferences;
 using FreestyleCombo.Core.Interfaces;
 using MediatR;
 
 namespace FreestyleCombo.API.Features.Preferences.UpdatePreferences;
 
-public class UpdatePreferencesHandler : IRequestHandler<UpdatePreferencesCommand>
+public class UpdatePreferencesHandler : IRequestHandler<UpdatePreferencesCommand, PreferenceDto>
 {
     private readonly IUserPreferenceRepository _repo;
 
     public UpdatePreferencesHandler(IUserPreferenceRepository repo) => _repo = repo;
 
-    public async Task Handle(UpdatePreferencesCommand request, CancellationToken cancellationToken)
+    public async Task<PreferenceDto> Handle(UpdatePreferencesCommand request, CancellationToken cancellationToken)
     {
-        var pref = await _repo.GetByUserIdAsync(request.UserId, cancellationToken);
-        bool isNew = pref == null;
+        var pref = await _repo.GetByIdAsync(request.PreferenceId, cancellationToken)
+            ?? throw new KeyNotFoundException("Preference not found.");
 
-        pref ??= new UserPreference { Id = Guid.NewGuid(), UserId = request.UserId };
+        if (pref.UserId != request.CallerId)
+            throw new UnauthorizedAccessException("You can only edit your own preferences.");
 
-        if (request.MaxDifficulty.HasValue) pref.MaxDifficulty = request.MaxDifficulty.Value;
-        if (request.ComboLength.HasValue) pref.ComboLength = request.ComboLength.Value;
-        if (request.StrongFootPercentage.HasValue) pref.StrongFootPercentage = request.StrongFootPercentage.Value;
-        if (request.NoTouchPercentage.HasValue) pref.NoTouchPercentage = request.NoTouchPercentage.Value;
-        if (request.MaxConsecutiveNoTouch.HasValue) pref.MaxConsecutiveNoTouch = request.MaxConsecutiveNoTouch.Value;
-        if (request.IncludeCrossOver.HasValue) pref.IncludeCrossOver = request.IncludeCrossOver.Value;
-        if (request.IncludeKnee.HasValue) pref.IncludeKnee = request.IncludeKnee.Value;
-        if (request.AllowedRevolutions != null) pref.AllowedRevolutions = request.AllowedRevolutions;
+        pref.Name = request.Name;
+        pref.MaxDifficulty = request.MaxDifficulty;
+        pref.ComboLength = request.ComboLength;
+        pref.StrongFootPercentage = request.StrongFootPercentage;
+        pref.NoTouchPercentage = request.NoTouchPercentage;
+        pref.MaxConsecutiveNoTouch = request.MaxConsecutiveNoTouch;
+        pref.IncludeCrossOver = request.IncludeCrossOver;
+        pref.IncludeKnee = request.IncludeKnee;
+        pref.AllowedRevolutions = request.AllowedRevolutions;
 
-        if (isNew)
-            await _repo.AddAsync(pref, cancellationToken);
-        else
-            await _repo.UpdateAsync(pref, cancellationToken);
+        await _repo.UpdateAsync(pref, cancellationToken);
+
+        return new PreferenceDto
+        {
+            Id = pref.Id,
+            Name = pref.Name,
+            MaxDifficulty = pref.MaxDifficulty,
+            ComboLength = pref.ComboLength,
+            StrongFootPercentage = pref.StrongFootPercentage,
+            NoTouchPercentage = pref.NoTouchPercentage,
+            MaxConsecutiveNoTouch = pref.MaxConsecutiveNoTouch,
+            IncludeCrossOver = pref.IncludeCrossOver,
+            IncludeKnee = pref.IncludeKnee,
+            AllowedRevolutions = pref.AllowedRevolutions
+        };
     }
 }

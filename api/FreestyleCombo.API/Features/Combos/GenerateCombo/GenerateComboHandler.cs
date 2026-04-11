@@ -42,8 +42,12 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
 
         // Resolve effective preferences
         UserPreference? savedPref = null;
-        if (request.UsePreferences)
-            savedPref = await _prefRepo.GetByUserIdAsync(userId, cancellationToken);
+        if (request.PreferenceId.HasValue)
+        {
+            savedPref = await _prefRepo.GetByIdAsync(request.PreferenceId.Value, cancellationToken);
+            if (savedPref == null || savedPref.UserId != userId)
+                throw new KeyNotFoundException("Preference not found.");
+        }
 
         var maxDifficulty = request.Overrides?.MaxDifficulty ?? savedPref?.MaxDifficulty ?? 10;
         var comboLength = request.Overrides?.ComboLength ?? savedPref?.ComboLength ?? 6;

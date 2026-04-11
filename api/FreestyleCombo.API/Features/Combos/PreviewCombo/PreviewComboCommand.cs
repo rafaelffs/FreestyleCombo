@@ -4,7 +4,7 @@ using MediatR;
 namespace FreestyleCombo.API.Features.Combos.PreviewCombo;
 
 public record PreviewComboCommand(
-    bool UsePreferences,
+    Guid? PreferenceId,
     GenerateComboOverrides? Overrides
 ) : IRequest<PreviewComboResponse>;
 

@@ -103,7 +103,8 @@ export interface GenerateComboOverrides {
 
 export interface UserPreference {
   id: string
-  userId: string
+  userId?: string
+  name: string
   comboLength: number
   maxDifficulty: number
   strongFootPercentage: number
@@ -183,10 +184,10 @@ export interface PreviewComboResponse {
 }
 
 export const combosApi = {
-  generate: (usePreferences: boolean, overrides?: GenerateComboOverrides, name?: string) =>
-    api.post<ComboDto>('/combos/generate', { usePreferences, overrides, name }),
-  preview: (usePreferences: boolean, overrides?: GenerateComboOverrides) =>
-    api.post<PreviewComboResponse>('/combos/preview', { usePreferences, overrides }),
+  generate: (preferenceId: string | null, overrides?: GenerateComboOverrides, name?: string) =>
+    api.post<ComboDto>('/combos/generate', { preferenceId, overrides, name }),
+  preview: (preferenceId: string | null, overrides?: GenerateComboOverrides) =>
+    api.post<PreviewComboResponse>('/combos/preview', { preferenceId, overrides }),
   build: (tricks: BuildComboTrickItem[], isPublic = false, name?: string) =>
     api.post<ComboDto>('/combos/build', { tricks, isPublic, name }),
   getPublic: () => api.get<PagedResult<ComboDto>>('/combos/public'),
@@ -239,10 +240,13 @@ export const tricksApi = {
 
 // ── Preferences ───────────────────────────────────────────────────────────
 
+export type PreferencePayload = Omit<UserPreference, 'id' | 'userId'>
+
 export const preferencesApi = {
-  get: () => api.get<UserPreference>('/preferences'),
-  upsert: (pref: Omit<UserPreference, 'id' | 'userId'>) =>
-    api.put<UserPreference>('/preferences', pref),
+  getAll: () => api.get<UserPreference[]>('/preferences'),
+  create: (pref: PreferencePayload) => api.post<UserPreference>('/preferences', pref),
+  update: (id: string, pref: PreferencePayload) => api.put<UserPreference>(`/preferences/${id}`, pref),
+  remove: (id: string) => api.delete(`/preferences/${id}`),
 }
 
 

@@ -11,8 +11,11 @@ public class UserPreferenceRepository : IUserPreferenceRepository
 
     public UserPreferenceRepository(AppDbContext db) => _db = db;
 
-    public async Task<UserPreference?> GetByUserIdAsync(Guid userId, CancellationToken ct = default) =>
-        await _db.UserPreferences.FirstOrDefaultAsync(p => p.UserId == userId, ct);
+    public async Task<List<UserPreference>> GetAllByUserIdAsync(Guid userId, CancellationToken ct = default) =>
+        await _db.UserPreferences.Where(p => p.UserId == userId).ToListAsync(ct);
+
+    public async Task<UserPreference?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
+        await _db.UserPreferences.FindAsync([id], ct);
 
     public async Task AddAsync(UserPreference preference, CancellationToken ct = default)
     {
@@ -23,6 +26,12 @@ public class UserPreferenceRepository : IUserPreferenceRepository
     public async Task UpdateAsync(UserPreference preference, CancellationToken ct = default)
     {
         _db.UserPreferences.Update(preference);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteAsync(UserPreference preference, CancellationToken ct = default)
+    {
+        _db.UserPreferences.Remove(preference);
         await _db.SaveChangesAsync(ct);
     }
 }

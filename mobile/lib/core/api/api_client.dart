@@ -91,12 +91,12 @@ class ApiClient {
   // ── Combos ──────────────────────────────────────────────────────────────
 
   Future<PreviewComboResponse> previewCombo(
-      bool usePreferences, GenerateComboOverrides? overrides) async {
+      String? preferenceId, GenerateComboOverrides? overrides) async {
     try {
       final res = await _dio.post<Map<String, dynamic>>(
         '/combos/preview',
         data: {
-          'usePreferences': usePreferences,
+          'preferenceId': preferenceId,
           if (overrides != null) 'overrides': overrides.toJson(),
         },
       );
@@ -107,12 +107,12 @@ class ApiClient {
   }
 
   Future<ComboDto> generateCombo(
-      bool usePreferences, GenerateComboOverrides? overrides, {String? name}) async {
+      String? preferenceId, GenerateComboOverrides? overrides, {String? name}) async {
     try {
       final res = await _dio.post<Map<String, dynamic>>(
         '/combos/generate',
         data: {
-          'usePreferences': usePreferences,
+          'preferenceId': preferenceId,
           if (overrides != null) 'overrides': overrides.toJson(),
           if (name != null && name.isNotEmpty) 'name': name,
         },
@@ -414,24 +414,44 @@ class ApiClient {
 
   // ── Preferences ──────────────────────────────────────────────────────────
 
-  Future<UserPreference?> getPreferences() async {
+  Future<List<UserPreference>> getPreferences() async {
     try {
-      final res =
-          await _dio.get<Map<String, dynamic>>('/preferences');
-      return UserPreference.fromJson(res.data!);
+      final res = await _dio.get<List<dynamic>>('/preferences');
+      return (res.data ?? [])
+          .map((e) => UserPreference.fromJson(e as Map<String, dynamic>))
+          .toList();
     } on DioException catch (e) {
-      if (e.response?.statusCode == 404) return null;
       throw Exception(_extractMessage(e));
     }
   }
 
-  Future<UserPreference> upsertPreferences(UserPreference pref) async {
+  Future<UserPreference> createPreference(UserPreference pref) async {
     try {
-      final res = await _dio.put<Map<String, dynamic>>(
+      final res = await _dio.post<Map<String, dynamic>>(
         '/preferences',
         data: pref.toJson(),
       );
       return UserPreference.fromJson(res.data!);
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<UserPreference> updatePreference(String id, UserPreference pref) async {
+    try {
+      final res = await _dio.put<Map<String, dynamic>>(
+        '/preferences/$id',
+        data: pref.toJson(),
+      );
+      return UserPreference.fromJson(res.data!);
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> deletePreference(String id) async {
+    try {
+      await _dio.delete('/preferences/$id');
     } on DioException catch (e) {
       throw Exception(_extractMessage(e));
     }

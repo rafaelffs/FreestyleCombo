@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { combosApi, extractError, type ComboDto } from '@/lib/api'
 import { getUserId, isAuthenticated, isAdmin as getIsAdmin } from '@/lib/auth'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,6 +14,8 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { RateComboDialog } from './RateComboDialog'
+
+const TRICKS_LIMIT = 6
 
 interface Props {
   combo: ComboDto
@@ -74,6 +76,11 @@ export function ComboCard({ combo, showActions = false }: Props) {
   const [favoured, setFavoured] = useState(combo.isFavourited ?? false)
   const [favError, setFavError] = useState<string | null>(null)
   const [visibilityModal, setVisibilityModal] = useState<VisibilityModalConfig | null>(null)
+  const [expanded, setExpanded] = useState(false)
+
+  const tricks = combo.tricks ?? []
+  const hasMore = tricks.length > TRICKS_LIMIT
+  const visibleTricks = expanded ? tricks : tricks.slice(0, TRICKS_LIMIT)
 
   const visibilityMutation = useMutation({
     mutationFn: (isPublic: boolean) => combosApi.setPublic(combo.id, isPublic),
@@ -128,113 +135,126 @@ export function ComboCard({ combo, showActions = false }: Props) {
 
   return (
     <>
-      <Card>
-        <CardHeader className="pb-2">
+      {/* h-full + flex col so all cards in a grid row stretch to the same height */}
+      <Card className="flex flex-col h-full min-h-[180px]">
+        <CardHeader className="pb-2 shrink-0">
+          {/* Action buttons row */}
+          <div className="mb-2 flex items-center gap-2">
+            {authed && (
+              <button
+                type="button"
+                onClick={() => favMutation.mutate()}
+                disabled={favMutation.isPending}
+                className={`inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border bg-white transition-colors disabled:cursor-not-allowed ${
+                  favoured ? 'border-pink-200 text-pink-600 hover:border-red-300' : 'border-gray-200 text-gray-500 hover:border-red-300 hover:text-pink-400'
+                }`}
+                title={favoured ? 'Unfavourite' : 'Favourite'}
+              >
+                {favoured ? <HeartIconFilled /> : <HeartIconOutline />}
+              </button>
+            )}
+            {(isOwner || adminUser) && (() => {
+              const canAct =
+                (isOwner && visibilityState === 'private') ||
+                (isOwner && visibilityState === 'pending') ||
+                (adminUser && visibilityState === 'public')
+              const title =
+                visibilityState === 'pending'
+                  ? isOwner ? 'Cancel review request' : 'Pending approval'
+                  : visibilityState === 'public'
+                    ? adminUser ? 'Make private' : 'Public'
+                    : adminUser ? 'Set public' : 'Submit for review'
+              return (
+                <button
+                  type="button"
+                  onClick={() => { if (canAct) openVisibilityModal() }}
+                  disabled={visibilityMutation.isPending}
+                  className={[
+                    'inline-flex h-8 w-8 items-center justify-center rounded-md border bg-white transition-colors disabled:cursor-not-allowed',
+                    canAct ? 'cursor-pointer' : 'cursor-default',
+                    visibilityState === 'pending' ? 'border-yellow-200 text-yellow-500' : '',
+                    visibilityState === 'pending' && canAct ? 'hover:border-blue-300' : '',
+                    visibilityState === 'public' ? 'border-blue-200 text-blue-400' : '',
+                    visibilityState === 'public' && canAct ? 'hover:border-blue-300' : '',
+                    visibilityState === 'private' ? 'border-gray-200 text-gray-400' : '',
+                    visibilityState === 'private' && canAct ? 'hover:border-blue-300 hover:text-gray-500' : '',
+                  ].filter(Boolean).join(' ')}
+                  title={title}
+                >
+                  <GlobeIcon />
+                </button>
+              )
+            })()}
+            {showActions && !isOwner && currentUserId && (
+              <button
+                type="button"
+                onClick={() => setRatingOpen(true)}
+                className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white transition-colors hover:border-yellow-300"
+                title="Rate this combo"
+              >
+                <HalfStarIcon />
+              </button>
+            )}
+          </div>
+
+          {/* Title: name only (no displayText when named), or displayText if unnamed */}
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <div className="mb-2 flex items-center gap-2">
-                {authed && (
-                  <button
-                    type="button"
-                    onClick={() => favMutation.mutate()}
-                    disabled={favMutation.isPending}
-                    className={`inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border bg-white transition-colors disabled:cursor-not-allowed ${
-                      favoured ? 'border-pink-200 text-pink-600 hover:border-red-300' : 'border-gray-200 text-gray-500 hover:border-red-300 hover:text-pink-400'
-                    }`}
-                    title={favoured ? 'Unfavourite' : 'Favourite'}
-                  >
-                    {favoured ? <HeartIconFilled /> : <HeartIconOutline />}
-                  </button>
-                )}
-                {(isOwner || adminUser) && (() => {
-                  const canAct =
-                    (isOwner && visibilityState === 'private') ||
-                    (isOwner && visibilityState === 'pending') ||
-                    (adminUser && visibilityState === 'public')
-                  const title =
-                    visibilityState === 'pending'
-                      ? isOwner ? 'Cancel review request' : 'Pending approval'
-                      : visibilityState === 'public'
-                        ? adminUser ? 'Make private' : 'Public'
-                        : adminUser ? 'Set public' : 'Submit for review'
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => { if (canAct) openVisibilityModal() }}
-                      disabled={visibilityMutation.isPending}
-                      className={[
-                        'inline-flex h-8 w-8 items-center justify-center rounded-md border bg-white transition-colors disabled:cursor-not-allowed',
-                        canAct ? 'cursor-pointer' : 'cursor-default',
-                        visibilityState === 'pending' ? 'border-yellow-200 text-yellow-500' : '',
-                        visibilityState === 'pending' && canAct ? 'hover:border-blue-300' : '',
-                        visibilityState === 'public' ? 'border-blue-200 text-blue-400' : '',
-                        visibilityState === 'public' && canAct ? 'hover:border-blue-300' : '',
-                        visibilityState === 'private' ? 'border-gray-200 text-gray-400' : '',
-                        visibilityState === 'private' && canAct ? 'hover:border-blue-300 hover:text-gray-500' : '',
-                      ].filter(Boolean).join(' ')}
-                      title={title}
-                    >
-                      <GlobeIcon />
-                    </button>
-                  )
-                })()}
-                {showActions && !isOwner && currentUserId && (
-                  <button
-                    type="button"
-                    onClick={() => setRatingOpen(true)}
-                    className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white transition-colors hover:border-yellow-300"
-                    title="Rate this combo"
-                  >
-                    <HalfStarIcon />
-                  </button>
-                )}
-              </div>
-              <div className="min-w-0">
-                {combo.name && (
-                  <p className="text-sm font-semibold text-gray-900 truncate">{combo.name}</p>
-                )}
-                <CardTitle className="text-base font-mono truncate">{combo.displayText}</CardTitle>
-              </div>
+              {combo.name ? (
+                <p className="text-sm font-semibold text-gray-900 truncate">{combo.name}</p>
+              ) : (
+                <p className="text-sm font-mono font-semibold text-gray-900 truncate">{combo.displayText}</p>
+              )}
               {combo.ownerUserName && (
                 <p className="mt-0.5 text-xs text-gray-500">by {combo.ownerUserName}</p>
               )}
             </div>
-            <div className="flex flex-wrap gap-1 items-start">
+            <div className="flex shrink-0 flex-wrap gap-1 items-start">
               <Badge variant="secondary">
-                Avg diff: {combo.averageDifficulty?.toFixed(1) ?? '—'}
+                {combo.averageDifficulty?.toFixed(1) ?? '—'}
               </Badge>
               {combo.averageRating != null && combo.averageRating > 0 && (
                 <Badge variant="secondary">
-                  ★ {combo.averageRating.toFixed(1)} ({combo.totalRatings ?? combo.ratingCount ?? 0})
+                  ★ {combo.averageRating.toFixed(1)}
                 </Badge>
               )}
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-wrap gap-1.5">
-            {combo.tricks?.map((t) => (
-              <span
-                key={t.position}
-                className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"
-              >
-                {t.position}. {t.abbreviation}
-                {t.noTouch && <span className="text-indigo-500">(nt)</span>}
-                {!t.strongFoot && <span className="text-orange-500">(wf)</span>}
-              </span>
-            ))}
-          </div>
 
-          {combo.aiDescription && (
-            <p className="text-sm italic text-gray-600">"{combo.aiDescription}"</p>
+        {/* Tricks + actions — flex-1 so this section fills the remaining card height */}
+        <CardContent className="flex flex-col flex-1 gap-2 pt-0">
+          {tricks.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {visibleTricks.map((t) => (
+                <span
+                  key={t.position}
+                  className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"
+                >
+                  {t.position}. {t.abbreviation}
+                  {t.noTouch && <span className="text-indigo-500">(nt)</span>}
+                  {!t.strongFoot && <span className="text-orange-500">(wf)</span>}
+                </span>
+              ))}
+              {hasMore && (
+                <button
+                  type="button"
+                  onClick={() => setExpanded((e) => !e)}
+                  className="inline-flex items-center rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-300 transition-colors"
+                >
+                  {expanded ? 'Show less' : `+${tricks.length - TRICKS_LIMIT} more`}
+                </button>
+              )}
+            </div>
           )}
 
+          {/* Push view-details to the bottom */}
           {showActions && (
-            <div className="flex flex-wrap gap-2 pt-1">
+            <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
               <Button variant="outline" size="sm" asChild>
                 <Link to={`/combos/${combo.id}`}>View details</Link>
               </Button>
-              {favError && <p className="w-full text-xs text-red-600">{favError}</p>}
+              {favError && <p className="text-xs text-red-600">{favError}</p>}
             </div>
           )}
         </CardContent>

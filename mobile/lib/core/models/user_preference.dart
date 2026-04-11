@@ -1,6 +1,7 @@
 class UserPreference {
   final String id;
   final String userId;
+  final String name;
   final int comboLength;
   final int maxDifficulty;
   final int strongFootPercentage;
@@ -13,6 +14,7 @@ class UserPreference {
   const UserPreference({
     required this.id,
     required this.userId,
+    required this.name,
     required this.comboLength,
     required this.maxDifficulty,
     required this.strongFootPercentage,
@@ -26,6 +28,7 @@ class UserPreference {
   factory UserPreference.fromJson(Map<String, dynamic> j) => UserPreference(
         id: (j['id'] as String?) ?? '',
         userId: (j['userId'] as String?) ?? '',
+        name: (j['name'] as String?) ?? '',
         comboLength: j['comboLength'] as int,
         maxDifficulty: j['maxDifficulty'] as int,
         strongFootPercentage: j['strongFootPercentage'] as int,
@@ -42,6 +45,7 @@ class UserPreference {
       );
 
   Map<String, dynamic> toJson() => {
+        'name': name,
         'comboLength': comboLength,
         'maxDifficulty': maxDifficulty,
         'strongFootPercentage': strongFootPercentage,
@@ -53,6 +57,7 @@ class UserPreference {
       };
 
   UserPreference copyWith({
+    String? name,
     int? comboLength,
     int? maxDifficulty,
     int? strongFootPercentage,
@@ -65,6 +70,7 @@ class UserPreference {
       UserPreference(
         id: id,
         userId: userId,
+        name: name ?? this.name,
         comboLength: comboLength ?? this.comboLength,
         maxDifficulty: maxDifficulty ?? this.maxDifficulty,
         strongFootPercentage: strongFootPercentage ?? this.strongFootPercentage,

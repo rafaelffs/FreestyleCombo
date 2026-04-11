@@ -1,11 +1,10 @@
 using MediatR;
 using FreestyleCombo.API.Features.Preferences.GetPreferences;
 
-namespace FreestyleCombo.API.Features.Preferences.UpdatePreferences;
+namespace FreestyleCombo.API.Features.Preferences.CreatePreference;
 
-public record UpdatePreferencesCommand(
-    Guid PreferenceId,
-    Guid CallerId,
+public record CreatePreferenceCommand(
+    Guid UserId,
     string Name,
     int MaxDifficulty,
     int ComboLength,

@@ -56,11 +56,9 @@ public class GenerateComboHandlerTests
         var tricks = TrickFaker.DefaultPool();
         _trickRepo.Setup(r => r.GetAllAsync(It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(tricks);
-        _prefRepo.Setup(r => r.GetByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((UserPreference?)null);
 
         var handler = CreateHandler();
-        var command = new GenerateComboCommand(false, new GenerateComboOverrides { ComboLength = 5 });
+        var command = new GenerateComboCommand(null, new GenerateComboOverrides { ComboLength = 5 });
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -75,12 +73,10 @@ public class GenerateComboHandlerTests
     {
         _trickRepo.Setup(r => r.GetAllAsync(It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(TrickFaker.DefaultPool());
-        _prefRepo.Setup(r => r.GetByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((UserPreference?)null);
 
         var handler = CreateHandler();
         // MaxDifficulty = 0 will exclude all tricks
-        var command = new GenerateComboCommand(false, new GenerateComboOverrides { MaxDifficulty = 0, ComboLength = 4 });
+        var command = new GenerateComboCommand(null, new GenerateComboOverrides { MaxDifficulty = 0, ComboLength = 4 });
 
         Func<Task> act = () => handler.Handle(command, CancellationToken.None);
 
@@ -95,11 +91,9 @@ public class GenerateComboHandlerTests
         var tricks = TrickFaker.CreateMany(6, crossOver: false);
         _trickRepo.Setup(r => r.GetAllAsync(It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(tricks);
-        _prefRepo.Setup(r => r.GetByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((UserPreference?)null);
 
         var handler = CreateHandler();
-        var command = new GenerateComboCommand(false, new GenerateComboOverrides
+        var command = new GenerateComboCommand(null, new GenerateComboOverrides
         {
             ComboLength = 6,
             NoTouchPercentage = 100,
@@ -117,11 +111,9 @@ public class GenerateComboHandlerTests
         var tricks = TrickFaker.DefaultPool();
         _trickRepo.Setup(r => r.GetAllAsync(It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(tricks);
-        _prefRepo.Setup(r => r.GetByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((UserPreference?)null);
 
         var handler = CreateHandler();
-        var command = new GenerateComboCommand(false, new GenerateComboOverrides { ComboLength = 3, NoTouchPercentage = 0 });
+        var command = new GenerateComboCommand(null, new GenerateComboOverrides { ComboLength = 3, NoTouchPercentage = 0 });
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -130,24 +122,26 @@ public class GenerateComboHandlerTests
     }
 
     [Fact]
-    public async Task Handle_UsesUserPreferences_WhenUsePreferencesIsTrue()
+    public async Task Handle_UsesPreference_WhenPreferenceIdProvided()
     {
         var tricks = TrickFaker.DefaultPool();
         _trickRepo.Setup(r => r.GetAllAsync(It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(tricks);
 
+        var prefId = Guid.NewGuid();
         var savedPref = new UserPreference
         {
-            Id = Guid.NewGuid(),
+            Id = prefId,
             UserId = _userId,
+            Name = "Test Pref",
             ComboLength = 4,
             MaxDifficulty = 5
         };
-        _prefRepo.Setup(r => r.GetByUserIdAsync(_userId, It.IsAny<CancellationToken>()))
+        _prefRepo.Setup(r => r.GetByIdAsync(prefId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(savedPref);
 
         var handler = CreateHandler();
-        var command = new GenerateComboCommand(true, null);
+        var command = new GenerateComboCommand(prefId, null);
 
         var result = await handler.Handle(command, CancellationToken.None);
 

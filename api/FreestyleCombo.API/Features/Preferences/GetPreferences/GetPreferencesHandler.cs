@@ -1,40 +1,30 @@
-using FreestyleCombo.Core.Entities;
 using FreestyleCombo.Core.Interfaces;
 using MediatR;
 
 namespace FreestyleCombo.API.Features.Preferences.GetPreferences;
 
-public class GetPreferencesHandler : IRequestHandler<GetPreferencesQuery, PreferenceDto>
+public class GetPreferencesHandler : IRequestHandler<GetPreferencesQuery, List<PreferenceDto>>
 {
     private readonly IUserPreferenceRepository _repo;
 
     public GetPreferencesHandler(IUserPreferenceRepository repo) => _repo = repo;
 
-    public async Task<PreferenceDto> Handle(GetPreferencesQuery request, CancellationToken cancellationToken)
+    public async Task<List<PreferenceDto>> Handle(GetPreferencesQuery request, CancellationToken cancellationToken)
     {
-        var pref = await _repo.GetByUserIdAsync(request.UserId, cancellationToken);
+        var prefs = await _repo.GetAllByUserIdAsync(request.UserId, cancellationToken);
 
-        if (pref == null)
+        return prefs.Select(p => new PreferenceDto
         {
-            // Return defaults
-            pref = new UserPreference
-            {
-                Id = Guid.Empty,
-                UserId = request.UserId
-            };
-        }
-
-        return new PreferenceDto
-        {
-            Id = pref.Id,
-            MaxDifficulty = pref.MaxDifficulty,
-            ComboLength = pref.ComboLength,
-            StrongFootPercentage = pref.StrongFootPercentage,
-            NoTouchPercentage = pref.NoTouchPercentage,
-            MaxConsecutiveNoTouch = pref.MaxConsecutiveNoTouch,
-            IncludeCrossOver = pref.IncludeCrossOver,
-            IncludeKnee = pref.IncludeKnee,
-            AllowedRevolutions = pref.AllowedRevolutions
-        };
+            Id = p.Id,
+            Name = p.Name,
+            MaxDifficulty = p.MaxDifficulty,
+            ComboLength = p.ComboLength,
+            StrongFootPercentage = p.StrongFootPercentage,
+            NoTouchPercentage = p.NoTouchPercentage,
+            MaxConsecutiveNoTouch = p.MaxConsecutiveNoTouch,
+            IncludeCrossOver = p.IncludeCrossOver,
+            IncludeKnee = p.IncludeKnee,
+            AllowedRevolutions = p.AllowedRevolutions
+        }).ToList();
     }
 }

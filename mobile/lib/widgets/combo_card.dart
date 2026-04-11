@@ -21,10 +21,13 @@ class ComboCard extends StatefulWidget {
   State<ComboCard> createState() => _ComboCardState();
 }
 
+const int _tricksLimit = 6;
+
 class _ComboCardState extends State<ComboCard> {
   bool _visibilityLoading = false;
   bool _favLoading = false;
   late bool _favoured;
+  bool _expanded = false;
 
   @override
   void initState() {
@@ -325,24 +328,43 @@ class _ComboCardState extends State<ComboCard> {
               ],
               if (combo.tricks != null && combo.tricks!.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
-                  children: combo.tricks!.map((t) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '${t.position}. ${t.abbreviation}${t.noTouch ? '(nt)' : ''}${!t.strongFoot ? '(wf)' : ''}',
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                    );
-                  }).toList(),
-                ),
+                Builder(builder: (context) {
+                  final tricks = combo.tricks!;
+                  final hasMore = tricks.length > _tricksLimit;
+                  final visible = _expanded ? tricks : tricks.take(_tricksLimit).toList();
+                  return Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: [
+                      ...visible.map((t) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '${t.position}. ${t.abbreviation}${t.noTouch ? '(nt)' : ''}${!t.strongFoot ? '(wf)' : ''}',
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                      )),
+                      if (hasMore)
+                        GestureDetector(
+                          onTap: () => setState(() => _expanded = !_expanded),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              _expanded ? 'Show less' : '+${tricks.length - _tricksLimit} more',
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                }),
               ],
               if (combo.aiDescription != null &&
                   combo.aiDescription!.isNotEmpty) ...[

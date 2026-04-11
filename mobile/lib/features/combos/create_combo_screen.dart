@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/api/api_client.dart';
 import '../../core/models/combo.dart';
+import '../../core/models/user_preference.dart';
 import '../../widgets/combo_card.dart';
 
 enum _Mode { choose, generate, build }
@@ -42,7 +43,8 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   final _nameCtrl = TextEditingController();
 
   // ── Generate state ─────────────────────────────────────────────────────────
-  bool _usePrefs = false;
+  List<UserPreference> _savedPrefs = [];
+  String? _selectedPrefId; // null = Custom
   int _comboLength = 5;
   int _maxDifficulty = 10;
   int _strongFootPct = 50;
@@ -75,10 +77,19 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
 
   // ── Generate actions ────────────────────────────────────────────────────────
 
+  Future<void> _loadPreferences() async {
+    try {
+      final prefs = await ApiClient.instance.getPreferences();
+      if (mounted) setState(() => _savedPrefs = prefs);
+    } catch (_) {
+      // Non-critical — user can still generate with custom settings
+    }
+  }
+
   Future<void> _preview() async {
     setState(() { _genLoading = true; _genError = null; });
     try {
-      final overrides = _usePrefs
+      final overrides = _selectedPrefId != null
           ? null
           : GenerateComboOverrides(
               comboLength: _comboLength,
@@ -89,7 +100,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
               includeCrossOver: _includeCrossOver,
               includeKnee: _includeKnee,
             );
-      final result = await ApiClient.instance.previewCombo(_usePrefs, overrides);
+      final result = await ApiClient.instance.previewCombo(_selectedPrefId, overrides);
       _slots.clear();
       for (final t in result.tricks) {
         _slots.add(_SlotItem(
@@ -244,7 +255,10 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
             icon: Icons.auto_awesome,
             title: 'Auto-generate',
             description: 'Let the app build a combo based on your settings.',
-            onTap: () => setState(() => _mode = _Mode.generate),
+            onTap: () {
+              setState(() => _mode = _Mode.generate);
+              _loadPreferences();
+            },
           ),
           const SizedBox(height: 16),
           _ModeCard(
@@ -284,22 +298,48 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                 children: [
                   Text('Options', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 12),
-                  SwitchListTile(
-                    title: const Text('Use saved preferences'),
-                    value: _usePrefs,
-                    onChanged: (v) => setState(() => _usePrefs = v),
-                    contentPadding: EdgeInsets.zero,
+                  // Preference selector
+                  DropdownButtonFormField<String?>(
+                    value: _selectedPrefId,
+                    decoration: const InputDecoration(
+                      labelText: 'Preference',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: [
+                      const DropdownMenuItem<String?>(value: null, child: Text('Custom')),
+                      ..._savedPrefs.map((p) => DropdownMenuItem<String?>(value: p.id, child: Text(p.name))),
+                    ],
+                    onChanged: (v) {
+                      setState(() {
+                        _selectedPrefId = v;
+                        // When a preference is selected, copy its values for display
+                        final pref = v != null ? _savedPrefs.firstWhere((p) => p.id == v) : null;
+                        if (pref != null) {
+                          _comboLength = pref.comboLength;
+                          _maxDifficulty = pref.maxDifficulty;
+                          _strongFootPct = pref.strongFootPercentage;
+                          _noTouchPct = pref.noTouchPercentage;
+                          _maxConsecNoTouch = pref.maxConsecutiveNoTouch;
+                          _includeCrossOver = pref.includeCrossOver;
+                          _includeKnee = pref.includeKnee;
+                        }
+                      });
+                    },
                   ),
-                  if (!_usePrefs) ...[
-                    const Divider(),
-                    _SliderRow(label: 'Combo length: $_comboLength', value: _comboLength.toDouble(), min: 1, max: 100, divisions: 99, onChanged: (v) => setState(() => _comboLength = v.round())),
-                    _SliderRow(label: 'Max difficulty: $_maxDifficulty', value: _maxDifficulty.toDouble(), min: 1, max: 10, divisions: 9, onChanged: (v) => setState(() => _maxDifficulty = v.round())),
-                    _SliderRow(label: 'Strong foot: $_strongFootPct%', value: _strongFootPct.toDouble(), min: 0, max: 100, divisions: 10, onChanged: (v) => setState(() => _strongFootPct = v.round())),
-                    _SliderRow(label: 'No-touch: $_noTouchPct%', value: _noTouchPct.toDouble(), min: 0, max: 100, divisions: 10, onChanged: (v) => setState(() => _noTouchPct = v.round())),
-                    _SliderRow(label: 'Max consecutive NT: $_maxConsecNoTouch', value: _maxConsecNoTouch.toDouble(), min: 0, max: 30, divisions: 30, onChanged: (v) => setState(() => _maxConsecNoTouch = v.round())),
-                    SwitchListTile(title: const Text('Include crossover'), value: _includeCrossOver, onChanged: (v) => setState(() => _includeCrossOver = v), contentPadding: EdgeInsets.zero),
-                    SwitchListTile(title: const Text('Include knee'), value: _includeKnee, onChanged: (v) => setState(() => _includeKnee = v), contentPadding: EdgeInsets.zero),
-                  ],
+                  const Divider(),
+                  _SliderRow(label: 'Combo length: $_comboLength', value: _comboLength.toDouble(), min: 1, max: 100, divisions: 99, onChanged: _selectedPrefId == null ? (v) => setState(() => _comboLength = v.round()) : null),
+                  _SliderRow(label: 'Max difficulty: $_maxDifficulty', value: _maxDifficulty.toDouble(), min: 1, max: 10, divisions: 9, onChanged: _selectedPrefId == null ? (v) => setState(() => _maxDifficulty = v.round()) : null),
+                  _SliderRow(label: 'Strong foot: $_strongFootPct%', value: _strongFootPct.toDouble(), min: 0, max: 100, divisions: 10, onChanged: _selectedPrefId == null ? (v) => setState(() => _strongFootPct = v.round()) : null),
+                  _SliderRow(label: 'No-touch: $_noTouchPct%', value: _noTouchPct.toDouble(), min: 0, max: 100, divisions: 10, onChanged: _selectedPrefId == null ? (v) => setState(() => _noTouchPct = v.round()) : null),
+                  _SliderRow(label: 'Max consecutive NT: $_maxConsecNoTouch', value: _maxConsecNoTouch.toDouble(), min: 0, max: 30, divisions: 30, onChanged: _selectedPrefId == null ? (v) => setState(() => _maxConsecNoTouch = v.round()) : null),
+                  SwitchListTile(title: const Text('Include crossover'), value: _includeCrossOver, onChanged: _selectedPrefId == null ? (v) => setState(() => _includeCrossOver = v) : null, contentPadding: EdgeInsets.zero),
+                  SwitchListTile(title: const Text('Include knee'), value: _includeKnee, onChanged: _selectedPrefId == null ? (v) => setState(() => _includeKnee = v) : null, contentPadding: EdgeInsets.zero),
+                  if (_selectedPrefId != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text('Fields are locked to the selected preference. Choose "Custom" to edit.', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                    ),
                 ],
               ),
             ),
@@ -634,7 +674,7 @@ class _SliderRow extends StatelessWidget {
   final double min;
   final double max;
   final int? divisions;
-  final ValueChanged<double> onChanged;
+  final ValueChanged<double>? onChanged;
 
   const _SliderRow({required this.label, required this.value, required this.min, required this.max, this.divisions, required this.onChanged});
 
@@ -643,7 +683,7 @@ class _SliderRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13)),
+        Text(label, style: TextStyle(fontSize: 13, color: onChanged == null ? Colors.grey : null)),
         Slider(value: value, min: min, max: max, divisions: divisions, onChanged: onChanged),
       ],
     );

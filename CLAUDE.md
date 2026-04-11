@@ -33,12 +33,12 @@ FreestyleCombo/
 ### Entities (`FreestyleCombo.Core/Entities/`)
 | Entity | Key fields |
 |---|---|
-| `AppUser` | `IdentityUser<Guid>`, has `ICollection<Combo>`, `ICollection<ComboRating>`, `UserPreference?`, `ICollection<TrickSubmission>`, `ICollection<UserFavouriteCombo>` |
+| `AppUser` | `IdentityUser<Guid>`, has `ICollection<Combo>`, `ICollection<ComboRating>`, `ICollection<UserPreference>`, `ICollection<TrickSubmission>`, `ICollection<UserFavouriteCombo>` |
 | `Trick` | `Id, Name, Abbreviation, CrossOver, Knee, Revolution(decimal), Difficulty, CommonLevel` |
 | `Combo` | `Id, OwnerId, Name?, TotalDifficulty, TrickCount, Visibility(ComboVisibility), CreatedAt, AiDescription, ICollection<UserFavouriteCombo>` — `IsPublic` is a computed property (`=> Visibility == ComboVisibility.Public`), ignored by EF |
 | `ComboTrick` | `Id, ComboId, TrickId, Position, StrongFoot, NoTouch` |
 | `ComboRating` | `Id, ComboId, RatedByUserId, Score, CreatedAt` |
-| `UserPreference` | `Id, UserId, MaxDifficulty, ComboLength, StrongFootPercentage, NoTouchPercentage, MaxConsecutiveNoTouch, IncludeCrossOver, IncludeKnee, AllowedRevolutions(List<decimal>)` — `AllowedRevolutions` stored as `jsonb` |
+| `UserPreference` | `Id, UserId, Name(string max 100), MaxDifficulty, ComboLength, StrongFootPercentage, NoTouchPercentage, MaxConsecutiveNoTouch, IncludeCrossOver, IncludeKnee, AllowedRevolutions(List<decimal>)` — 1:many with AppUser (no unique index on UserId), `AllowedRevolutions` stored as `jsonb` |
 | `TrickSubmission` | `Id, Name, Abbreviation, CrossOver, Knee, Revolution, Difficulty, CommonLevel, Status(enum), SubmittedAt, SubmittedById, ReviewedAt?, ReviewedById?` |
 | `UserFavouriteCombo` | Composite PK `(UserId, ComboId)`, `CreatedAt` — cascade deletes on both FK |
 
@@ -50,7 +50,8 @@ Approving a submission creates a real `Trick` from the submission fields.
 ### Interfaces (`FreestyleCombo.Core/Interfaces/`)
 - `ITrickRepository` (includes `DeleteAsync` — checks ComboTricks before deleting)
 - `IComboRepository` (includes `DeleteAsync`, `GetAllByOwnerAsync` — no pagination, includes Owner nav)
-- `IComboRatingRepository`, `IUserPreferenceRepository`, `ITrickSubmissionRepository`
+- `IComboRatingRepository`, `ITrickSubmissionRepository`
+- `IUserPreferenceRepository` — `GetAllByUserIdAsync`, `GetByIdAsync`, `AddAsync`, `UpdateAsync`, `DeleteAsync`
 - `IUserFavouriteRepository` — `AddAsync`, `RemoveAsync`, `GetFavouriteComboIdsAsync`, `ExistsAsync`
 - `IComboEnhancerService` — extracted for Moq mockability
 
@@ -78,9 +79,9 @@ Trick delete throws `InvalidOperationException` ("This trick is used in X combo(
 
 `BuildComboCommand` validates: `Tricks` NotEmpty, each `Position >= 1`, NoTouch only on `CrossOver = true` tricks (handler throws `InvalidOperationException` if violated).
 
-`GenerateComboCommand` accepts optional `Name` (top-level, not inside `Overrides`). Saved as `null` if blank/whitespace. **No longer generates an AI description** — `AiDescription` is always `null` for new combos.
+`GenerateComboCommand(Guid? PreferenceId, GenerateComboOverrides? Overrides, string? Name)` — `PreferenceId` replaces the old `UsePreferences` bool. When set, the handler fetches that preference by ID and verifies ownership; when null, uses inline `Overrides`. Saved as `null` if Name is blank/whitespace. **No longer generates an AI description** — `AiDescription` is always `null` for new combos.
 
-`PreviewComboCommand` runs generation steps 1–5 (filter, split, pick, shuffle, annotate NoTouch). **No AI call, no DB save.**
+`PreviewComboCommand(Guid? PreferenceId, GenerateComboOverrides? Overrides)` — runs generation steps 1–5 (filter, split, pick, shuffle, annotate NoTouch). **No AI call, no DB save.** Same `PreferenceId` pattern as GenerateComboCommand.
 
 `UpdateComboCommand(Guid ComboId, string? Name, List<BuildComboTrickItem>? Tricks)` — updates Name and/or replaces trick list. Throws `UnauthorizedAccessException` (→ 403) if caller is not owner or admin.
 
@@ -93,6 +94,19 @@ All combo DTOs (`GenerateComboResponse`, `PublicComboDto`, `MyComboDto`, `ComboD
 
 ### Error format
 API middleware always returns `{ "error": "..." }`. Web uses `extractError(err, fallback)` helper from `lib/api.ts`. Mobile `_extractMessage` checks `data['error']` first, then `data['message']`, then `data['title']`.
+
+### Preferences API (`/api/preferences`)
+Users can have **multiple named preferences** (1:many). No limit on count. Future: public visibility (not yet implemented).
+
+| Method | Route | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/preferences` | User | List all user's preferences |
+| `POST` | `/api/preferences` | User | Create a named preference → returns `PreferenceDto` |
+| `PUT` | `/api/preferences/{id}` | User | Update preference (owner check, 403 otherwise) → returns `PreferenceDto` |
+| `DELETE` | `/api/preferences/{id}` | User | Delete preference (owner check, 403 otherwise) → 204 |
+
+`PreferenceDto` includes `Id`, `Name`, and all settings fields. Request body: `PreferenceRequest` with `Name` (required, max 100) + all settings fields with defaults.  
+Validation: `Name` NotEmpty MaxLength(100), same field limits as before.
 
 ### Trick Submission API (`/api/trick-submissions`)
 | Method | Route | Auth | Description |
@@ -190,7 +204,9 @@ web/src/
 
 Routes: `/combos` (public, tabbed), `/combos/create` (protected, mode selector), `/admin/approvals` (admin only). Old admin routes `/admin/submissions` and `/admin/combo-reviews` redirect to `/admin/approvals`. Create route remains accessible from the "Create new" button inside `/combos`.
 
-`CreateComboPage` modes: `'choose'` (initial), `'generate'` (calls `/preview` → populates build slots on success), `'build'` (manual slot picker + save). Name field is at the top, shared across all modes.
+`CreateComboPage` modes: `'choose'` (initial), `'generate'` (calls `/preview` → populates build slots on success), `'build'` (manual slot picker + save). Name field is at the top, shared across all modes. In generate mode: a `<select>` dropdown lists user's saved preferences by name (first option: "Custom"). When a preference is selected, all fields are shown read-only/locked; when "Custom", all fields are editable. Passes `preferenceId` (not the old `usePreferences` bool) to preview API.
+
+`PreferencesPage` shows a list of named preference cards with Edit/Delete per card and a "New preference" button at the top. Create/edit opens an inline form in a new Card. Delete shows a confirm button inline before removing.
 
 `AdminRoute` redirects non-admins to `/combos`. `isAdmin()` decodes the JWT payload (no library, no API call) and checks `ClaimTypes.Role === "Admin"`.
 
@@ -276,6 +292,10 @@ mobile/lib/
 ```
 
 `AuthService.isAdmin` decodes the JWT on `setCredentials()` and persists the result in SharedPreferences (`fc_is_admin`). Admin routes (`/admin/*`) are redirect-guarded in the router.
+
+`preferences_screen.dart` shows a `ListView` of `_PrefCard` tiles (name + stats) with Edit/Delete icon buttons. FAB opens `_PreferenceForm` in a `showModalBottomSheet`. `_PreferenceForm` handles both create and update — calls `createPreference` or `updatePreference` based on whether `initial` is set.
+
+`create_combo_screen.dart` generate view: `_usePrefs` switch replaced with a `DropdownButtonFormField<String?>` (null = Custom, value = preferenceId). Loading preferences via `_loadPreferences()` when entering generate mode. When a preference is selected, its values are copied to the state variables and sliders/switches have `onChanged: null` (read-only). Passes `_selectedPrefId` (not `_usePrefs`) to `previewCombo()`.
 
 ### Mobile Navigation (post-merge)
 | Index | Label | Route | Auth |
