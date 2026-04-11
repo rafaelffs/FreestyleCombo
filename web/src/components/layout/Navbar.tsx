@@ -1,11 +1,21 @@
 import { Link, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { isAuthenticated, isAdmin, clearToken } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
+import { adminApi } from '@/lib/api'
 
 export function Navbar() {
   const navigate = useNavigate()
   const authed = isAuthenticated()
   const admin = isAdmin()
+
+  const { data: pendingData } = useQuery({
+    queryKey: ['pending-count'],
+    queryFn: () => adminApi.getPendingCount().then((r) => r.data),
+    enabled: admin,
+    refetchInterval: 60_000,
+  })
+  const pendingCount = pendingData?.total ?? 0
 
   function handleLogout() {
     clearToken()
@@ -32,8 +42,13 @@ export function Navbar() {
                   Preferences
                 </Link>
                 {admin && (
-                  <Link to="/admin/approvals" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
+                  <Link to="/admin/approvals" className="flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800">
                     Approvals
+                    {pendingCount > 0 && (
+                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-xs font-semibold text-white">
+                        {pendingCount}
+                      </span>
+                    )}
                   </Link>
                 )}
               </>

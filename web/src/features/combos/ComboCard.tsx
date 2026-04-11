@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { combosApi, extractError, type ComboDto } from '@/lib/api'
-import { getUserId, isAuthenticated } from '@/lib/auth'
+import { getUserId, isAuthenticated, isAdmin as getIsAdmin } from '@/lib/auth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -40,10 +40,21 @@ function HeartIconOutline() {
   )
 }
 
+function HalfStarIcon() {
+  const star = 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+      <path d={star} fill="#d1d5db" />
+      <path d={star} fill="#eab308" style={{ clipPath: 'inset(0 50% 0 0)' }} />
+    </svg>
+  )
+}
+
 export function ComboCard({ combo, showActions = false }: Props) {
   const currentUserId = getUserId()
   const authed = isAuthenticated()
   const isOwner = combo.ownerId === currentUserId
+  const adminUser = getIsAdmin()
   const queryClient = useQueryClient()
   const [ratingOpen, setRatingOpen] = useState(false)
   const [favoured, setFavoured] = useState(combo.isFavourited ?? false)
@@ -83,40 +94,67 @@ export function ComboCard({ combo, showActions = false }: Props) {
                   type="button"
                   onClick={() => favMutation.mutate()}
                   disabled={favMutation.isPending}
-                  className={`inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white transition-colors disabled:cursor-not-allowed ${
-                    favoured ? 'text-pink-600 hover:text-pink-500' : 'text-gray-500 hover:text-pink-400'
+                  className={`inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border bg-white transition-colors disabled:cursor-not-allowed ${
+                    favoured ? 'border-pink-200 text-pink-600 hover:border-red-300' : 'border-gray-200 text-gray-500 hover:border-red-300 hover:text-pink-400'
                   }`}
                   title={favoured ? 'Unfavourite' : 'Favourite'}
                 >
                   {favoured ? <HeartIconFilled /> : <HeartIconOutline />}
                 </button>
               )}
-              {isOwner && (
+              {(isOwner || adminUser) && (() => {
+                const canAct =
+                  (isOwner && visibilityState === 'private') ||
+                  (isOwner && visibilityState === 'pending') ||
+                  (adminUser && visibilityState === 'public')
+                const title =
+                  visibilityState === 'pending'
+                    ? isOwner ? 'Cancel review request' : 'Pending approval'
+                    : visibilityState === 'public'
+                      ? adminUser ? 'Make private' : 'Public'
+                      : adminUser ? 'Set public' : 'Submit for review'
+                return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!canAct) return
+                      if (visibilityState === 'private') {
+                        const ok = confirm(adminUser
+                          ? 'Set this combo as public?'
+                          : 'Submit this combo for public approval?')
+                        if (ok) visibilityMutation.mutate(true)
+                      } else if (visibilityState === 'pending' && isOwner) {
+                        const ok = confirm('Cancel the review request? The combo will return to private.')
+                        if (ok) visibilityMutation.mutate(false)
+                      } else if (visibilityState === 'public' && adminUser) {
+                        const ok = confirm('Make this combo private?')
+                        if (ok) visibilityMutation.mutate(false)
+                      }
+                    }}
+                    disabled={visibilityMutation.isPending}
+                    className={`inline-flex h-8 w-8 items-center justify-center rounded-md border bg-white transition-colors disabled:cursor-not-allowed ${
+                      canAct ? 'cursor-pointer' : 'cursor-default'
+                    } ${
+                      visibilityState === 'pending'
+                        ? `border-yellow-200 text-yellow-500${canAct ? ' hover:border-blue-300' : ''}`
+                        : visibilityState === 'public'
+                          ? `border-blue-100 text-blue-600${canAct ? ' hover:border-blue-300' : ''}`
+                          : `border-gray-200 text-gray-500${canAct ? ' hover:border-blue-300 hover:text-gray-600' : ''}`
+                    }`}
+                    title={title}
+                  >
+                    <GlobeIcon />
+                  </button>
+                )
+              })()}
+              {showActions && !isOwner && currentUserId && (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (visibilityState === 'private') {
-                      const ok = confirm('Set this combo as public and send it for approval?')
-                      if (ok) visibilityMutation.mutate(true)
-                    }
-                  }}
-                  disabled={visibilityMutation.isPending}
-                  className={`inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white transition-colors disabled:cursor-not-allowed ${
-                    visibilityState === 'pending'
-                      ? 'text-yellow-500'
-                      : visibilityState === 'public'
-                        ? 'text-blue-600'
-                        : 'text-gray-500 hover:text-gray-600'
-                  }`}
-                  title={
-                    visibilityState === 'pending'
-                      ? 'Pending approval'
-                      : visibilityState === 'public'
-                        ? 'Public'
-                        : 'Private'
-                  }
+                  onClick={() => setRatingOpen(true)}
+                  className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white transition-colors hover:border-yellow-300"
+                  title="Rate this combo"
                 >
-                  <GlobeIcon />
+                  <HalfStarIcon />
                 </button>
               )}
             </div>
@@ -167,11 +205,6 @@ export function ComboCard({ combo, showActions = false }: Props) {
             <Button variant="outline" size="sm" asChild>
               <Link to={`/combos/${combo.id}`}>View details</Link>
             </Button>
-            {!isOwner && currentUserId && (
-              <Button variant="outline" size="sm" onClick={() => setRatingOpen(true)}>
-                Rate
-              </Button>
-            )}
             {favError && <p className="w-full text-xs text-red-600">{favError}</p>}
           </div>
         )}

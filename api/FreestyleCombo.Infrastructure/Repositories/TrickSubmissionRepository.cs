@@ -20,6 +20,9 @@ public class TrickSubmissionRepository : ITrickSubmissionRepository
     public async Task<TrickSubmission?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
         await _db.TrickSubmissions.FindAsync([id], ct);
 
+    public async Task<int> GetPendingCountAsync(CancellationToken ct = default) =>
+        await _db.TrickSubmissions.CountAsync(s => s.Status == SubmissionStatus.Pending, ct);
+
     public async Task<List<TrickSubmission>> GetPendingAsync(CancellationToken ct = default) =>
         await _db.TrickSubmissions
             .Where(s => s.Status == SubmissionStatus.Pending)

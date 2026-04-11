@@ -243,3 +243,8 @@ export const preferencesApi = {
   upsert: (pref: Omit<UserPreference, 'id' | 'userId'>) =>
     api.put<UserPreference>('/preferences', pref),
 }
+
+
+export const adminApi = {
+  getPendingCount: () => api.get<{ total: number }>('/admin/pending-count'),
+}

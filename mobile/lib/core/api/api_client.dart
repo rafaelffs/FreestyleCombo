@@ -425,4 +425,13 @@ class ApiClient {
       throw Exception(_extractMessage(e));
     }
   }
+
+  Future<int> getPendingApprovalsCount() async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>('/admin/pending-count');
+      return (res.data!['total'] as num).toInt();
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
 }

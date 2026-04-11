@@ -77,6 +77,9 @@ public class ComboRepository : IComboRepository
         return await query.ToListAsync(ct);
     }
 
+    public async Task<int> GetPendingReviewCountAsync(CancellationToken ct = default) =>
+        await _db.Combos.CountAsync(c => c.Visibility == ComboVisibility.PendingReview, ct);
+
     public async Task<List<Combo>> GetPendingReviewAsync(CancellationToken ct = default) =>
         await _db.Combos
             .Include(c => c.ComboTricks).ThenInclude(ct2 => ct2.Trick)

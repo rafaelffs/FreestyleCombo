@@ -1,12 +1,12 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { combosApi, tricksApi, extractError, type ComboDto, type GenerateComboOverrides, type TrickDto, type BuildComboTrickItem } from '@/lib/api'
+import { combosApi, tricksApi, extractError, type GenerateComboOverrides, type TrickDto, type BuildComboTrickItem } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ComboCard } from './ComboCard'
 
 function diffColor(d: number): string {
   if (d <= 4) return 'bg-green-100 text-green-800'
@@ -31,6 +31,7 @@ interface SlotItem extends BuildComboTrickItem {
 }
 
 export function CreateComboPage() {
+  const navigate = useNavigate()
   const [mode, setMode] = useState<'choose' | 'generate' | 'build'>('choose')
 
   // Shared name field
@@ -45,7 +46,6 @@ export function CreateComboPage() {
   const [search, setSearch] = useState('')
   const [slots, setSlots] = useState<SlotItem[]>([])
   const [isPublic, setIsPublic] = useState(false)
-  const [buildResult, setBuildResult] = useState<ComboDto | null>(null)
   const [buildError, setBuildError] = useState<string | null>(null)
 
   const { data: tricks = [], isLoading: tricksLoading } = useQuery({
@@ -80,7 +80,7 @@ export function CreateComboPage() {
         isPublic,
         name || undefined,
       ),
-    onSuccess: ({ data }) => { setBuildResult(data); setBuildError(null) },
+    onSuccess: ({ data }) => { navigate(`/combos/${data.id}`) },
     onError: (err) => setBuildError(extractError(err, 'Build failed')),
   })
 
@@ -339,15 +339,6 @@ export function CreateComboPage() {
         </Card>
       </div>
 
-      {buildResult && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold">Saved!</h2>
-            <Badge variant="secondary">{buildResult.trickCount} tricks</Badge>
-          </div>
-          <ComboCard combo={buildResult} showActions />
-        </div>
-      )}
     </div>
   )
 }

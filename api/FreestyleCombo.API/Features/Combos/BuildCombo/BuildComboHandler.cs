@@ -26,6 +26,7 @@ public class BuildComboHandler : IRequestHandler<BuildComboCommand, GenerateComb
     public async Task<GenerateComboResponse> Handle(BuildComboCommand request, CancellationToken cancellationToken)
     {
         var userId = Guid.Parse(_http.HttpContext!.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var isAdmin = _http.HttpContext.User.IsInRole("Admin");
         var user = await _userManager.FindByIdAsync(userId.ToString());
 
         // Load all referenced tricks
@@ -61,7 +62,9 @@ public class BuildComboHandler : IRequestHandler<BuildComboCommand, GenerateComb
             Name = string.IsNullOrWhiteSpace(request.Name) ? null : request.Name.Trim(),
             AverageDifficulty = avgDifficulty,
             TrickCount = ordered.Count,
-            Visibility = request.IsPublic ? ComboVisibility.PendingReview : ComboVisibility.Private,
+            Visibility = request.IsPublic
+                ? (isAdmin ? ComboVisibility.Public : ComboVisibility.PendingReview)
+                : ComboVisibility.Private,
             CreatedAt = DateTime.UtcNow,
             AiDescription = null,
             ComboTricks = ordered.Select(t => new ComboTrick

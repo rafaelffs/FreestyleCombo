@@ -29,6 +29,11 @@ public class ComboRatingRepository : IComboRatingRepository
         await _db.SaveChangesAsync(ct);
     }
 
+    public async Task UpdateAsync(ComboRating rating, CancellationToken ct = default)
+    {
+        await _db.SaveChangesAsync(ct);
+    }
+
     public async Task<List<ComboRating>> GetByComboAsync(Guid comboId, CancellationToken ct = default) =>
         await _db.ComboRatings.Where(r => r.ComboId == comboId).ToListAsync(ct);
 }

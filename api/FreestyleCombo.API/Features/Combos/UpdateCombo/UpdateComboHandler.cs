@@ -84,8 +84,8 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
             combo.AverageDifficulty = Math.Round(ordered.Average(t => (double)trickMap[t.TrickId].Difficulty), 1);
         }
 
-        // If the combo was public, it must go back through admin review
-        if (combo.Visibility == ComboVisibility.Public)
+        // If the combo was public, it must go back through admin review — unless the editor is an admin
+        if (combo.Visibility == ComboVisibility.Public && !isAdmin)
             combo.Visibility = ComboVisibility.PendingReview;
 
         await _comboRepo.UpdateAsync(combo, cancellationToken);

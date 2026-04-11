@@ -24,26 +24,32 @@ export function AdminSubmissionsPage() {
     queryFn: () => combosApi.getPendingReview().then((r) => r.data),
   })
 
+  const invalidateAll = () => {
+    void queryClient.invalidateQueries({ queryKey: ['pending-submissions'] })
+    void queryClient.invalidateQueries({ queryKey: ['pending-combo-reviews'] })
+    void queryClient.invalidateQueries({ queryKey: ['pending-count'] })
+  }
+
   const approveMutation = useMutation({
     mutationFn: (id: string) => trickSubmissionsApi.approve(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pending-submissions'] }),
+    onSuccess: invalidateAll,
   })
 
   const rejectMutation = useMutation({
     mutationFn: (id: string) => trickSubmissionsApi.reject(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pending-submissions'] }),
+    onSuccess: invalidateAll,
   })
 
   const approveComboMutation = useMutation({
     mutationFn: (id: string) => { setProcessingComboId(id); return combosApi.approveVisibility(id) },
     onSettled: () => setProcessingComboId(null),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pending-combo-reviews'] }),
+    onSuccess: invalidateAll,
   })
 
   const rejectComboMutation = useMutation({
     mutationFn: (id: string) => { setProcessingComboId(id); return combosApi.rejectVisibility(id) },
     onSettled: () => setProcessingComboId(null),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pending-combo-reviews'] }),
+    onSuccess: invalidateAll,
   })
 
   return (

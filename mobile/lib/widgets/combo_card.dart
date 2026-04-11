@@ -52,14 +52,37 @@ class _ComboCardState extends State<ComboCard> {
     }
   }
 
-  Future<void> _submitForReview() async {
+  Future<void> _handleVisibilityTap(String visibilityState) async {
+    final isAdmin = AuthService.instance.isAdmin;
+    final isOwner = widget.combo.ownerId == AuthService.instance.userId;
+
+    String title;
+    String content;
+    bool setPublic;
+
+    if (visibilityState == 'private') {
+      title = isAdmin ? 'Set public?' : 'Submit for review?';
+      content = isAdmin
+          ? 'This combo will be set as public immediately.'
+          : 'This will send the combo for admin approval.';
+      setPublic = true;
+    } else if (visibilityState == 'pending' && isOwner) {
+      title = 'Cancel review request?';
+      content = 'The combo will return to private.';
+      setPublic = false;
+    } else if (visibilityState == 'public' && isAdmin) {
+      title = 'Make private?';
+      content = 'This combo will be hidden from the public list.';
+      setPublic = false;
+    } else {
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Submit for review?'),
-        content: const Text(
-          'This will set the combo as public and send it for admin approval.',
-        ),
+        title: Text(title),
+        content: Text(content),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -76,7 +99,7 @@ class _ComboCardState extends State<ComboCard> {
 
     setState(() => _visibilityLoading = true);
     try {
-      await ApiClient.instance.setVisibility(widget.combo.id, true);
+      await ApiClient.instance.setVisibility(widget.combo.id, setPublic);
       widget.onRefresh?.call();
     } catch (e) {
       if (mounted) {
@@ -103,12 +126,18 @@ class _ComboCardState extends State<ComboCard> {
     final combo = widget.combo;
     final currentUserId = AuthService.instance.userId;
     final isOwner = combo.ownerId == currentUserId;
+    final isAdmin = AuthService.instance.isAdmin;
     final colorScheme = Theme.of(context).colorScheme;
     final visibilityState = combo.visibility == 'PendingReview'
-      ? 'pending'
-      : (combo.visibility == 'Public' || combo.isPublic == true)
-        ? 'public'
-        : 'private';
+        ? 'pending'
+        : (combo.visibility == 'Public' || combo.isPublic == true)
+            ? 'public'
+            : 'private';
+    final canActOnVisibility =
+        (isOwner && visibilityState == 'private') ||
+        (isOwner && visibilityState == 'pending') ||
+        (isAdmin && visibilityState == 'public');
+    final showGlobe = isOwner || isAdmin;
 
     final authed = AuthService.instance.userId != null;
 
@@ -154,25 +183,49 @@ class _ComboCardState extends State<ComboCard> {
                                   ),
                                 ),
                               ),
-                            if (isOwner) ...[
+                            if (widget.showActions && !isOwner && currentUserId != null) ...[
                               const SizedBox(width: 8),
                               Tooltip(
-                                message: visibilityState == 'pending'
-                                    ? 'Pending approval'
-                                    : visibilityState == 'public'
-                                        ? 'Public'
-                                        : 'Private',
+                                message: 'Rate this combo',
                                 child: SizedBox(
                                   width: 34,
                                   height: 34,
                                   child: OutlinedButton(
-                                    onPressed: _visibilityLoading
+                                    onPressed: _openRating,
+                                    style: OutlinedButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                      minimumSize: const Size(34, 34),
+                                      side: BorderSide(color: Colors.grey.shade300),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        Icon(Icons.star, color: Colors.grey.shade300, size: 18),
+                                        Icon(Icons.star_half, color: Colors.amber, size: 18),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                            if (showGlobe) ...[
+                              const SizedBox(width: 8),
+                              Tooltip(
+                                message: visibilityState == 'pending'
+                                    ? (isOwner ? 'Cancel review request' : 'Pending approval')
+                                    : visibilityState == 'public'
+                                        ? (isAdmin ? 'Make private' : 'Public')
+                                        : (isAdmin ? 'Set public' : 'Submit for review'),
+                                child: SizedBox(
+                                  width: 34,
+                                  height: 34,
+                                  child: OutlinedButton(
+                                    onPressed: (_visibilityLoading || !canActOnVisibility)
                                         ? null
-                                        : () {
-                                            if (visibilityState == 'private') {
-                                              _submitForReview();
-                                            }
-                                          },
+                                        : () => _handleVisibilityTap(visibilityState),
                                     style: OutlinedButton.styleFrom(
                                       padding: EdgeInsets.zero,
                                       minimumSize: const Size(34, 34),
@@ -275,24 +328,6 @@ class _ComboCardState extends State<ComboCard> {
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                ),
-              ],
-              if (widget.showActions) ...[
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    if (!isOwner && currentUserId != null)
-                      OutlinedButton.icon(
-                        onPressed: _openRating,
-                        icon: const Icon(Icons.star_outline, size: 16),
-                        label: const Text('Rate'),
-                        style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 4)),
-                      ),
-                  ],
                 ),
               ],
             ],

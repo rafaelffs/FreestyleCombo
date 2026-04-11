@@ -1,10 +1,41 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../core/api/api_client.dart';
 import '../core/auth/auth_service.dart';
 
-class MainShell extends StatelessWidget {
+class MainShell extends StatefulWidget {
   final Widget child;
   const MainShell({super.key, required this.child});
+
+  @override
+  State<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends State<MainShell> {
+  int _pendingCount = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCount();
+    _timer = Timer.periodic(const Duration(seconds: 60), (_) => _fetchCount());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchCount() async {
+    if (!AuthService.instance.isAdmin) return;
+    try {
+      final count = await ApiClient.instance.getPendingApprovalsCount();
+      if (mounted) setState(() => _pendingCount = count);
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +53,14 @@ class MainShell extends StatelessWidget {
       if (!authed)
         const NavigationDestination(icon: Icon(Icons.login), label: 'Login'),
       if (admin)
-        const NavigationDestination(icon: Icon(Icons.admin_panel_settings_outlined), label: 'Admin'),
+        NavigationDestination(
+          icon: Badge(
+            isLabelVisible: _pendingCount > 0,
+            label: Text('$_pendingCount'),
+            child: const Icon(Icons.admin_panel_settings_outlined),
+          ),
+          label: 'Admin',
+        ),
     ];
 
     int selectedIndex = 0;
@@ -41,7 +79,6 @@ class MainShell extends StatelessWidget {
         selectedIndex: selectedIndex,
         onDestinationSelected: (i) {
           if (!authed) {
-            // Unauthenticated: Combos(0), Tricks(1), Login(2)
             switch (i) {
               case 0: context.go('/combos');
               case 1: context.go('/tricks');

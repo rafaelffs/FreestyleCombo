@@ -57,18 +57,23 @@ public class RateComboHandlerTests
     }
 
     [Fact]
-    public async Task Handle_AlreadyRated_ThrowsInvalidOperationException()
+    public async Task Handle_AlreadyRated_UpdatesScore()
     {
+        var existingRatingId = Guid.NewGuid();
+        var existing = new ComboRating { Id = existingRatingId, ComboId = _comboId, RatedByUserId = _raterId, Score = 4, CreatedAt = DateTime.UtcNow };
+
         _comboRepo.Setup(r => r.GetByIdAsync(_comboId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(PublicCombo());
         _ratingRepo.Setup(r => r.GetByComboAndUserAsync(_comboId, _raterId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ComboRating { Id = Guid.NewGuid(), ComboId = _comboId, RatedByUserId = _raterId, Score = 4, CreatedAt = DateTime.UtcNow });
+            .ReturnsAsync(existing);
+        _ratingRepo.Setup(r => r.UpdateAsync(existing, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         var handler = CreateHandler();
-        Func<Task> act = () => handler.Handle(new RateComboCommand(_comboId, _raterId, 5), CancellationToken.None);
+        var result = await handler.Handle(new RateComboCommand(_comboId, _raterId, 5), CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("You have already rated this combo.");
+        result.Should().Be(existingRatingId);
+        existing.Score.Should().Be(5);
     }
 
     [Fact]

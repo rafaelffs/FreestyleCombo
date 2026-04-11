@@ -28,7 +28,11 @@ public class RateComboHandler : IRequestHandler<RateComboCommand, Guid>
 
         var existing = await _ratingRepo.GetByComboAndUserAsync(request.ComboId, request.UserId, cancellationToken);
         if (existing != null)
-            throw new InvalidOperationException("You have already rated this combo.");
+        {
+            existing.Score = request.Score;
+            await _ratingRepo.UpdateAsync(existing, cancellationToken);
+            return existing.Id;
+        }
 
         var rating = new ComboRating
         {
