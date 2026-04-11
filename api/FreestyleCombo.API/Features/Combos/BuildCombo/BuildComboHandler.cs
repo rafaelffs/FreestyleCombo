@@ -38,16 +38,13 @@ public class BuildComboHandler : IRequestHandler<BuildComboCommand, GenerateComb
         if (missing.Count > 0)
             throw new KeyNotFoundException($"Trick(s) not found: {string.Join(", ", missing)}");
 
-        // Validate NoTouch only on CrossOver tricks
-        foreach (var item in request.Tricks)
-        {
-            if (item.NoTouch && !trickMap[item.TrickId].CrossOver)
-                throw new InvalidOperationException(
-                    $"NoTouch can only be applied to CrossOver tricks. '{trickMap[item.TrickId].Name}' is not a CrossOver trick.");
-        }
+        // Strip NoTouch from non-CrossOver tricks (silently, consistent with UpdateComboHandler)
+        var normalized = request.Tricks
+            .Select(t => t with { NoTouch = t.NoTouch && trickMap[t.TrickId].CrossOver })
+            .ToList();
 
         // Order by position
-        var ordered = request.Tricks.OrderBy(t => t.Position).ToList();
+        var ordered = normalized.OrderBy(t => t.Position).ToList();
 
         var avgDifficulty = Math.Round(ordered.Average(t => (double)trickMap[t.TrickId].Difficulty), 1);
 

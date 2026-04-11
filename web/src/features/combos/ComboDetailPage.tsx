@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { combosApi, tricksApi, extractError, type BuildComboTrickItem } from '@/lib/api'
-import { getUserId } from '@/lib/auth'
+import { getUserId, isAdmin } from '@/lib/auth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -25,12 +25,14 @@ function diffColor(d: number): string {
 export function ComboDetailPage() {
   const { id } = useParams<{ id: string }>()
   const currentUserId = getUserId()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [ratingOpen, setRatingOpen] = useState(false)
   const [editing, setEditing] = useState(false)
 
   // Edit state
   const [editName, setEditName] = useState('')
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [editSlots, setEditSlots] = useState<SlotItem[]>([])
   const [trickSearch, setTrickSearch] = useState('')
   const [editError, setEditError] = useState<string | null>(null)
@@ -62,10 +64,20 @@ export function ComboDetailPage() {
     onError: (err) => setEditError(extractError(err, 'Update failed')),
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: () => combosApi.delete(id!),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['combos'] })
+      navigate('/combos')
+    },
+    onError: (err) => setDeleteError(extractError(err, 'Delete failed')),
+  })
+
   if (isLoading) return <p className="text-gray-500">Loading…</p>
   if (error || !combo) return <p className="text-red-600">Combo not found.</p>
 
   const isOwner = combo.ownerId === currentUserId
+  const canDelete = isOwner || isAdmin()
 
   function startEdit() {
     setEditName(combo!.name ?? '')
@@ -130,11 +142,6 @@ export function ComboDetailPage() {
               )}
             </div>
             <div className="flex flex-wrap gap-1">
-              {combo.isPublic ? (
-                <Badge>Public</Badge>
-              ) : (
-                <Badge variant="outline">Private</Badge>
-              )}
               {combo.averageRating != null && combo.averageRating > 0 && (
                 <Badge variant="secondary">
                   ★ {combo.averageRating.toFixed(1)} ({combo.totalRatings ?? combo.ratingCount ?? 0} ratings)
@@ -196,7 +203,22 @@ export function ComboDetailPage() {
                 Edit combo
               </Button>
             )}
+            {canDelete && (
+              <Button
+                variant="outline"
+                className="text-red-600 hover:text-red-700"
+                onClick={() => {
+                  if (confirm('Delete this combo? This action cannot be undone.')) {
+                    deleteMutation.mutate()
+                  }
+                }}
+                disabled={deleteMutation.isPending}
+              >
+                Delete combo
+              </Button>
+            )}
           </div>
+          {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
         </CardContent>
       </Card>
 

@@ -10,7 +10,6 @@ import { ComboDetailPage } from '@/features/combos/ComboDetailPage'
 import { PreferencesPage } from '@/features/preferences/PreferencesPage'
 import { TricksPage } from '@/features/tricks/TricksPage'
 import { AdminSubmissionsPage } from '@/features/tricks/AdminSubmissionsPage'
-import { AdminComboReviewsPage } from '@/features/combos/AdminComboReviewsPage'
 
 export default function App() {
   return (
@@ -32,8 +31,7 @@ export default function App() {
 
           {/* Admin only */}
           <Route element={<AdminRoute />}>
-            <Route path="/admin/submissions" element={<AdminSubmissionsPage />} />
-            <Route path="/admin/combo-reviews" element={<AdminComboReviewsPage />} />
+            <Route path="/admin/approvals" element={<AdminSubmissionsPage />} />
           </Route>
 
           {/* Redirects for old routes */}
@@ -42,6 +40,8 @@ export default function App() {
           <Route path="/generate" element={<Navigate to="/combos/create" replace />} />
           <Route path="/combos/build" element={<Navigate to="/combos/create" replace />} />
           <Route path="/tricks/submit" element={<Navigate to="/tricks" replace />} />
+          <Route path="/admin/submissions" element={<Navigate to="/admin/approvals" replace />} />
+          <Route path="/admin/combo-reviews" element={<Navigate to="/admin/approvals" replace />} />
 
           <Route path="/" element={<Navigate to="/combos" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />

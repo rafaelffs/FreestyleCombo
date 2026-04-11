@@ -23,11 +23,6 @@ export function Navbar() {
             <Link to="/combos" className="text-sm text-gray-600 hover:text-gray-900">
               Combos
             </Link>
-            {authed && (
-              <Link to="/combos/create" className="text-sm text-gray-600 hover:text-gray-900">
-                Create Combo
-              </Link>
-            )}
             <Link to="/tricks" className="text-sm text-gray-600 hover:text-gray-900">
               Tricks
             </Link>
@@ -37,14 +32,9 @@ export function Navbar() {
                   Preferences
                 </Link>
                 {admin && (
-                  <>
-                    <Link to="/admin/submissions" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
-                      Submissions
-                    </Link>
-                    <Link to="/admin/combo-reviews" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
-                      Combo Reviews
-                    </Link>
-                  </>
+                  <Link to="/admin/approvals" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
+                    Approvals
+                  </Link>
                 )}
               </>
             )}

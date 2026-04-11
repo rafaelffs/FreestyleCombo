@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { combosApi } from '@/lib/api'
 import { ComboCard } from './ComboCard'
@@ -9,7 +9,6 @@ import { isAuthenticated } from '@/lib/auth'
 export function CombosPage() {
   const authed = isAuthenticated()
   const [tab, setTab] = useState<'public' | 'mine'>(authed ? 'mine' : 'public')
-  const queryClient = useQueryClient()
 
   const publicQuery = useQuery({
     queryKey: ['combos', 'public'],
@@ -76,7 +75,6 @@ export function CombosPage() {
                 key={combo.id}
                 combo={combo}
                 showActions={authed}
-                onDeleted={() => void queryClient.invalidateQueries({ queryKey: ['combos', 'public'] })}
               />
             ))}
           </div>
@@ -102,7 +100,6 @@ export function CombosPage() {
                 key={combo.id}
                 combo={combo}
                 showActions
-                onDeleted={() => void queryClient.invalidateQueries({ queryKey: ['combos', 'mine'] })}
               />
             ))}
           </div>

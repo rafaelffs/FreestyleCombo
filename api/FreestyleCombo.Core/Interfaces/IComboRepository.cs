@@ -11,5 +11,6 @@ public interface IComboRepository
     Task<List<Combo>> GetPendingReviewAsync(CancellationToken ct = default);
     Task AddAsync(Combo combo, CancellationToken ct = default);
     Task UpdateAsync(Combo combo, CancellationToken ct = default);
+    Task ReplaceComboTricksAsync(Guid comboId, IEnumerable<ComboTrick> newTricks, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
 }

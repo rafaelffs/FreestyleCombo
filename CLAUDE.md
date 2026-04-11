@@ -184,12 +184,11 @@ web/src/
     ├── auth/           # LoginPage (email or username), RegisterPage
     ├── combos/         # CombosPage (tabbed: Public + Mine), CreateComboPage (mode: choose/generate/build),
     │                   # ComboDetailPage (with inline edit for owners), ComboCard, RateComboDialog,
-    │                   # AdminComboReviewsPage (/admin/combo-reviews)
     ├── preferences/    # PreferencesPage
-    └── tricks/         # TricksPage (/tricks, public, inline submit form), AdminSubmissionsPage
+    └── tricks/         # TricksPage (/tricks, public, inline submit form), AdminSubmissionsPage (/admin/approvals)
 ```
 
-Routes: `/combos` (public, tabbed), `/combos/create` (protected, mode selector), `/admin/combo-reviews` (admin only). `ComboCard` accepts `onDeleted` callback; delete button shown for owner or admin.
+Routes: `/combos` (public, tabbed), `/combos/create` (protected, mode selector), `/admin/approvals` (admin only). Old admin routes `/admin/submissions` and `/admin/combo-reviews` redirect to `/admin/approvals`. Create route remains accessible from the "Create new" button inside `/combos`.
 
 `CreateComboPage` modes: `'choose'` (initial), `'generate'` (calls `/preview` → populates build slots on success), `'build'` (manual slot picker + save). Name field is at the top, shared across all modes.
 
@@ -200,18 +199,16 @@ Routes: `/combos` (public, tabbed), `/combos/create` (protected, mode selector),
 |---|---|---|
 | Combos | `/combos` | Always |
 | Tricks | `/tricks` | Always |
-| Create Combo | `/combos/create` | Authenticated |
 | Preferences | `/preferences` | Authenticated |
-| Submissions | `/admin/submissions` | Admin only |
-| Combo Reviews | `/admin/combo-reviews` | Admin only |
+| Approvals | `/admin/approvals` | Admin only |
 
 ### ComboCard features
 - Shows `combo.name` (bold, above displayText) when present
 - Shows `combo.ownerUserName` (not ownerEmail)
-- Favourite toggle: heart icon only (no text label) — calls `addFavourite`/`removeFavourite`, invalidates `['combos']` query
-- Visibility badge: "Pending Review" (amber), "Public" (primary), "Private" (grey) — from `combo.visibility`
-- "Submit for review" button (owner only, hidden when `visibility === 'PendingReview'`)
-- Delete button for owner or admin
+- Favourite toggle: heart icon only (no text label), displayed in a top icon row above combo name — calls `addFavourite`/`removeFavourite`, invalidates `['combos']` query
+- Visibility is icon-based near actions (owner only): globe icon only (`🌐`) with neutral color for private (click opens confirm modal to submit as public), yellow for pending approval, blue for public
+- No Private/Public text badges on combo cards
+- Delete button removed from cards; deletion is available on `ComboDetailPage` only (owner or admin)
 - Weak-foot tricks shown as `(wf)` (not `wk`)
 
 ### Difficulty badge
@@ -270,12 +267,11 @@ mobile/lib/
 │   │                             # combo_detail_screen.dart (with inline edit for owners)
 │   ├── preferences/              # preferences_screen.dart
 │   ├── tricks/                   # tricks_screen.dart (/tricks, public, FAB → submit bottom sheet)
-│   └── admin/                    # admin_submissions_screen.dart (/admin/submissions),
-│                                 # admin_combo_reviews_screen.dart (/admin/combo-reviews)
+│   └── admin/                    # admin_submissions_screen.dart (/admin/approvals)
 ├── router/app_router.dart        # GoRouter config, auth + admin redirect; initialLocation: /combos
 └── widgets/
-    ├── main_shell.dart           # Bottom nav: Combos, Tricks, Create (auth), Settings (auth), Admin (admin)
-    ├── combo_card.dart           # name display, ownerUserName, fav toggle (icon only), delete for owner/admin
+    ├── main_shell.dart           # Bottom nav: Combos, Tricks, Settings (auth), Admin (admin)
+    ├── combo_card.dart           # name display, ownerUserName, fav toggle (icon only, top-left), visibility icon states
     └── rate_combo_dialog.dart    # Star rating AlertDialog
 ```
 
@@ -286,19 +282,16 @@ mobile/lib/
 |---|---|---|---|
 | 0 | Combos | `/combos` | No |
 | 1 | Tricks | `/tricks` | No |
-| 2 | Create | `/combos/create` | Yes |
-| 3 | Settings | `/preferences` | Yes |
-| 4 | Admin | `/admin/submissions` | Admin only |
-
-Admin → "Combo Reviews" reachable via AppBar icon in `admin_submissions_screen.dart` (navigates to `/admin/combo-reviews`).
+| 2 | Settings | `/preferences` | Yes |
+| 3 | Admin | `/admin/approvals` | Admin only |
 
 ### combo_card.dart features
 - Shows `combo.name` (bold) above `displayText` when present
 - Shows `combo.ownerUserName` (not ownerEmail)
-- Favourite toggle: `IconButton` with `Icons.favorite` / `Icons.favorite_border` (no text label) — calls `addFavourite`/`removeFavourite`, triggers `onRefresh`
-- Visibility chip: "Pending Review" (amber), "Public" (primary), "Private" (grey) — from `combo.visibility`
-- "Submit for review" button (owner, hidden when `visibility == 'PendingReview'`)
-- Delete button for owner or admin
+- Favourite toggle: `Icons.favorite` / `Icons.favorite_border` (no text label), displayed in a top icon row above combo name — calls `addFavourite`/`removeFavourite`, triggers `onRefresh`
+- Visibility is icon-based near actions (owner only): `Icons.public` only with neutral color for private (click opens confirm modal to submit as public), yellow for pending approval, blue for public
+- No Private/Public text chips on combo cards
+- Delete button removed from cards; deletion is available on `combo_detail_screen.dart` only (owner or admin)
 - Weak-foot tricks shown as `(wf)`
 
 ### Difficulty chip (mobile)

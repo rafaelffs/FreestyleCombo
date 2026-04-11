@@ -94,8 +94,21 @@ public class ComboRepository : IComboRepository
 
     public async Task UpdateAsync(Combo combo, CancellationToken ct = default)
     {
-        _db.Combos.Update(combo);
+        // If the entity is already tracked (common in handlers that load then mutate),
+        // calling Update on the full graph can cause state conflicts with child collections.
+        var isTracked = _db.ChangeTracker.Entries<Combo>().Any(e => e.Entity.Id == combo.Id);
+        if (!isTracked)
+            _db.Combos.Update(combo);
+
         await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task ReplaceComboTricksAsync(Guid comboId, IEnumerable<ComboTrick> newTricks, CancellationToken ct = default)
+    {
+        var existing = await _db.ComboTricks.Where(t => t.ComboId == comboId).ToListAsync(ct);
+        _db.ComboTricks.RemoveRange(existing);
+        _db.ComboTricks.AddRange(newTricks);
+        // SaveChanges is deferred — caller must invoke UpdateAsync to persist atomically.
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)

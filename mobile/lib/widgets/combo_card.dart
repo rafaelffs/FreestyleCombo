@@ -9,14 +9,12 @@ class ComboCard extends StatefulWidget {
   final ComboDto combo;
   final bool showActions;
   final VoidCallback? onRefresh;
-  final VoidCallback? onDeleted;
 
   const ComboCard({
     super.key,
     required this.combo,
     this.showActions = false,
     this.onRefresh,
-    this.onDeleted,
   });
 
   @override
@@ -25,7 +23,6 @@ class ComboCard extends StatefulWidget {
 
 class _ComboCardState extends State<ComboCard> {
   bool _visibilityLoading = false;
-  bool _deleteLoading = false;
   bool _favLoading = false;
   late bool _favoured;
 
@@ -55,11 +52,31 @@ class _ComboCardState extends State<ComboCard> {
     }
   }
 
-  Future<void> _toggleVisibility() async {
+  Future<void> _submitForReview() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Submit for review?'),
+        content: const Text(
+          'This will set the combo as public and send it for admin approval.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
     setState(() => _visibilityLoading = true);
     try {
-      await ApiClient.instance
-          .setVisibility(widget.combo.id, !(widget.combo.isPublic ?? false));
+      await ApiClient.instance.setVisibility(widget.combo.id, true);
       widget.onRefresh?.call();
     } catch (e) {
       if (mounted) {
@@ -68,36 +85,6 @@ class _ComboCardState extends State<ComboCard> {
       }
     } finally {
       if (mounted) setState(() => _visibilityLoading = false);
-    }
-  }
-
-  Future<void> _deleteCombo() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete combo?'),
-        content: const Text('This action cannot be undone.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    setState(() => _deleteLoading = true);
-    try {
-      await ApiClient.instance.deleteCombo(widget.combo.id);
-      widget.onDeleted?.call();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
-      }
-    } finally {
-      if (mounted) setState(() => _deleteLoading = false);
     }
   }
 
@@ -116,15 +103,19 @@ class _ComboCardState extends State<ComboCard> {
     final combo = widget.combo;
     final currentUserId = AuthService.instance.userId;
     final isOwner = combo.ownerId == currentUserId;
-    final canDelete = AuthService.instance.isAdmin || isOwner;
     final colorScheme = Theme.of(context).colorScheme;
+    final visibilityState = combo.visibility == 'PendingReview'
+      ? 'pending'
+      : (combo.visibility == 'Public' || combo.isPublic == true)
+        ? 'public'
+        : 'private';
 
     final authed = AuthService.instance.userId != null;
 
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.push('/combos/${combo.id}'),
+        onTap: () => context.push('/combos/${combo.id}').then((_) => widget.onRefresh?.call()),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -137,6 +128,75 @@ class _ComboCardState extends State<ComboCard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Row(
+                          children: [
+                            if (authed)
+                              Tooltip(
+                                message: _favoured ? 'Unfavourite' : 'Favourite',
+                                child: SizedBox(
+                                  width: 34,
+                                  height: 34,
+                                  child: OutlinedButton(
+                                    onPressed: _favLoading ? null : _toggleFavourite,
+                                    style: OutlinedButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                      minimumSize: const Size(34, 34),
+                                      side: BorderSide(color: Colors.grey.shade300),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      _favoured ? Icons.favorite : Icons.favorite_border,
+                                      color: _favoured ? Colors.pink : Colors.grey,
+                                      size: 18,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (isOwner) ...[
+                              const SizedBox(width: 8),
+                              Tooltip(
+                                message: visibilityState == 'pending'
+                                    ? 'Pending approval'
+                                    : visibilityState == 'public'
+                                        ? 'Public'
+                                        : 'Private',
+                                child: SizedBox(
+                                  width: 34,
+                                  height: 34,
+                                  child: OutlinedButton(
+                                    onPressed: _visibilityLoading
+                                        ? null
+                                        : () {
+                                            if (visibilityState == 'private') {
+                                              _submitForReview();
+                                            }
+                                          },
+                                    style: OutlinedButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                      minimumSize: const Size(34, 34),
+                                      side: BorderSide(color: Colors.grey.shade300),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      Icons.public,
+                                      size: 18,
+                                      color: visibilityState == 'pending'
+                                          ? Colors.amber.shade700
+                                          : visibilityState == 'public'
+                                              ? colorScheme.primary
+                                              : Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 8),
                         if (combo.name != null && combo.name!.isNotEmpty)
                           Text(
                             combo.name!,
@@ -163,16 +223,6 @@ class _ComboCardState extends State<ComboCard> {
                       _Chip(
                           label:
                               'Diff: ${combo.averageDifficulty.toStringAsFixed(1)}'),
-                      if (combo.visibility == 'PendingReview') ...[
-                        const SizedBox(height: 4),
-                        _Chip(label: 'Pending Review', color: Colors.amber.shade100),
-                      ] else if (combo.visibility == 'Public' || (combo.visibility == null && combo.isPublic == true)) ...[
-                        const SizedBox(height: 4),
-                        _Chip(label: 'Public', color: colorScheme.primaryContainer),
-                      ] else if (combo.visibility == 'Private' || (combo.visibility == null && combo.isPublic == false)) ...[
-                        const SizedBox(height: 4),
-                        const _Chip(label: 'Private'),
-                      ],
                       if (combo.averageRating > 0) ...[
                         const SizedBox(height: 4),
                         _Chip(
@@ -180,10 +230,6 @@ class _ComboCardState extends State<ComboCard> {
                               '★ ${combo.averageRating.toStringAsFixed(1)} (${combo.totalRatings})',
                           color: Colors.amber.shade100,
                         ),
-                      ],
-                      if (_favoured) ...[
-                        const SizedBox(height: 4),
-                        _Chip(label: '♥ Favourite', color: Colors.pink.shade50),
                       ],
                     ],
                   ),
@@ -237,17 +283,6 @@ class _ComboCardState extends State<ComboCard> {
                   spacing: 8,
                   runSpacing: 4,
                   children: [
-                    if (authed)
-                      IconButton(
-                        onPressed: _favLoading ? null : _toggleFavourite,
-                        icon: Icon(
-                          _favoured ? Icons.favorite : Icons.favorite_border,
-                          color: _favoured ? Colors.pink : Colors.grey,
-                        ),
-                        tooltip: _favoured ? 'Unfavourite' : 'Favourite',
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
                     if (!isOwner && currentUserId != null)
                       OutlinedButton.icon(
                         onPressed: _openRating,
@@ -257,34 +292,6 @@ class _ComboCardState extends State<ComboCard> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 4)),
                       ),
-                    if (isOwner && combo.visibility != 'PendingReview') ...[
-                      OutlinedButton.icon(
-                        onPressed: _visibilityLoading ? null : _toggleVisibility,
-                        icon: Icon(
-                          combo.isPublic == true
-                              ? Icons.lock_outline
-                              : Icons.public,
-                          size: 16,
-                        ),
-                        label: Text(
-                            combo.isPublic == true ? 'Make private' : 'Submit for review'),
-                        style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 4)),
-                      ),
-                    ],
-                    if (canDelete) ...[
-                      const SizedBox(width: 8),
-                      OutlinedButton.icon(
-                        onPressed: _deleteLoading ? null : _deleteCombo,
-                        icon: const Icon(Icons.delete_outline, size: 16),
-                        label: const Text('Delete'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ],

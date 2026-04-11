@@ -35,6 +35,37 @@ class ComboDetailScreen extends StatefulWidget {
 class _ComboDetailScreenState extends State<ComboDetailScreen> {
   late Future<ComboDto> _future;
 
+  Future<void> _deleteCombo(String comboId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete combo?'),
+        content: const Text('This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await ApiClient.instance.deleteCombo(comboId);
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -124,10 +155,6 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
                         label: Text(
                             'Avg diff: ${combo.averageDifficulty.toStringAsFixed(1)}')),
                     Chip(label: Text('${combo.trickCount} tricks')),
-                    if (combo.isPublic != null)
-                      Chip(
-                          label:
-                              Text(combo.isPublic! ? 'Public' : 'Private')),
                     if (combo.averageRating > 0)
                       Chip(
                           label: Text(
@@ -221,6 +248,15 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
                         onPressed: () => _openEdit(combo),
                         icon: const Icon(Icons.edit_outlined),
                         label: const Text('Edit combo'),
+                      ),
+                    if (isOwner || AuthService.instance.isAdmin)
+                      OutlinedButton.icon(
+                        onPressed: () => _deleteCombo(combo.id),
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('Delete combo'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                        ),
                       ),
                   ],
                 ),
