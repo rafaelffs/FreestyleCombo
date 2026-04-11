@@ -88,6 +88,8 @@ export interface ComboDto {
   ratingCount?: number
   totalRatings?: number
   isFavourited?: boolean
+  isCompleted?: boolean
+  completionCount?: number
 }
 
 export interface GenerateComboOverrides {
@@ -201,6 +203,8 @@ export const combosApi = {
     api.put<ComboDto>(`/combos/${id}`, data),
   addFavourite: (id: string) => api.post(`/combos/${id}/favourite`),
   removeFavourite: (id: string) => api.delete(`/combos/${id}/favourite`),
+  markCompleted: (id: string) => api.post(`/combos/${id}/complete`),
+  unmarkCompleted: (id: string) => api.delete(`/combos/${id}/complete`),
   getPendingReview: () => api.get<ComboDto[]>('/combos/pending-review'),
   approveVisibility: (id: string) => api.post(`/combos/${id}/approve-visibility`),
   rejectVisibility: (id: string) => api.post(`/combos/${id}/reject-visibility`),

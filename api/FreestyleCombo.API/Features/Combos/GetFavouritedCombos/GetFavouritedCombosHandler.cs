@@ -8,12 +8,19 @@ namespace FreestyleCombo.API.Features.Combos.GetFavouritedCombos;
 public class GetFavouritedCombosHandler : IRequestHandler<GetFavouritedCombosQuery, List<PublicComboDto>>
 {
     private readonly IComboRepository _repo;
+    private readonly IUserComboCompletionRepository _completionRepo;
 
-    public GetFavouritedCombosHandler(IComboRepository repo) => _repo = repo;
+    public GetFavouritedCombosHandler(IComboRepository repo, IUserComboCompletionRepository completionRepo)
+    {
+        _repo = repo;
+        _completionRepo = completionRepo;
+    }
 
     public async Task<List<PublicComboDto>> Handle(GetFavouritedCombosQuery request, CancellationToken cancellationToken)
     {
         var combos = await _repo.GetFavouritedByUserAsync(request.UserId, cancellationToken);
+        var completedIds = await _completionRepo.GetCompletedComboIdsAsync(request.UserId, cancellationToken);
+        var completionCounts = await _completionRepo.GetCompletionCountsAsync(combos.Select(c => c.Id), cancellationToken);
 
         return combos.Select(c => new PublicComboDto
         {
@@ -41,7 +48,9 @@ public class GetFavouritedCombosHandler : IRequestHandler<GetFavouritedCombosQue
             }).ToList(),
             AverageRating = c.Ratings.Any() ? Math.Round(c.Ratings.Average(r => r.Score), 2) : 0,
             TotalRatings = c.Ratings.Count,
-            IsFavourited = true
+            IsFavourited = true,
+            IsCompleted = completedIds.Contains(c.Id),
+            CompletionCount = completionCounts.GetValueOrDefault(c.Id, 0)
         }).ToList();
     }
 }

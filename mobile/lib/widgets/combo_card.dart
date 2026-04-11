@@ -27,12 +27,17 @@ class _ComboCardState extends State<ComboCard> {
   bool _visibilityLoading = false;
   bool _favLoading = false;
   late bool _favoured;
+  bool _completedLoading = false;
+  late bool _completed;
+  late int _completionCount;
   bool _expanded = false;
 
   @override
   void initState() {
     super.initState();
     _favoured = widget.combo.isFavourited;
+    _completed = widget.combo.isCompleted;
+    _completionCount = widget.combo.completionCount;
   }
 
   Future<void> _toggleFavourite() async {
@@ -52,6 +57,32 @@ class _ComboCardState extends State<ComboCard> {
       }
     } finally {
       if (mounted) setState(() => _favLoading = false);
+    }
+  }
+
+  Future<void> _toggleCompleted() async {
+    setState(() => _completedLoading = true);
+    try {
+      if (_completed) {
+        await ApiClient.instance.unmarkCompleted(widget.combo.id);
+        setState(() {
+          _completed = false;
+          _completionCount = (_completionCount - 1).clamp(0, 999999);
+        });
+      } else {
+        await ApiClient.instance.markCompleted(widget.combo.id);
+        setState(() {
+          _completed = true;
+          _completionCount = _completionCount + 1;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) setState(() => _completedLoading = false);
     }
   }
 
@@ -213,6 +244,45 @@ class _ComboCardState extends State<ComboCard> {
                                   ),
                                 ),
                               ),
+                            if (authed) ...[
+                              const SizedBox(width: 8),
+                              Tooltip(
+                                message: _completed ? 'Mark as not done' : 'Mark as done',
+                                child: OutlinedButton(
+                                  onPressed: _completedLoading ? null : _toggleCompleted,
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    minimumSize: const Size(34, 34),
+                                    side: BorderSide(
+                                      color: _completed ? Colors.green.shade200 : Colors.grey.shade300,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        _completed ? Icons.check_circle : Icons.check_circle_outline,
+                                        color: _completed ? Colors.green : Colors.grey,
+                                        size: 18,
+                                      ),
+                                      if (_completionCount > 0) ...[
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '$_completionCount',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: _completed ? Colors.green : Colors.grey,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                             if (widget.showActions && !isOwner && currentUserId != null) ...[
                               const SizedBox(width: 8),
                               Tooltip(

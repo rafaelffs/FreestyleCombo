@@ -111,6 +111,8 @@ class ComboDto {
   final double averageRating;
   final int totalRatings;
   final bool isFavourited;
+  final bool isCompleted;
+  final int completionCount;
 
   const ComboDto({
     required this.id,
@@ -128,6 +130,8 @@ class ComboDto {
     required this.averageRating,
     required this.totalRatings,
     this.isFavourited = false,
+    this.isCompleted = false,
+    this.completionCount = 0,
   });
 
   factory ComboDto.fromJson(Map<String, dynamic> j) => ComboDto(
@@ -148,6 +152,8 @@ class ComboDto {
         averageRating: (j['averageRating'] as num? ?? 0).toDouble(),
         totalRatings: j['totalRatings'] as int? ?? 0,
         isFavourited: j['isFavourited'] as bool? ?? false,
+        isCompleted: j['isCompleted'] as bool? ?? false,
+        completionCount: j['completionCount'] as int? ?? 0,
       );
 }
 

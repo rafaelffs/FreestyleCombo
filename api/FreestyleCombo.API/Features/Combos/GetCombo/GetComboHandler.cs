@@ -8,11 +8,13 @@ public class GetComboHandler : IRequestHandler<GetComboQuery, ComboDetailDto>
 {
     private readonly IComboRepository _repo;
     private readonly IUserFavouriteRepository _favRepo;
+    private readonly IUserComboCompletionRepository _completionRepo;
 
-    public GetComboHandler(IComboRepository repo, IUserFavouriteRepository favRepo)
+    public GetComboHandler(IComboRepository repo, IUserFavouriteRepository favRepo, IUserComboCompletionRepository completionRepo)
     {
         _repo = repo;
         _favRepo = favRepo;
+        _completionRepo = completionRepo;
     }
 
     public async Task<ComboDetailDto> Handle(GetComboQuery request, CancellationToken cancellationToken)
@@ -25,6 +27,12 @@ public class GetComboHandler : IRequestHandler<GetComboQuery, ComboDetailDto>
 
         var isFavourited = request.RequestingUserId.HasValue
             && await _favRepo.ExistsAsync(request.RequestingUserId.Value, combo.Id, cancellationToken);
+
+        var isCompleted = request.RequestingUserId.HasValue
+            && await _completionRepo.ExistsAsync(request.RequestingUserId.Value, combo.Id, cancellationToken);
+
+        var counts = await _completionRepo.GetCompletionCountsAsync([combo.Id], cancellationToken);
+        var completionCount = counts.GetValueOrDefault(combo.Id, 0);
 
         var displayText = string.Join(" ", combo.ComboTricks
             .OrderBy(ct => ct.Position)
@@ -48,6 +56,8 @@ public class GetComboHandler : IRequestHandler<GetComboQuery, ComboDetailDto>
             AverageRating = Math.Round(avgRating, 2),
             TotalRatings = combo.Ratings.Count,
             IsFavourited = isFavourited,
+            IsCompleted = isCompleted,
+            CompletionCount = completionCount,
             Tricks = combo.ComboTricks.OrderBy(ct => ct.Position).Select(ct => new ComboTrickDto
             {
                 TrickId = ct.TrickId,

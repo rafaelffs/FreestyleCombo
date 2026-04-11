@@ -9,4 +9,5 @@ public class AppUser : IdentityUser<Guid>
     public ICollection<UserPreference> Preferences { get; set; } = [];
     public ICollection<TrickSubmission> TrickSubmissions { get; set; } = [];
     public ICollection<UserFavouriteCombo> FavouriteCombos { get; set; } = [];
+    public ICollection<UserComboCompletion> CompletedCombos { get; set; } = [];
 }

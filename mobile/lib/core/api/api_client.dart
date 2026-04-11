@@ -259,6 +259,22 @@ class ApiClient {
     }
   }
 
+  Future<void> markCompleted(String id) async {
+    try {
+      await _dio.post('/combos/$id/complete');
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> unmarkCompleted(String id) async {
+    try {
+      await _dio.delete('/combos/$id/complete');
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
   Future<void> deleteCombo(String id) async {
     try {
       await _dio.delete('/combos/$id');

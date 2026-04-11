@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using FreestyleCombo.API.Features.Combos.AddFavourite;
 using FreestyleCombo.API.Features.Combos.GetFavouritedCombos;
+using FreestyleCombo.API.Features.Combos.MarkCompleted;
+using FreestyleCombo.API.Features.Combos.UnmarkCompleted;
 using FreestyleCombo.API.Features.Combos.ApproveComboVisibility;
 using FreestyleCombo.API.Features.Combos.BuildCombo;
 using FreestyleCombo.API.Features.Combos.DeleteCombo;
@@ -179,6 +181,26 @@ public class CombosController : ControllerBase
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         await _mediator.Send(new RemoveFavouriteCommand(id, userId), ct);
+        return Ok();
+    }
+
+    [HttpPost("{id:guid}/complete")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> MarkComplete(Guid id, CancellationToken ct)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        await _mediator.Send(new MarkCompletedCommand(id, userId), ct);
+        return Ok();
+    }
+
+    [HttpDelete("{id:guid}/complete")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> UnmarkComplete(Guid id, CancellationToken ct)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        await _mediator.Send(new UnmarkCompletedCommand(id, userId), ct);
         return Ok();
     }
 }

@@ -2,17 +2,20 @@ using FreestyleCombo.API.Features.Combos.GenerateCombo;
 using FreestyleCombo.Core.Interfaces;
 using MediatR;
 
+
 namespace FreestyleCombo.API.Features.Combos.GetPublicCombos;
 
 public class GetPublicCombosHandler : IRequestHandler<GetPublicCombosQuery, PagedResult<PublicComboDto>>
 {
     private readonly IComboRepository _repo;
     private readonly IUserFavouriteRepository _favRepo;
+    private readonly IUserComboCompletionRepository _completionRepo;
 
-    public GetPublicCombosHandler(IComboRepository repo, IUserFavouriteRepository favRepo)
+    public GetPublicCombosHandler(IComboRepository repo, IUserFavouriteRepository favRepo, IUserComboCompletionRepository completionRepo)
     {
         _repo = repo;
         _favRepo = favRepo;
+        _completionRepo = completionRepo;
     }
 
     public async Task<PagedResult<PublicComboDto>> Handle(GetPublicCombosQuery request, CancellationToken cancellationToken)
@@ -22,6 +25,12 @@ public class GetPublicCombosHandler : IRequestHandler<GetPublicCombosQuery, Page
         var favIds = request.RequestingUserId.HasValue
             ? await _favRepo.GetFavouriteComboIdsAsync(request.RequestingUserId.Value, cancellationToken)
             : [];
+
+        var comboIds = items.Select(c => c.Id);
+        var completedIds = request.RequestingUserId.HasValue
+            ? await _completionRepo.GetCompletedComboIdsAsync(request.RequestingUserId.Value, cancellationToken)
+            : [];
+        var completionCounts = await _completionRepo.GetCompletionCountsAsync(comboIds, cancellationToken);
 
         return new PagedResult<PublicComboDto>
         {
@@ -54,7 +63,9 @@ public class GetPublicCombosHandler : IRequestHandler<GetPublicCombosQuery, Page
                 }).ToList(),
                 AverageRating = c.Ratings.Any() ? Math.Round(c.Ratings.Average(r => r.Score), 2) : 0,
                 TotalRatings = c.Ratings.Count,
-                IsFavourited = favIds.Contains(c.Id)
+                IsFavourited = favIds.Contains(c.Id),
+                IsCompleted = completedIds.Contains(c.Id),
+                CompletionCount = completionCounts.GetValueOrDefault(c.Id, 0)
             }).ToList()
         };
     }

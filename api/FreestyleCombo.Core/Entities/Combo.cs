@@ -18,4 +18,5 @@ public class Combo
     public ICollection<ComboTrick> ComboTricks { get; set; } = [];
     public ICollection<ComboRating> Ratings { get; set; } = [];
     public ICollection<UserFavouriteCombo> FavouritedBy { get; set; } = [];
+    public ICollection<UserComboCompletion> CompletedBy { get; set; } = [];
 }

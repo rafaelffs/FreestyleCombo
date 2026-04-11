@@ -23,4 +23,6 @@ public class MyComboDto
     public double AverageRating { get; set; }
     public int TotalRatings { get; set; }
     public bool IsFavourited { get; set; }
+    public bool IsCompleted { get; set; }
+    public int CompletionCount { get; set; }
 }

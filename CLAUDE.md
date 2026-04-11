@@ -33,14 +33,15 @@ FreestyleCombo/
 ### Entities (`FreestyleCombo.Core/Entities/`)
 | Entity | Key fields |
 |---|---|
-| `AppUser` | `IdentityUser<Guid>`, has `ICollection<Combo>`, `ICollection<ComboRating>`, `ICollection<UserPreference>`, `ICollection<TrickSubmission>`, `ICollection<UserFavouriteCombo>` |
+| `AppUser` | `IdentityUser<Guid>`, has `ICollection<Combo>`, `ICollection<ComboRating>`, `ICollection<UserPreference>`, `ICollection<TrickSubmission>`, `ICollection<UserFavouriteCombo>`, `ICollection<UserComboCompletion>` |
 | `Trick` | `Id, Name, Abbreviation, CrossOver, Knee, Revolution(decimal), Difficulty, CommonLevel` |
-| `Combo` | `Id, OwnerId, Name?, TotalDifficulty, TrickCount, Visibility(ComboVisibility), CreatedAt, AiDescription, ICollection<UserFavouriteCombo>` — `IsPublic` is a computed property (`=> Visibility == ComboVisibility.Public`), ignored by EF |
+| `Combo` | `Id, OwnerId, Name?, TotalDifficulty, TrickCount, Visibility(ComboVisibility), CreatedAt, AiDescription, ICollection<UserFavouriteCombo>`, `ICollection<UserComboCompletion>` — `IsPublic` is a computed property (`=> Visibility == ComboVisibility.Public`), ignored by EF |
 | `ComboTrick` | `Id, ComboId, TrickId, Position, StrongFoot, NoTouch` |
 | `ComboRating` | `Id, ComboId, RatedByUserId, Score, CreatedAt` |
 | `UserPreference` | `Id, UserId, Name(string max 100), MaxDifficulty, ComboLength, StrongFootPercentage, NoTouchPercentage, MaxConsecutiveNoTouch, IncludeCrossOver, IncludeKnee, AllowedRevolutions(List<decimal>)` — 1:many with AppUser (no unique index on UserId), `AllowedRevolutions` stored as `jsonb` |
 | `TrickSubmission` | `Id, Name, Abbreviation, CrossOver, Knee, Revolution, Difficulty, CommonLevel, Status(enum), SubmittedAt, SubmittedById, ReviewedAt?, ReviewedById?` |
 | `UserFavouriteCombo` | Composite PK `(UserId, ComboId)`, `CreatedAt` — cascade deletes on both FK |
+| `UserComboCompletion` | Composite PK `(UserId, ComboId)`, `CreatedAt` — cascade deletes on both FK. Tracks which users have marked a combo as done (toggle). |
 
 `SubmissionStatus` enum: `Pending = 0`, `Approved = 1`, `Rejected = 2` — stored as int.  
 Approving a submission creates a real `Trick` from the submission fields.
@@ -53,6 +54,7 @@ Approving a submission creates a real `Trick` from the submission fields.
 - `IComboRatingRepository`, `ITrickSubmissionRepository`
 - `IUserPreferenceRepository` — `GetAllByUserIdAsync`, `GetByIdAsync`, `AddAsync`, `UpdateAsync`, `DeleteAsync`
 - `IUserFavouriteRepository` — `AddAsync`, `RemoveAsync`, `GetFavouriteComboIdsAsync`, `ExistsAsync`
+- `IUserComboCompletionRepository` — `AddAsync`, `RemoveAsync`, `GetCompletedComboIdsAsync`, `ExistsAsync`, `GetCompletionCountsAsync`
 - `IComboEnhancerService` — extracted for Moq mockability
 
 ### Tricks API (`/api/tricks`)
@@ -73,6 +75,8 @@ Trick delete throws `InvalidOperationException` ("This trick is used in X combo(
 | `DELETE` | `/api/combos/{id}` | User/Admin | Owner or Admin can delete; 403 otherwise |
 | `POST` | `/api/combos/{id}/favourite` | User | Add combo to favourites |
 | `DELETE` | `/api/combos/{id}/favourite` | User | Remove combo from favourites |
+| `POST` | `/api/combos/{id}/complete` | User | Mark combo as done (idempotent) |
+| `DELETE` | `/api/combos/{id}/complete` | User | Unmark combo as done (idempotent) |
 | `GET` | `/api/combos/pending-review` | Admin | List combos pending admin review |
 | `POST` | `/api/combos/{id}/approve-visibility` | Admin | Approve → sets `Visibility = Public` |
 | `POST` | `/api/combos/{id}/reject-visibility` | Admin | Reject → sets `Visibility = Private` |
@@ -85,7 +89,7 @@ Trick delete throws `InvalidOperationException` ("This trick is used in X combo(
 
 `UpdateComboCommand(Guid ComboId, string? Name, List<BuildComboTrickItem>? Tricks)` — updates Name and/or replaces trick list. Throws `UnauthorizedAccessException` (→ 403) if caller is not owner or admin.
 
-All combo DTOs (`GenerateComboResponse`, `PublicComboDto`, `MyComboDto`, `ComboDetailDto`) now include `Name?`, `OwnerUserName?`, `IsFavourited`, `Visibility` (string: "Private"/"PendingReview"/"Public"). Combos in `GET /mine` sort favourites first, then by `CreatedAt DESC`.
+All combo DTOs (`GenerateComboResponse`, `PublicComboDto`, `MyComboDto`, `ComboDetailDto`) now include `Name?`, `OwnerUserName?`, `IsFavourited`, `IsCompleted`, `CompletionCount`, `Visibility` (string: "Private"/"PendingReview"/"Public"). Combos in `GET /mine` sort favourites first, then by `CreatedAt DESC`.
 
 `GET /api/combos/public` filters by `Visibility == Public` (not `IsPublic`). `UpdatePreferencesHandler` now returns `PreferenceDto` (was `Ok()` with no body).
 

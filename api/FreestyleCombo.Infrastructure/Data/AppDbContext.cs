@@ -17,6 +17,7 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
     public DbSet<UserPreference> UserPreferences => Set<UserPreference>();
     public DbSet<TrickSubmission> TrickSubmissions => Set<TrickSubmission>();
     public DbSet<UserFavouriteCombo> UserFavouriteCombos => Set<UserFavouriteCombo>();
+    public DbSet<UserComboCompletion> UserComboCompletions => Set<UserComboCompletion>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -28,5 +29,6 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         builder.ApplyConfiguration(new UserPreferenceConfiguration());
         builder.ApplyConfiguration(new TrickSubmissionConfiguration());
         builder.ApplyConfiguration(new UserFavouriteComboConfiguration());
+        builder.ApplyConfiguration(new UserComboCompletionConfiguration());
     }
 }

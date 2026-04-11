@@ -9,17 +9,20 @@ public class GetMyCombosHandler : IRequestHandler<GetMyCombosQuery, PagedResult<
 {
     private readonly IComboRepository _repo;
     private readonly IUserFavouriteRepository _favRepo;
+    private readonly IUserComboCompletionRepository _completionRepo;
 
-    public GetMyCombosHandler(IComboRepository repo, IUserFavouriteRepository favRepo)
+    public GetMyCombosHandler(IComboRepository repo, IUserFavouriteRepository favRepo, IUserComboCompletionRepository completionRepo)
     {
         _repo = repo;
         _favRepo = favRepo;
+        _completionRepo = completionRepo;
     }
 
     public async Task<PagedResult<MyComboDto>> Handle(GetMyCombosQuery request, CancellationToken cancellationToken)
     {
         var allCombos = await _repo.GetAllByOwnerAsync(request.UserId, request.IsPublic, cancellationToken);
         var favIds = await _favRepo.GetFavouriteComboIdsAsync(request.UserId, cancellationToken);
+        var completedIds = await _completionRepo.GetCompletedComboIdsAsync(request.UserId, cancellationToken);
 
         var sorted = allCombos
             .OrderByDescending(c => c.CreatedAt)
@@ -30,6 +33,8 @@ public class GetMyCombosHandler : IRequestHandler<GetMyCombosQuery, PagedResult<
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
             .ToList();
+
+        var completionCounts = await _completionRepo.GetCompletionCountsAsync(items.Select(c => c.Id), cancellationToken);
 
         return new PagedResult<MyComboDto>
         {
@@ -62,7 +67,9 @@ public class GetMyCombosHandler : IRequestHandler<GetMyCombosQuery, PagedResult<
                 }).ToList(),
                 AverageRating = c.Ratings.Any() ? Math.Round(c.Ratings.Average(r => r.Score), 2) : 0,
                 TotalRatings = c.Ratings.Count,
-                IsFavourited = favIds.Contains(c.Id)
+                IsFavourited = favIds.Contains(c.Id),
+                IsCompleted = completedIds.Contains(c.Id),
+                CompletionCount = completionCounts.GetValueOrDefault(c.Id, 0)
             }).ToList()
         };
     }

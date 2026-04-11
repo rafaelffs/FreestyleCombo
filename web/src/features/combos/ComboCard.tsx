@@ -49,6 +49,23 @@ function HeartIconOutline() {
   )
 }
 
+function CheckCircleIconFilled() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5l-4-4 1.41-1.41L10 13.67l6.59-6.59L18 8.5l-8 8z" />
+    </svg>
+  )
+}
+
+function CheckCircleIconOutline() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 function HalfStarIcon() {
   const star = 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'
   return (
@@ -75,6 +92,8 @@ export function ComboCard({ combo, showActions = false }: Props) {
   const [ratingOpen, setRatingOpen] = useState(false)
   const [favoured, setFavoured] = useState(combo.isFavourited ?? false)
   const [favError, setFavError] = useState<string | null>(null)
+  const [completed, setCompleted] = useState(combo.isCompleted ?? false)
+  const [completionCount, setCompletionCount] = useState(combo.completionCount ?? 0)
   const [visibilityModal, setVisibilityModal] = useState<VisibilityModalConfig | null>(null)
   const [expanded, setExpanded] = useState(false)
 
@@ -98,6 +117,15 @@ export function ComboCard({ combo, showActions = false }: Props) {
       void queryClient.invalidateQueries({ queryKey: ['combos'] })
     },
     onError: (err) => setFavError(extractError(err, 'Could not update favourite')),
+  })
+
+  const completeMutation = useMutation({
+    mutationFn: () => completed ? combosApi.unmarkCompleted(combo.id) : combosApi.markCompleted(combo.id),
+    onSuccess: () => {
+      setCompletionCount((c) => completed ? c - 1 : c + 1)
+      setCompleted((c) => !c)
+      void queryClient.invalidateQueries({ queryKey: ['combos'] })
+    },
   })
 
   const visibilityState = combo.visibility === 'PendingReview'
@@ -151,6 +179,24 @@ export function ComboCard({ combo, showActions = false }: Props) {
                 title={favoured ? 'Unfavourite' : 'Favourite'}
               >
                 {favoured ? <HeartIconFilled /> : <HeartIconOutline />}
+              </button>
+            )}
+            {authed && (
+              <button
+                type="button"
+                onClick={() => completeMutation.mutate()}
+                disabled={completeMutation.isPending}
+                className={`inline-flex h-8 items-center justify-center gap-1 rounded-md border bg-white px-2 transition-colors disabled:cursor-not-allowed ${
+                  completed
+                    ? 'border-green-200 text-green-600 hover:border-green-300'
+                    : 'border-gray-200 text-gray-400 hover:border-green-300 hover:text-green-500'
+                }`}
+                title={completed ? 'Mark as not done' : 'Mark as done'}
+              >
+                {completed ? <CheckCircleIconFilled /> : <CheckCircleIconOutline />}
+                {completionCount > 0 && (
+                  <span className="text-xs font-medium">{completionCount}</span>
+                )}
               </button>
             )}
             {(isOwner || adminUser) && (() => {
