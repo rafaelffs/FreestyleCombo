@@ -21,10 +21,8 @@ public class GetMyCombosHandler : IRequestHandler<GetMyCombosQuery, PagedResult<
         var allCombos = await _repo.GetAllByOwnerAsync(request.UserId, request.IsPublic, cancellationToken);
         var favIds = await _favRepo.GetFavouriteComboIdsAsync(request.UserId, cancellationToken);
 
-        // Sort: favourites first, then by CreatedAt DESC
         var sorted = allCombos
-            .OrderByDescending(c => favIds.Contains(c.Id))
-            .ThenByDescending(c => c.CreatedAt)
+            .OrderByDescending(c => c.CreatedAt)
             .ToList();
 
         var total = sorted.Count;

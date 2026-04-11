@@ -232,6 +232,17 @@ class ApiClient {
     }
   }
 
+  Future<List<ComboDto>> getFavourites() async {
+    try {
+      final res = await _dio.get<List<dynamic>>('/combos/favourites');
+      return (res.data as List<dynamic>)
+          .map((e) => ComboDto.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
   Future<void> addFavourite(String id) async {
     try {
       await _dio.post('/combos/$id/favourite');

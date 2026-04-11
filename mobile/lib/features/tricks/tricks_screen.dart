@@ -16,7 +16,6 @@ class _TricksScreenState extends State<TricksScreen> {
   String? _error;
   final _searchCtrl = TextEditingController();
   String _search = '';
-  bool _showSubmit = false;
 
   @override
   void initState() {
@@ -73,8 +72,22 @@ class _TricksScreenState extends State<TricksScreen> {
     }
   }
 
-  void _toggleSubmit() {
-    setState(() => _showSubmit = !_showSubmit);
+  void _openSubmit() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _InlineSubmitForm(
+        onSubmitted: () {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Trick submitted for review!')),
+          );
+        },
+      ),
+    );
   }
 
   void _openEdit(TrickDto trick) {
@@ -107,27 +120,18 @@ class _TricksScreenState extends State<TricksScreen> {
       appBar: AppBar(
         title: const Text('Tricks'),
         actions: [
-          if (authed)
-            TextButton.icon(
-              onPressed: _toggleSubmit,
-              icon: Icon(_showSubmit ? Icons.close : Icons.add),
-              label: Text(_showSubmit ? 'Cancel' : 'Submit Trick'),
-            ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
         ],
       ),
+      floatingActionButton: authed
+          ? FloatingActionButton.extended(
+              onPressed: _openSubmit,
+              icon: const Icon(Icons.add),
+              label: const Text('Submit Trick'),
+            )
+          : null,
       body: Column(
         children: [
-          // Inline submit form — appears above search bar
-          if (_showSubmit)
-            _InlineSubmitForm(
-              onSubmitted: () {
-                setState(() => _showSubmit = false);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Trick submitted for review!')),
-                );
-              },
-            ),
           // Search bar
           Padding(
             padding: const EdgeInsets.all(12),
@@ -302,79 +306,94 @@ class _InlineSubmitFormState extends State<_InlineSubmitForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Submit a Trick', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _nameCtrl,
-                    decoration: const InputDecoration(labelText: 'Name', hintText: 'e.g. Crossover', isDense: true),
-                    textCapitalization: TextCapitalization.words,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 120,
-                  child: TextField(
-                    controller: _abbrevCtrl,
-                    decoration: const InputDecoration(labelText: 'Abbreviation', hintText: 'e.g. CO', isDense: true),
-                    textCapitalization: TextCapitalization.characters,
-                  ),
-                ),
-              ],
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, 16, 24, 24 + bottomInset),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-            const SizedBox(height: 8),
-            Row(children: [
-              const Text('Revs', style: TextStyle(fontSize: 12)),
-              const SizedBox(width: 8),
-              Text(_revolution.toStringAsFixed(1), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+          ),
+          const SizedBox(height: 16),
+          const Text('Submit a Trick', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 16),
+          Row(
+            children: [
               Expanded(
-                child: Slider(
-                  value: _revolution, min: 0.5, max: 10, divisions: 19,
-                  onChanged: (v) => setState(() => _revolution = v),
+                child: TextField(
+                  controller: _nameCtrl,
+                  decoration: const InputDecoration(labelText: 'Name', hintText: 'e.g. Crossover'),
+                  textCapitalization: TextCapitalization.words,
                 ),
               ),
               const SizedBox(width: 12),
-              const Text('Diff', style: TextStyle(fontSize: 12)),
-              const SizedBox(width: 8),
-              Text('$_difficulty', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-              Expanded(
-                child: Slider(
-                  value: _difficulty.toDouble(), min: 1, max: 10, divisions: 9,
-                  onChanged: (v) => setState(() => _difficulty = v.round()),
+              SizedBox(
+                width: 120,
+                child: TextField(
+                  controller: _abbrevCtrl,
+                  decoration: const InputDecoration(labelText: 'Abbreviation', hintText: 'e.g. CO'),
+                  textCapitalization: TextCapitalization.characters,
                 ),
               ),
-            ]),
-            Row(
-              children: [
-                Switch(value: _crossOver, onChanged: (v) => setState(() => _crossOver = v)),
-                const Text('CO', style: TextStyle(fontSize: 12)),
-                const SizedBox(width: 8),
-                Switch(value: _knee, onChanged: (v) => setState(() => _knee = v)),
-                const Text('Knee', style: TextStyle(fontSize: 12)),
-                const Spacer(),
-                if (_error != null)
-                  Expanded(
-                    child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 11)),
-                  ),
-                FilledButton(
-                  onPressed: _loading ? null : _submit,
-                  child: _loading
-                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('Submit'),
-                ),
-              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(children: [
+            const Text('Revs', style: TextStyle(fontSize: 12)),
+            const SizedBox(width: 8),
+            Text(_revolution.toStringAsFixed(1), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            Expanded(
+              child: Slider(
+                value: _revolution, min: 0.5, max: 10, divisions: 19,
+                onChanged: (v) => setState(() => _revolution = v),
+              ),
             ),
+            const SizedBox(width: 8),
+            const Text('Diff', style: TextStyle(fontSize: 12)),
+            const SizedBox(width: 8),
+            Text('$_difficulty', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            Expanded(
+              child: Slider(
+                value: _difficulty.toDouble(), min: 1, max: 10, divisions: 9,
+                onChanged: (v) => setState(() => _difficulty = v.round()),
+              ),
+            ),
+          ]),
+          Row(
+            children: [
+              Switch(value: _crossOver, onChanged: (v) => setState(() => _crossOver = v)),
+              const Text('CO', style: TextStyle(fontSize: 12)),
+              const SizedBox(width: 16),
+              Switch(value: _knee, onChanged: (v) => setState(() => _knee = v)),
+              const Text('Knee', style: TextStyle(fontSize: 12)),
+            ],
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
           ],
-        ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: _loading ? null : _submit,
+            child: _loading
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Text('Submit'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
       ),
     );
   }

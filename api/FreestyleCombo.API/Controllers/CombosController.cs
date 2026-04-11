@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using FreestyleCombo.API.Features.Combos.AddFavourite;
+using FreestyleCombo.API.Features.Combos.GetFavouritedCombos;
 using FreestyleCombo.API.Features.Combos.ApproveComboVisibility;
 using FreestyleCombo.API.Features.Combos.BuildCombo;
 using FreestyleCombo.API.Features.Combos.DeleteCombo;
@@ -149,6 +150,16 @@ public class CombosController : ControllerBase
     {
         await _mediator.Send(new RejectComboVisibilityCommand(id), ct);
         return Ok();
+    }
+
+    [HttpGet("favourites")]
+    [Authorize]
+    [ProducesResponseType(typeof(List<PublicComboDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetFavourites(CancellationToken ct)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await _mediator.Send(new GetFavouritedCombosQuery(userId), ct);
+        return Ok(result);
     }
 
     [HttpPost("{id:guid}/favourite")]

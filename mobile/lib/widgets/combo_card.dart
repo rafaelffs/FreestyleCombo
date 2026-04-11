@@ -57,42 +57,69 @@ class _ComboCardState extends State<ComboCard> {
     final isOwner = widget.combo.ownerId == AuthService.instance.userId;
 
     String title;
-    String content;
+    String description;
+    String confirmLabel;
     bool setPublic;
 
     if (visibilityState == 'private') {
-      title = isAdmin ? 'Set public?' : 'Submit for review?';
-      content = isAdmin
-          ? 'This combo will be set as public immediately.'
-          : 'This will send the combo for admin approval.';
+      title = isAdmin ? 'Set combo public?' : 'Submit for review?';
+      description = isAdmin
+          ? 'This combo will be visible to everyone and moved to the Public tab.'
+          : 'This combo will be sent for admin approval. Once approved it will appear in the Public tab and be removed from your Mine list.';
+      confirmLabel = isAdmin ? 'Set public' : 'Submit';
       setPublic = true;
     } else if (visibilityState == 'pending' && isOwner) {
       title = 'Cancel review request?';
-      content = 'The combo will return to private.';
+      description = 'The combo will return to private and reappear in your Mine list.';
+      confirmLabel = 'Cancel request';
       setPublic = false;
     } else if (visibilityState == 'public' && isAdmin) {
-      title = 'Make private?';
-      content = 'This combo will be hidden from the public list.';
+      title = 'Make combo private?';
+      description = 'This combo will be hidden from the public list.';
+      confirmLabel = 'Make private';
       setPublic = false;
     } else {
       return;
     }
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(title),
-        content: Text(content),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Confirm'),
-          ),
-        ],
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(title,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 10),
+            Text(description, style: TextStyle(color: Colors.grey.shade700, fontSize: 14)),
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: () => Navigator.pop(_, true),
+              child: Text(confirmLabel),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: () => Navigator.pop(_, false),
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
       ),
     );
     if (confirmed != true) return;
@@ -257,15 +284,16 @@ class _ComboCardState extends State<ComboCard> {
                               fontWeight: FontWeight.w700,
                               fontSize: 14,
                             ),
+                          )
+                        else
+                          Text(
+                            combo.displayText,
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
                           ),
-                        Text(
-                          combo.displayText,
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                        ),
                       ],
                     ),
                   ),

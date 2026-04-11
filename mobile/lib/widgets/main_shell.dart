@@ -74,7 +74,7 @@ class _MainShellState extends State<MainShell> {
     }
 
     return Scaffold(
-      body: child,
+      body: widget.child,
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex,
         onDestinationSelected: (i) {

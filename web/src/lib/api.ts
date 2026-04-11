@@ -191,6 +191,7 @@ export const combosApi = {
     api.post<ComboDto>('/combos/build', { tricks, isPublic, name }),
   getPublic: () => api.get<PagedResult<ComboDto>>('/combos/public'),
   getMine: () => api.get<PagedResult<ComboDto>>('/combos/mine'),
+  getFavourites: () => api.get<ComboDto[]>('/combos/favourites'),
   getById: (id: string) => api.get<ComboDto>(`/combos/${id}`),
   setPublic: (id: string, isPublic: boolean) =>
     api.put(`/combos/${id}/visibility`, { isPublic }),

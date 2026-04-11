@@ -77,6 +77,15 @@ public class ComboRepository : IComboRepository
         return await query.ToListAsync(ct);
     }
 
+    public async Task<List<Combo>> GetFavouritedByUserAsync(Guid userId, CancellationToken ct = default) =>
+        await _db.Combos
+            .Include(c => c.ComboTricks).ThenInclude(ct2 => ct2.Trick)
+            .Include(c => c.Ratings)
+            .Include(c => c.Owner)
+            .Where(c => c.FavouritedBy.Any(f => f.UserId == userId))
+            .OrderByDescending(c => c.FavouritedBy.First(f => f.UserId == userId).CreatedAt)
+            .ToListAsync(ct);
+
     public async Task<int> GetPendingReviewCountAsync(CancellationToken ct = default) =>
         await _db.Combos.CountAsync(c => c.Visibility == ComboVisibility.PendingReview, ct);
 
