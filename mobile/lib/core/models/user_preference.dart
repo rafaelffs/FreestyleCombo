@@ -33,7 +33,10 @@ class UserPreference {
         maxConsecutiveNoTouch: j['maxConsecutiveNoTouch'] as int,
         includeCrossOver: j['includeCrossOver'] as bool,
         includeKnee: j['includeKnee'] as bool,
-        allowedRevolutions: ((j['allowedMotions'] as List<dynamic>?) ?? [])
+        allowedRevolutions:
+          ((j['allowedRevolutions'] as List<dynamic>?) ??
+              (j['allowedMotions'] as List<dynamic>?) ??
+              [])
             .map((m) => (m as num).toDouble())
             .toList(),
       );
@@ -57,6 +60,7 @@ class UserPreference {
     int? maxConsecutiveNoTouch,
     bool? includeCrossOver,
     bool? includeKnee,
+    List<double>? allowedRevolutions,
   }) =>
       UserPreference(
         id: id,
@@ -68,6 +72,6 @@ class UserPreference {
         maxConsecutiveNoTouch: maxConsecutiveNoTouch ?? this.maxConsecutiveNoTouch,
         includeCrossOver: includeCrossOver ?? this.includeCrossOver,
         includeKnee: includeKnee ?? this.includeKnee,
-        allowedRevolutions: allowedMotions,
+        allowedRevolutions: allowedRevolutions ?? this.allowedRevolutions,
       );
 }

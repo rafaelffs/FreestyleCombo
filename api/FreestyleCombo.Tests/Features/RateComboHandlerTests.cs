@@ -20,7 +20,7 @@ public class RateComboHandlerTests
     {
         Id = _comboId,
         OwnerId = _ownerId,
-        IsPublic = true,
+        Visibility = ComboVisibility.Public,
         TrickCount = 3,
         AverageDifficulty = 5,
         CreatedAt = DateTime.UtcNow,
@@ -87,7 +87,7 @@ public class RateComboHandlerTests
     public async Task Handle_PrivateCombo_ThrowsUnauthorizedAccessException()
     {
         var privateCombo = PublicCombo();
-        privateCombo.IsPublic = false;
+        privateCombo.Visibility = ComboVisibility.Private;
 
         _comboRepo.Setup(r => r.GetByIdAsync(_comboId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(privateCombo);

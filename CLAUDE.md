@@ -311,7 +311,7 @@ Admin → "Combo Reviews" reachable via AppBar icon in `admin_submissions_screen
 cd mobile
 
 # If no platform folders exist yet, scaffold them:
-flutter create . --org com.rafaelffs --project-name freestyle_combo --platforms android,ios
+flutter create . --org com.rafaelffs --project-name freestyle_combo --platforms android,ios,web
 
 flutter pub get
 flutter run
@@ -320,6 +320,7 @@ flutter run
 ### API base URL (edit `lib/core/api/api_client.dart`)
 - Android emulator: `http://10.0.2.2:5050/api` (default)
 - iOS simulator: `http://localhost:5050/api`
+- Web (Chrome): `http://localhost:5050/api`
 - Physical device: your machine's local IP, e.g. `http://192.168.1.x:5050/api`
 
 ### Key design decisions
