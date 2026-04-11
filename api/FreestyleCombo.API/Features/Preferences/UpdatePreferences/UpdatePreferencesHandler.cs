@@ -24,7 +24,7 @@ public class UpdatePreferencesHandler : IRequestHandler<UpdatePreferencesCommand
         if (request.MaxConsecutiveNoTouch.HasValue) pref.MaxConsecutiveNoTouch = request.MaxConsecutiveNoTouch.Value;
         if (request.IncludeCrossOver.HasValue) pref.IncludeCrossOver = request.IncludeCrossOver.Value;
         if (request.IncludeKnee.HasValue) pref.IncludeKnee = request.IncludeKnee.Value;
-        if (request.AllowedMotions != null) pref.AllowedMotions = request.AllowedMotions;
+        if (request.AllowedRevolutions != null) pref.AllowedRevolutions = request.AllowedRevolutions;
 
         if (isNew)
             await _repo.AddAsync(pref, cancellationToken);

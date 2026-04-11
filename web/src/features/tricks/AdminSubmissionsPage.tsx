@@ -57,8 +57,8 @@ export function AdminSubmissionsPage() {
             <CardContent>
               <dl className="grid grid-cols-3 gap-x-4 gap-y-1 text-sm sm:grid-cols-5 mb-4">
                 <div>
-                  <dt className="text-gray-500">Motion</dt>
-                  <dd className="font-medium">{s.motion}</dd>
+                  <dt className="text-gray-500">Revs</dt>
+                  <dd className="font-medium">{s.revolution}</dd>
                 </div>
                 <div>
                   <dt className="text-gray-500">Difficulty</dt>

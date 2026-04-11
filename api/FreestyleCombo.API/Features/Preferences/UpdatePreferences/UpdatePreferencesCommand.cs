@@ -11,5 +11,5 @@ public record UpdatePreferencesCommand(
     int? MaxConsecutiveNoTouch,
     bool? IncludeCrossOver,
     bool? IncludeKnee,
-    List<decimal>? AllowedMotions
+    List<decimal>? AllowedRevolutions
 ) : IRequest;

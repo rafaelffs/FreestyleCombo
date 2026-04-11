@@ -37,6 +37,7 @@ public class GetPublicCombosHandler : IRequestHandler<GetPublicCombosQuery, Page
                 AverageDifficulty = c.AverageDifficulty,
                 TrickCount = c.TrickCount,
                 IsPublic = c.IsPublic,
+                Visibility = c.Visibility.ToString(),
                 CreatedAt = c.CreatedAt,
                 DisplayText = string.Join(" ", c.ComboTricks.OrderBy(ct => ct.Position).Select(ct => ct.NoTouch ? $"{ct.Trick.Abbreviation}(nt)" : ct.Trick.Abbreviation)),
                 AiDescription = c.AiDescription,
@@ -49,7 +50,7 @@ public class GetPublicCombosHandler : IRequestHandler<GetPublicCombosQuery, Page
                     StrongFoot = ct.StrongFoot,
                     NoTouch = ct.NoTouch,
                     Difficulty = ct.Trick.Difficulty,
-                    Motion = ct.Trick.Motion
+                    Revolution = ct.Trick.Revolution
                 }).ToList(),
                 AverageRating = c.Ratings.Any() ? Math.Round(c.Ratings.Average(r => r.Score), 2) : 0,
                 TotalRatings = c.Ratings.Count,

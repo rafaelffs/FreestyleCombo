@@ -8,7 +8,7 @@ class UserPreference {
   final int maxConsecutiveNoTouch;
   final bool includeCrossOver;
   final bool includeKnee;
-  final List<double> allowedMotions;
+  final List<double> allowedRevolutions;
 
   const UserPreference({
     required this.id,
@@ -20,7 +20,7 @@ class UserPreference {
     required this.maxConsecutiveNoTouch,
     required this.includeCrossOver,
     required this.includeKnee,
-    required this.allowedMotions,
+    required this.allowedRevolutions,
   });
 
   factory UserPreference.fromJson(Map<String, dynamic> j) => UserPreference(
@@ -33,7 +33,7 @@ class UserPreference {
         maxConsecutiveNoTouch: j['maxConsecutiveNoTouch'] as int,
         includeCrossOver: j['includeCrossOver'] as bool,
         includeKnee: j['includeKnee'] as bool,
-        allowedMotions: ((j['allowedMotions'] as List<dynamic>?) ?? [])
+        allowedRevolutions: ((j['allowedMotions'] as List<dynamic>?) ?? [])
             .map((m) => (m as num).toDouble())
             .toList(),
       );
@@ -46,7 +46,7 @@ class UserPreference {
         'maxConsecutiveNoTouch': maxConsecutiveNoTouch,
         'includeCrossOver': includeCrossOver,
         'includeKnee': includeKnee,
-        'allowedMotions': allowedMotions,
+        'allowedRevolutions': allowedRevolutions,
       };
 
   UserPreference copyWith({
@@ -68,6 +68,6 @@ class UserPreference {
         maxConsecutiveNoTouch: maxConsecutiveNoTouch ?? this.maxConsecutiveNoTouch,
         includeCrossOver: includeCrossOver ?? this.includeCrossOver,
         includeKnee: includeKnee ?? this.includeKnee,
-        allowedMotions: allowedMotions,
+        allowedRevolutions: allowedMotions,
       );
 }

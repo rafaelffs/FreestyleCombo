@@ -163,14 +163,15 @@ class _ComboCardState extends State<ComboCard> {
                       _Chip(
                           label:
                               'Diff: ${combo.averageDifficulty.toStringAsFixed(1)}'),
-                      if (combo.isPublic != null) ...[
+                      if (combo.visibility == 'PendingReview') ...[
                         const SizedBox(height: 4),
-                        _Chip(
-                          label: combo.isPublic! ? 'Public' : 'Private',
-                          color: combo.isPublic!
-                              ? colorScheme.primaryContainer
-                              : null,
-                        ),
+                        _Chip(label: 'Pending Review', color: Colors.amber.shade100),
+                      ] else if (combo.visibility == 'Public' || (combo.visibility == null && combo.isPublic == true)) ...[
+                        const SizedBox(height: 4),
+                        _Chip(label: 'Public', color: colorScheme.primaryContainer),
+                      ] else if (combo.visibility == 'Private' || (combo.visibility == null && combo.isPublic == false)) ...[
+                        const SizedBox(height: 4),
+                        const _Chip(label: 'Private'),
                       ],
                       if (combo.averageRating > 0) ...[
                         const SizedBox(height: 4),
@@ -209,7 +210,7 @@ class _ComboCardState extends State<ComboCard> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        '${t.position}. ${t.abbreviation}${t.noTouch ? '(nt)' : ''}',
+                        '${t.position}. ${t.abbreviation}${t.noTouch ? '(nt)' : ''}${!t.strongFoot ? '(wf)' : ''}',
                         style: const TextStyle(fontSize: 11),
                       ),
                     );
@@ -237,18 +238,15 @@ class _ComboCardState extends State<ComboCard> {
                   runSpacing: 4,
                   children: [
                     if (authed)
-                      OutlinedButton.icon(
+                      IconButton(
                         onPressed: _favLoading ? null : _toggleFavourite,
                         icon: Icon(
                           _favoured ? Icons.favorite : Icons.favorite_border,
-                          size: 16,
-                          color: _favoured ? Colors.pink : null,
+                          color: _favoured ? Colors.pink : Colors.grey,
                         ),
-                        label: Text(_favoured ? 'Unfavourite' : 'Favourite'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: _favoured ? Colors.pink : null,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        ),
+                        tooltip: _favoured ? 'Unfavourite' : 'Favourite',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
                     if (!isOwner && currentUserId != null)
                       OutlinedButton.icon(
@@ -259,7 +257,7 @@ class _ComboCardState extends State<ComboCard> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 4)),
                       ),
-                    if (isOwner) ...[
+                    if (isOwner && combo.visibility != 'PendingReview') ...[
                       OutlinedButton.icon(
                         onPressed: _visibilityLoading ? null : _toggleVisibility,
                         icon: Icon(
@@ -269,7 +267,7 @@ class _ComboCardState extends State<ComboCard> {
                           size: 16,
                         ),
                         label: Text(
-                            combo.isPublic == true ? 'Make private' : 'Make public'),
+                            combo.isPublic == true ? 'Make private' : 'Submit for review'),
                         style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 4)),

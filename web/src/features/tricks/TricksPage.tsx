@@ -19,7 +19,7 @@ const SUBMIT_DEFAULTS: SubmitTrickRequest = {
   abbreviation: '',
   crossOver: false,
   knee: false,
-  motion: 1,
+  revolution: 1,
   difficulty: 1,
   commonLevel: 5,
 }
@@ -35,7 +35,7 @@ const EMPTY_FORM: Omit<TrickDto, 'id'> = {
   abbreviation: '',
   crossOver: false,
   knee: false,
-  motion: 1,
+  revolution: 1,
   difficulty: 1,
   commonLevel: 1,
 }
@@ -156,8 +156,8 @@ export function TricksPage() {
                   <Input value={submitForm.abbreviation} onChange={(e) => updateSubmit('abbreviation', e.target.value)} placeholder="e.g. CO" required />
                 </div>
                 <div className="space-y-1">
-                  <Label>Motion</Label>
-                  <Input type="number" min={0.5} max={10} step={0.5} value={submitForm.motion} onChange={(e) => updateSubmit('motion', Number(e.target.value))} />
+                  <Label>Revolution (revs)</Label>
+                  <Input type="number" min={0.5} max={10} step={0.5} value={submitForm.revolution} onChange={(e) => updateSubmit('revolution', Number(e.target.value))} />
                 </div>
                 <div className="space-y-1">
                   <Label>Difficulty (1–10)</Label>
@@ -255,7 +255,7 @@ export function TricksPage() {
               <tr>
                 <th className="px-4 py-3 text-left">Name</th>
                 <th className="px-4 py-3 text-left">Abbrev</th>
-                <th className="px-4 py-3 text-center">Motion</th>
+                <th className="px-4 py-3 text-center">Revs</th>
                 <th className="px-4 py-3 text-center">Diff</th>
                 <th className="px-4 py-3 text-center">CO</th>
                 <th className="px-4 py-3 text-center">Knee</th>
@@ -267,7 +267,7 @@ export function TricksPage() {
                 <tr key={trick.id} className="hover:bg-gray-50">
                   <td className="px-4 py-2 font-medium">{trick.name}</td>
                   <td className="px-4 py-2 font-mono text-xs text-gray-600">{trick.abbreviation}</td>
-                  <td className="px-4 py-2 text-center">{trick.motion}</td>
+                  <td className="px-4 py-2 text-center">{trick.revolution}</td>
                   <td className="px-4 py-2 text-center">
                     <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(trick.difficulty)}`}>
                       {trick.difficulty}
@@ -340,14 +340,14 @@ export function TricksPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label>Motion</Label>
+                <Label>Revolution (revs)</Label>
                 <Input
                   type="number"
                   min={0.5}
                   max={10}
                   step={0.5}
-                  value={editForm.motion}
-                  onChange={(e) => setEditForm((f) => ({ ...f, motion: Number(e.target.value) }))}
+                  value={editForm.revolution}
+                  onChange={(e) => setEditForm((f) => ({ ...f, revolution: Number(e.target.value) }))}
                   required
                 />
               </div>

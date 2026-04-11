@@ -4,7 +4,7 @@ class TrickSubmissionDto {
   final String abbreviation;
   final bool crossOver;
   final bool knee;
-  final double motion;
+  final double revolution;
   final int difficulty;
   final int commonLevel;
   final String status;
@@ -18,7 +18,7 @@ class TrickSubmissionDto {
     required this.abbreviation,
     required this.crossOver,
     required this.knee,
-    required this.motion,
+    required this.revolution,
     required this.difficulty,
     required this.commonLevel,
     required this.status,
@@ -34,7 +34,7 @@ class TrickSubmissionDto {
         abbreviation: json['abbreviation'] as String,
         crossOver: json['crossOver'] as bool,
         knee: json['knee'] as bool,
-        motion: (json['motion'] as num).toDouble(),
+        revolution: (json['revolution'] as num).toDouble(),
         difficulty: json['difficulty'] as int,
         commonLevel: json['commonLevel'] as int,
         status: json['status'] as String,

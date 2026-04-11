@@ -48,7 +48,7 @@ public class TricksController : ControllerBase
             request.Abbreviation,
             request.CrossOver,
             request.Knee,
-            request.Motion,
+            request.Revolution,
             request.Difficulty,
             request.CommonLevel), ct);
         return NoContent();
@@ -69,6 +69,6 @@ public record UpdateTrickRequest(
     string Abbreviation,
     bool CrossOver,
     bool Knee,
-    decimal Motion,
+    decimal Revolution,
     int Difficulty,
     int CommonLevel);

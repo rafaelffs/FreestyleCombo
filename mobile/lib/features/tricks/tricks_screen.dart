@@ -167,7 +167,7 @@ class _TricksScreenState extends State<TricksScreen> {
                       return ListTile(
                         title: Text(t.name),
                         subtitle: Text(
-                          '${t.abbreviation} · motion ${t.motion}',
+                          '${t.abbreviation} · ${t.revolution} revs',
                           style: const TextStyle(fontSize: 12),
                         ),
                         trailing: Row(
@@ -261,7 +261,7 @@ class _InlineSubmitForm extends StatefulWidget {
 class _InlineSubmitFormState extends State<_InlineSubmitForm> {
   final _nameCtrl = TextEditingController();
   final _abbrevCtrl = TextEditingController();
-  double _motion = 1;
+  double _revolution = 1;
   int _difficulty = 1;
   int _commonLevel = 5;
   bool _crossOver = false;
@@ -288,7 +288,7 @@ class _InlineSubmitFormState extends State<_InlineSubmitForm> {
         abbreviation: _abbrevCtrl.text.trim(),
         crossOver: _crossOver,
         knee: _knee,
-        motion: _motion,
+        revolution: _revolution,
         difficulty: _difficulty,
         commonLevel: _commonLevel,
       );
@@ -333,13 +333,13 @@ class _InlineSubmitFormState extends State<_InlineSubmitForm> {
             ),
             const SizedBox(height: 8),
             Row(children: [
-              const Text('Motion', style: TextStyle(fontSize: 12)),
+              const Text('Revs', style: TextStyle(fontSize: 12)),
               const SizedBox(width: 8),
-              Text(_motion.toStringAsFixed(1), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              Text(_revolution.toStringAsFixed(1), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
               Expanded(
                 child: Slider(
-                  value: _motion, min: 0.5, max: 10, divisions: 19,
-                  onChanged: (v) => setState(() => _motion = v),
+                  value: _revolution, min: 0.5, max: 10, divisions: 19,
+                  onChanged: (v) => setState(() => _revolution = v),
                 ),
               ),
               const SizedBox(width: 12),
@@ -393,7 +393,7 @@ class _EditTrickDialog extends StatefulWidget {
 class _EditTrickDialogState extends State<_EditTrickDialog> {
   late final _nameCtrl = TextEditingController(text: widget.trick.name);
   late final _abbrevCtrl = TextEditingController(text: widget.trick.abbreviation);
-  late double _motion = widget.trick.motion;
+  late double _revolution = widget.trick.revolution;
   late int _difficulty = widget.trick.difficulty;
   late int _commonLevel = widget.trick.commonLevel;
   late bool _crossOver = widget.trick.crossOver;
@@ -420,7 +420,7 @@ class _EditTrickDialogState extends State<_EditTrickDialog> {
         abbreviation: _abbrevCtrl.text.trim(),
         crossOver: _crossOver,
         knee: _knee,
-        motion: _motion,
+        revolution: _revolution,
         difficulty: _difficulty,
         commonLevel: _commonLevel,
       );
@@ -456,11 +456,11 @@ class _EditTrickDialogState extends State<_EditTrickDialog> {
               children: [
                 Expanded(
                   child: _NumField(
-                    label: 'Motion',
-                    value: _motion,
+                    label: 'Revs',
+                    value: _revolution,
                     min: 0.5,
                     max: 10,
-                    onChanged: (v) => setState(() => _motion = v),
+                    onChanged: (v) => setState(() => _revolution = v),
                   ),
                 ),
                 const SizedBox(width: 8),

@@ -18,7 +18,7 @@ public class UpdateTrickHandler : IRequestHandler<UpdateTrickCommand>
         trick.Abbreviation = request.Abbreviation;
         trick.CrossOver = request.CrossOver;
         trick.Knee = request.Knee;
-        trick.Motion = request.Motion;
+        trick.Revolution = request.Revolution;
         trick.Difficulty = request.Difficulty;
         trick.CommonLevel = request.CommonLevel;
 

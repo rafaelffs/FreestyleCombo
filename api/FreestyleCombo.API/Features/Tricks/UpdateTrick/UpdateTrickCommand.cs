@@ -8,7 +8,7 @@ public record UpdateTrickCommand(
     string Abbreviation,
     bool CrossOver,
     bool Knee,
-    decimal Motion,
+    decimal Revolution,
     int Difficulty,
     int CommonLevel
 ) : IRequest;

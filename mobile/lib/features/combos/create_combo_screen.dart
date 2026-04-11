@@ -38,6 +38,9 @@ class _SlotItem {
 class _CreateComboScreenState extends State<CreateComboScreen> {
   _Mode _mode = _Mode.choose;
 
+  // ── Shared name field ──────────────────────────────────────────────────────
+  final _nameCtrl = TextEditingController();
+
   // ── Generate state ─────────────────────────────────────────────────────────
   bool _usePrefs = false;
   int _comboLength = 5;
@@ -47,10 +50,9 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   int _maxConsecNoTouch = 2;
   bool _includeCrossOver = true;
   bool _includeKnee = true;
-  final _genNameCtrl = TextEditingController();
   bool _genLoading = false;
   String? _genError;
-  ComboDto? _genResult;
+  List<String> _previewWarnings = [];
 
   // ── Build state ────────────────────────────────────────────────────────────
   List<TrickDto> _tricks = [];
@@ -62,21 +64,19 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   bool _saving = false;
   String? _buildError;
   ComboDto? _buildResult;
-  final _buildNameCtrl = TextEditingController();
   int _buildTab = 0;
 
   @override
   void dispose() {
-    _genNameCtrl.dispose();
+    _nameCtrl.dispose();
     _searchCtrl.dispose();
-    _buildNameCtrl.dispose();
     super.dispose();
   }
 
   // ── Generate actions ────────────────────────────────────────────────────────
 
-  Future<void> _generate() async {
-    setState(() { _genLoading = true; _genError = null; _genResult = null; });
+  Future<void> _preview() async {
+    setState(() { _genLoading = true; _genError = null; });
     try {
       final overrides = _usePrefs
           ? null
@@ -89,13 +89,25 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
               includeCrossOver: _includeCrossOver,
               includeKnee: _includeKnee,
             );
-      final name = _genNameCtrl.text.trim();
-      final combo = await ApiClient.instance.generateCombo(
-        _usePrefs,
-        overrides,
-        name: name.isEmpty ? null : name,
-      );
-      setState(() => _genResult = combo);
+      final result = await ApiClient.instance.previewCombo(_usePrefs, overrides);
+      _slots.clear();
+      for (final t in result.tricks) {
+        _slots.add(_SlotItem(
+          trickId: t.trickId,
+          trickName: t.trickName,
+          abbreviation: t.abbreviation,
+          crossOver: t.crossOver,
+          position: t.position,
+          strongFoot: t.strongFoot,
+          noTouch: t.noTouch,
+        ));
+      }
+      setState(() {
+        _previewWarnings = result.warnings;
+        _mode = _Mode.build;
+        _buildTab = 1;
+      });
+      if (_tricks.isEmpty) _loadTricks();
     } catch (e) {
       setState(() => _genError = e.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -148,7 +160,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
       final items = _slots
           .map((s) => BuildComboTrickItem(trickId: s.trickId, position: s.position, strongFoot: s.strongFoot, noTouch: s.noTouch))
           .toList();
-      final name = _buildNameCtrl.text.trim();
+      final name = _nameCtrl.text.trim();
       final combo = await ApiClient.instance.buildCombo(items, _isPublic, name: name.isEmpty ? null : name);
       setState(() => _buildResult = combo);
     } catch (e) {
@@ -168,7 +180,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     if (_slots.isEmpty) return 0;
     final total = _slots.fold<double>(0, (sum, s) {
       final trick = _tricks.firstWhere((t) => t.id == s.trickId,
-          orElse: () => TrickDto(id: '', name: '', abbreviation: '', crossOver: false, knee: false, motion: 0, difficulty: 0, commonLevel: 0));
+          orElse: () => TrickDto(id: '', name: '', abbreviation: '', crossOver: false, knee: false, revolution: 0, difficulty: 0, commonLevel: 0));
       return sum + trick.difficulty;
     });
     return total / _slots.length;
@@ -176,9 +188,19 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
 
   // ── Mode switching ────────────────────────────────────────────────────────────
 
-  void _switchMode(_Mode mode) {
-    setState(() => _mode = mode);
-    if (mode == _Mode.build && _tricks.isEmpty) _loadTricks();
+  void _switchToBuild() {
+    setState(() => _mode = _Mode.build);
+    if (_tricks.isEmpty) _loadTricks();
+  }
+
+  void _backToChoose() {
+    setState(() {
+      _mode = _Mode.choose;
+      _slots.clear();
+      _previewWarnings = [];
+      _buildResult = null;
+      _buildTab = 0;
+    });
   }
 
   @override
@@ -186,7 +208,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     return PopScope(
       canPop: _mode == _Mode.choose,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && _mode != _Mode.choose) setState(() => _mode = _Mode.choose);
+        if (!didPop && _mode != _Mode.choose) _backToChoose();
       },
       child: Scaffold(
         appBar: AppBar(
@@ -194,7 +216,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
           leading: _mode != _Mode.choose
               ? IconButton(
                   icon: const Icon(Icons.arrow_back),
-                  onPressed: () => setState(() => _mode = _Mode.choose),
+                  onPressed: _backToChoose,
                 )
               : null,
         ),
@@ -222,14 +244,14 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
             icon: Icons.auto_awesome,
             title: 'Auto-generate',
             description: 'Let the app build a combo based on your settings.',
-            onTap: () => _switchMode(_Mode.generate),
+            onTap: () => setState(() => _mode = _Mode.generate),
           ),
           const SizedBox(height: 16),
           _ModeCard(
             icon: Icons.build_outlined,
             title: 'Build manually',
             description: 'Pick tricks one by one and configure each slot.',
-            onTap: () => _switchMode(_Mode.build),
+            onTap: _switchToBuild,
           ),
         ],
       ),
@@ -244,6 +266,16 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Name field at the top
+          TextField(
+            controller: _nameCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Combo name (optional)',
+              hintText: 'e.g. My signature combo',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 16),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -251,15 +283,6 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Options', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _genNameCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Combo name (optional)',
-                      hintText: 'e.g. My signature combo',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
                   const SizedBox(height: 12),
                   SwitchListTile(
                     title: const Text('Use saved preferences'),
@@ -287,18 +310,12 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
           ],
           const SizedBox(height: 16),
           FilledButton.icon(
-            onPressed: _genLoading ? null : _generate,
+            onPressed: _genLoading ? null : _preview,
             icon: _genLoading
                 ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.auto_awesome),
             label: Text(_genLoading ? 'Generating…' : 'Generate Combo'),
           ),
-          if (_genResult != null) ...[
-            const SizedBox(height: 24),
-            Text('Result', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            ComboCard(combo: _genResult!, showActions: true),
-          ],
         ],
       ),
     );
@@ -326,7 +343,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
             ),
             const SizedBox(height: 8),
             OutlinedButton(
-              onPressed: () => setState(() { _buildResult = null; _slots.clear(); _buildTab = 0; }),
+              onPressed: () => setState(() { _buildResult = null; _slots.clear(); _buildTab = 0; _previewWarnings = []; }),
               child: const Text('Build another'),
             ),
           ],
@@ -334,28 +351,63 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
       );
     }
 
-    return DefaultTabController(
-      length: 2,
-      child: Column(
-        children: [
-          TabBar(
-            onTap: (i) => setState(() => _buildTab = i),
-            tabs: [
-              Tab(text: 'Tricks (${_tricks.length})'),
-              Tab(text: 'My Combo (${_slots.length})'),
-            ],
+    return Column(
+      children: [
+        // Name field at the top
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          child: TextField(
+            controller: _nameCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Combo name (optional)',
+              hintText: 'e.g. My signature combo',
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
           ),
-          Expanded(
-            child: IndexedStack(
-              index: _buildTab,
+        ),
+        if (_previewWarnings.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: _previewWarnings.map((w) => Text(w, style: TextStyle(fontSize: 12, color: Colors.amber.shade900))).toList(),
+              ),
+            ),
+          ),
+        Expanded(
+          child: DefaultTabController(
+            length: 2,
+            child: Column(
               children: [
-                _buildPickerTab(),
-                _buildComboTab(),
+                TabBar(
+                  onTap: (i) => setState(() => _buildTab = i),
+                  tabs: [
+                    Tab(text: 'Tricks (${_tricks.length})'),
+                    Tab(text: 'My Combo (${_slots.length})'),
+                  ],
+                ),
+                Expanded(
+                  child: IndexedStack(
+                    index: _buildTab,
+                    children: [
+                      _buildPickerTab(),
+                      _buildComboTab(),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -449,16 +501,6 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
               children: [
                 Text('${_slots.length} tricks · avg diff ${_avgDiff.toStringAsFixed(1)}',
                     style: const TextStyle(fontSize: 12, color: Colors.grey), textAlign: TextAlign.center),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _buildNameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Combo name (optional)',
-                    hintText: 'e.g. My signature combo',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                ),
                 const SizedBox(height: 8),
                 Row(children: [
                   Checkbox(value: _isPublic, onChanged: (v) => setState(() => _isPublic = v ?? false)),

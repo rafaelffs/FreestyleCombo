@@ -10,7 +10,7 @@ public static class TrickFaker
         string? name = null,
         bool crossOver = false,
         bool knee = false,
-        decimal motion = 1.0m,
+        decimal revolution = 1.0m,
         int difficulty = 2,
         int commonLevel = 3)
     {
@@ -22,7 +22,7 @@ public static class TrickFaker
             Abbreviation = $"T{_counter}",
             CrossOver = crossOver,
             Knee = knee,
-            Motion = motion,
+            Revolution = revolution,
             Difficulty = difficulty,
             CommonLevel = commonLevel
         };

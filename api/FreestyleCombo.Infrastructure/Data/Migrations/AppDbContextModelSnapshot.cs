@@ -103,9 +103,6 @@ namespace FreestyleCombo.Infrastructure.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<bool>("IsPublic")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("Name")
                         .HasColumnType("text");
 
@@ -114,6 +111,11 @@ namespace FreestyleCombo.Infrastructure.Data.Migrations
 
                     b.Property<int>("TrickCount")
                         .HasColumnType("integer");
+
+                    b.Property<int>("Visibility")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.HasKey("Id");
 
@@ -203,14 +205,14 @@ namespace FreestyleCombo.Infrastructure.Data.Migrations
                     b.Property<bool>("Knee")
                         .HasColumnType("boolean");
 
-                    b.Property<decimal>("Motion")
-                        .HasPrecision(3, 1)
-                        .HasColumnType("numeric(3,1)");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<decimal>("Revolution")
+                        .HasPrecision(3, 1)
+                        .HasColumnType("numeric(3,1)");
 
                     b.HasKey("Id");
 
@@ -240,9 +242,6 @@ namespace FreestyleCombo.Infrastructure.Data.Migrations
                     b.Property<bool>("Knee")
                         .HasColumnType("boolean");
 
-                    b.Property<decimal>("Motion")
-                        .HasColumnType("decimal(5,2)");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -253,6 +252,9 @@ namespace FreestyleCombo.Infrastructure.Data.Migrations
 
                     b.Property<Guid?>("ReviewedById")
                         .HasColumnType("uuid");
+
+                    b.Property<decimal>("Revolution")
+                        .HasColumnType("decimal(5,2)");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -294,7 +296,7 @@ namespace FreestyleCombo.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("AllowedMotions")
+                    b.Property<string>("AllowedRevolutions")
                         .IsRequired()
                         .HasColumnType("jsonb");
 

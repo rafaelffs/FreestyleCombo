@@ -19,7 +19,7 @@ public class CreateTrickHandler : IRequestHandler<CreateTrickCommand, Guid>
             Abbreviation = request.Abbreviation,
             CrossOver = request.CrossOver,
             Knee = request.Knee,
-            Motion = request.Motion,
+            Revolution = request.Revolution,
             Difficulty = request.Difficulty,
             CommonLevel = request.CommonLevel
         };

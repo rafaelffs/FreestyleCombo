@@ -39,9 +39,10 @@ public class PreferencesController : ControllerBase
             request.MaxConsecutiveNoTouch,
             request.IncludeCrossOver,
             request.IncludeKnee,
-            request.AllowedMotions
+            request.AllowedRevolutions
         ), ct);
-        return Ok();
+        var result = await _mediator.Send(new GetPreferencesQuery(userId), ct);
+        return Ok(result);
     }
 }
 
@@ -54,5 +55,5 @@ public class UpdatePreferencesRequest
     public int? MaxConsecutiveNoTouch { get; set; }
     public bool? IncludeCrossOver { get; set; }
     public bool? IncludeKnee { get; set; }
-    public List<decimal>? AllowedMotions { get; set; }
+    public List<decimal>? AllowedRevolutions { get; set; }
 }

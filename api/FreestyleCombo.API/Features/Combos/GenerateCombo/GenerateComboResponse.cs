@@ -9,6 +9,7 @@ public class GenerateComboResponse
     public double AverageDifficulty { get; set; }
     public int TrickCount { get; set; }
     public bool IsPublic { get; set; }
+    public string Visibility { get; set; } = "Private";
     public DateTime CreatedAt { get; set; }
     public string DisplayText { get; set; } = string.Empty;
     public string? AiDescription { get; set; }
@@ -25,5 +26,5 @@ public class ComboTrickDto
     public bool StrongFoot { get; set; }
     public bool NoTouch { get; set; }
     public int Difficulty { get; set; }
-    public decimal Motion { get; set; }
+    public decimal Revolution { get; set; }
 }

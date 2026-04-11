@@ -41,6 +41,7 @@ public class GetComboHandler : IRequestHandler<GetComboQuery, ComboDetailDto>
             AverageDifficulty = combo.AverageDifficulty,
             TrickCount = combo.TrickCount,
             IsPublic = combo.IsPublic,
+            Visibility = combo.Visibility.ToString(),
             CreatedAt = combo.CreatedAt,
             DisplayText = displayText,
             AiDescription = combo.AiDescription,
@@ -56,7 +57,7 @@ public class GetComboHandler : IRequestHandler<GetComboQuery, ComboDetailDto>
                 StrongFoot = ct.StrongFoot,
                 NoTouch = ct.NoTouch,
                 Difficulty = ct.Trick.Difficulty,
-                Motion = ct.Trick.Motion
+                Revolution = ct.Trick.Revolution
             }).ToList()
         };
     }

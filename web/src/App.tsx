@@ -10,6 +10,7 @@ import { ComboDetailPage } from '@/features/combos/ComboDetailPage'
 import { PreferencesPage } from '@/features/preferences/PreferencesPage'
 import { TricksPage } from '@/features/tricks/TricksPage'
 import { AdminSubmissionsPage } from '@/features/tricks/AdminSubmissionsPage'
+import { AdminComboReviewsPage } from '@/features/combos/AdminComboReviewsPage'
 
 export default function App() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
           {/* Admin only */}
           <Route element={<AdminRoute />}>
             <Route path="/admin/submissions" element={<AdminSubmissionsPage />} />
+            <Route path="/admin/combo-reviews" element={<AdminComboReviewsPage />} />
           </Route>
 
           {/* Redirects for old routes */}

@@ -1,12 +1,17 @@
 using System.Security.Claims;
 using FreestyleCombo.API.Features.Combos.AddFavourite;
+using FreestyleCombo.API.Features.Combos.ApproveComboVisibility;
 using FreestyleCombo.API.Features.Combos.BuildCombo;
 using FreestyleCombo.API.Features.Combos.DeleteCombo;
 using FreestyleCombo.API.Features.Combos.GenerateCombo;
 using FreestyleCombo.API.Features.Combos.GetCombo;
 using FreestyleCombo.API.Features.Combos.GetMyCombos;
+using FreestyleCombo.API.Features.Combos.GetPendingComboReviews;
 using FreestyleCombo.API.Features.Combos.GetPublicCombos;
+using FreestyleCombo.API.Features.Combos.PreviewCombo;
+using FreestyleCombo.API.Features.Combos.RejectComboVisibility;
 using FreestyleCombo.API.Features.Combos.RemoveFavourite;
+using FreestyleCombo.API.Features.Combos.UpdateCombo;
 using FreestyleCombo.API.Features.Combos.UpdateVisibility;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -29,6 +34,15 @@ public class CombosController : ControllerBase
     {
         var result = await _mediator.Send(command, ct);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+    }
+
+    [HttpPost("preview")]
+    [Authorize]
+    [ProducesResponseType(typeof(PreviewComboResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Preview([FromBody] PreviewComboCommand command, CancellationToken ct)
+    {
+        var result = await _mediator.Send(command, ct);
+        return Ok(result);
     }
 
     [HttpPost("build")]
@@ -82,6 +96,15 @@ public class CombosController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{id:guid}")]
+    [Authorize]
+    [ProducesResponseType(typeof(GenerateComboResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateComboRequest request, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new UpdateComboCommand(id, request.Name, request.Tricks), ct);
+        return Ok(result);
+    }
+
     [HttpPut("{id:guid}/visibility")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -99,6 +122,33 @@ public class CombosController : ControllerBase
     {
         await _mediator.Send(new DeleteComboCommand(id), ct);
         return NoContent();
+    }
+
+    [HttpGet("pending-review")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(List<PublicComboDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPendingReview(CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetPendingComboReviewsQuery(), ct);
+        return Ok(result);
+    }
+
+    [HttpPost("{id:guid}/approve-visibility")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ApproveVisibility(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new ApproveComboVisibilityCommand(id), ct);
+        return Ok();
+    }
+
+    [HttpPost("{id:guid}/reject-visibility")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> RejectVisibility(Guid id, CancellationToken ct)
+    {
+        await _mediator.Send(new RejectComboVisibilityCommand(id), ct);
+        return Ok();
     }
 
     [HttpPost("{id:guid}/favourite")]
@@ -123,3 +173,4 @@ public class CombosController : ControllerBase
 }
 
 public record UpdateVisibilityRequest(bool IsPublic);
+public record UpdateComboRequest(string? Name, List<BuildComboTrickItem>? Tricks);

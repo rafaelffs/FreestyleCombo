@@ -1,3 +1,4 @@
+using FreestyleCombo.Core.Entities;
 using FreestyleCombo.Core.Interfaces;
 using MediatR;
 
@@ -17,7 +18,7 @@ public class UpdateVisibilityHandler : IRequestHandler<UpdateVisibilityCommand>
         if (combo.OwnerId != request.UserId)
             throw new UnauthorizedAccessException("You do not own this combo.");
 
-        combo.IsPublic = request.IsPublic;
+        combo.Visibility = request.IsPublic ? ComboVisibility.PendingReview : ComboVisibility.Private;
         await _repo.UpdateAsync(combo, cancellationToken);
     }
 }

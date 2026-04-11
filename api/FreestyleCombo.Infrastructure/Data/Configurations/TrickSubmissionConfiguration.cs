@@ -12,7 +12,7 @@ public class TrickSubmissionConfiguration : IEntityTypeConfiguration<TrickSubmis
         builder.Property(s => s.Id).ValueGeneratedOnAdd();
         builder.Property(s => s.Name).IsRequired().HasMaxLength(100);
         builder.Property(s => s.Abbreviation).IsRequired().HasMaxLength(20);
-        builder.Property(s => s.Motion).HasColumnType("decimal(5,2)");
+        builder.Property(s => s.Revolution).HasColumnType("decimal(5,2)");
         builder.Property(s => s.Status).HasConversion<int>();
         builder.Property(s => s.SubmittedAt).IsRequired();
 

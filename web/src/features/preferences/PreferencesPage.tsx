@@ -14,7 +14,7 @@ const DEFAULTS: Omit<UserPreference, 'id' | 'userId'> = {
   maxConsecutiveNoTouch: 2,
   includeCrossOver: true,
   includeKnee: true,
-  allowedMotions: [],
+  allowedRevolutions: [],
 }
 
 export function PreferencesPage() {

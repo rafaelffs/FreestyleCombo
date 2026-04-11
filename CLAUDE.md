@@ -34,16 +34,18 @@ FreestyleCombo/
 | Entity | Key fields |
 |---|---|
 | `AppUser` | `IdentityUser<Guid>`, has `ICollection<Combo>`, `ICollection<ComboRating>`, `UserPreference?`, `ICollection<TrickSubmission>`, `ICollection<UserFavouriteCombo>` |
-| `Trick` | `Id, Name, Abbreviation, CrossOver, Knee, Motion(decimal), Difficulty, CommonLevel` |
-| `Combo` | `Id, OwnerId, Name?, TotalDifficulty, TrickCount, IsPublic, CreatedAt, AiDescription, ICollection<UserFavouriteCombo>` |
+| `Trick` | `Id, Name, Abbreviation, CrossOver, Knee, Revolution(decimal), Difficulty, CommonLevel` |
+| `Combo` | `Id, OwnerId, Name?, TotalDifficulty, TrickCount, Visibility(ComboVisibility), CreatedAt, AiDescription, ICollection<UserFavouriteCombo>` — `IsPublic` is a computed property (`=> Visibility == ComboVisibility.Public`), ignored by EF |
 | `ComboTrick` | `Id, ComboId, TrickId, Position, StrongFoot, NoTouch` |
 | `ComboRating` | `Id, ComboId, RatedByUserId, Score, CreatedAt` |
-| `UserPreference` | `Id, UserId, MaxDifficulty, ComboLength, StrongFootPercentage, NoTouchPercentage, MaxConsecutiveNoTouch, IncludeCrossOver, IncludeKnee, AllowedMotions(List<decimal>)` — `AllowedMotions` stored as `jsonb` |
-| `TrickSubmission` | `Id, Name, Abbreviation, CrossOver, Knee, Motion, Difficulty, CommonLevel, Status(enum), SubmittedAt, SubmittedById, ReviewedAt?, ReviewedById?` |
+| `UserPreference` | `Id, UserId, MaxDifficulty, ComboLength, StrongFootPercentage, NoTouchPercentage, MaxConsecutiveNoTouch, IncludeCrossOver, IncludeKnee, AllowedRevolutions(List<decimal>)` — `AllowedRevolutions` stored as `jsonb` |
+| `TrickSubmission` | `Id, Name, Abbreviation, CrossOver, Knee, Revolution, Difficulty, CommonLevel, Status(enum), SubmittedAt, SubmittedById, ReviewedAt?, ReviewedById?` |
 | `UserFavouriteCombo` | Composite PK `(UserId, ComboId)`, `CreatedAt` — cascade deletes on both FK |
 
 `SubmissionStatus` enum: `Pending = 0`, `Approved = 1`, `Rejected = 2` — stored as int.  
 Approving a submission creates a real `Trick` from the submission fields.
+
+`ComboVisibility` enum (in `FreestyleCombo.Core/Entities/Combo.cs`): `Private = 0`, `PendingReview = 1`, `Public = 2` — stored as int column `Visibility` in `Combos` table (default 0). When a user sets a combo public (build or update), it goes to `PendingReview`; an admin approves/rejects it.
 
 ### Interfaces (`FreestyleCombo.Core/Interfaces/`)
 - `ITrickRepository` (includes `DeleteAsync` — checks ComboTricks before deleting)
@@ -64,16 +66,27 @@ Trick delete throws `InvalidOperationException` ("This trick is used in X combo(
 ### Combos extra endpoints
 | Method | Route | Auth | Description |
 |---|---|---|---|
-| `POST` | `/api/combos/build` | User | Build combo manually — accepts optional `name`; no AI description (`AiDescription = null`) |
+| `POST` | `/api/combos/preview` | User | Preview combo (no save, no AI) — returns `PreviewComboResponse { Tricks, Warnings }` |
+| `POST` | `/api/combos/build` | User | Build combo manually — accepts optional `name`; no AI description (`AiDescription = null`); sets `Visibility = PendingReview` if `isPublic = true` |
+| `PUT` | `/api/combos/{id}` | User/Admin | Update combo (name + tricks) — owner or admin only; if combo was `Public`, resets to `PendingReview` |
 | `DELETE` | `/api/combos/{id}` | User/Admin | Owner or Admin can delete; 403 otherwise |
 | `POST` | `/api/combos/{id}/favourite` | User | Add combo to favourites |
 | `DELETE` | `/api/combos/{id}/favourite` | User | Remove combo from favourites |
+| `GET` | `/api/combos/pending-review` | Admin | List combos pending admin review |
+| `POST` | `/api/combos/{id}/approve-visibility` | Admin | Approve → sets `Visibility = Public` |
+| `POST` | `/api/combos/{id}/reject-visibility` | Admin | Reject → sets `Visibility = Private` |
 
 `BuildComboCommand` validates: `Tricks` NotEmpty, each `Position >= 1`, NoTouch only on `CrossOver = true` tricks (handler throws `InvalidOperationException` if violated).
 
-`GenerateComboCommand` accepts optional `Name` (top-level, not inside `Overrides`). Saved as `null` if blank/whitespace.
+`GenerateComboCommand` accepts optional `Name` (top-level, not inside `Overrides`). Saved as `null` if blank/whitespace. **No longer generates an AI description** — `AiDescription` is always `null` for new combos.
 
-All combo DTOs (`GenerateComboResponse`, `PublicComboDto`, `MyComboDto`, `ComboDetailDto`) now include `Name?`, `OwnerUserName?`, `IsFavourited`. Combos in `GET /mine` sort favourites first, then by `CreatedAt DESC`.
+`PreviewComboCommand` runs generation steps 1–5 (filter, split, pick, shuffle, annotate NoTouch). **No AI call, no DB save.**
+
+`UpdateComboCommand(Guid ComboId, string? Name, List<BuildComboTrickItem>? Tricks)` — updates Name and/or replaces trick list. Throws `UnauthorizedAccessException` (→ 403) if caller is not owner or admin.
+
+All combo DTOs (`GenerateComboResponse`, `PublicComboDto`, `MyComboDto`, `ComboDetailDto`) now include `Name?`, `OwnerUserName?`, `IsFavourited`, `Visibility` (string: "Private"/"PendingReview"/"Public"). Combos in `GET /mine` sort favourites first, then by `CreatedAt DESC`.
+
+`GET /api/combos/public` filters by `Visibility == Public` (not `IsPublic`). `UpdatePreferencesHandler` now returns `PreferenceDto` (was `Ok()` with no body).
 
 ### Login with username or email
 `LoginCommand` field renamed `Email` → `Credential`. Handler tries `FindByEmailAsync` first, then `FindByNameAsync`. Validator uses `NotEmpty` + `MaximumLength(256)` only (no `EmailAddress()` rule).
@@ -90,7 +103,7 @@ API middleware always returns `{ "error": "..." }`. Web uses `extractError(err, 
 | `POST` | `/{id}/approve` | Admin | Approve → creates a `Trick` |
 | `POST` | `/{id}/reject` | Admin | Reject the submission |
 
-Validation for `SubmitTrickCommand`: Name NotEmpty MaxLength(100), Abbreviation NotEmpty MaxLength(20), Motion InclusiveBetween(0.5, 10), Difficulty InclusiveBetween(1, 10), CommonLevel InclusiveBetween(1, 10).
+Validation for `SubmitTrickCommand`: Name NotEmpty MaxLength(100), Abbreviation NotEmpty MaxLength(20), Revolution InclusiveBetween(0.5, 10), Difficulty InclusiveBetween(1, 10), CommonLevel InclusiveBetween(1, 10).
 
 ### JWT — Role claim
 `LoginHandler.GenerateToken()` now calls `GetRolesAsync(user)` and adds `ClaimTypes.Role` claims. The `Admin` role is included in the JWT for admin users. Web/mobile decode the JWT payload client-side to check `isAdmin` — no extra API call needed.
@@ -128,13 +141,16 @@ AddSecurityRequirement(_ => new OpenApiSecurityRequirement {
 | `StrongFootPercentage` | 0 | 100 | all validators + UIs |
 | `NoTouchPercentage` | 0 | 100 | all validators + UIs |
 
-### Combo generation algorithm (6 steps)
-1. Filter trick pool (MaxDifficulty, IncludeCrossOver, IncludeKnee, AllowedMotions)
+### Combo generation algorithm
+**Preview** (steps 1–5, `POST /api/combos/preview`): no AI, no DB save — returns trick list + warnings.  
+**Generate** (all 6 steps, `POST /api/combos/generate`): saves to DB, calls AI for description.
+
+1. Filter trick pool (MaxDifficulty, IncludeCrossOver, IncludeKnee, AllowedRevolutions)
 2. Split slots: StrongFoot % → strong slots, rest → weak slots
 3. Weighted random pick (weight = `CommonLevel`); fill by position
 4. Shuffle positions
 5. Annotate NoTouch — only CrossOver tricks, respecting NoTouchPercentage & MaxConsecutiveNoTouch
-6. Call `IComboEnhancerService.EnhanceAsync()` → Claude AI description → save combo
+6. (Generate only) Call `IComboEnhancerService.EnhanceAsync()` → Claude AI description → save combo
 
 ### Moq requirements
 - `ComboRatingAggregator.AdjustWeightsAsync` is `public virtual` (required for Moq)
@@ -167,12 +183,15 @@ web/src/
 └── features/
     ├── auth/           # LoginPage (email or username), RegisterPage
     ├── combos/         # CombosPage (tabbed: Public + Mine), CreateComboPage (mode: choose/generate/build),
-    │                   # ComboDetailPage, ComboCard (+ delete for owner/admin), RateComboDialog
+    │                   # ComboDetailPage (with inline edit for owners), ComboCard, RateComboDialog,
+    │                   # AdminComboReviewsPage (/admin/combo-reviews)
     ├── preferences/    # PreferencesPage
     └── tricks/         # TricksPage (/tricks, public, inline submit form), AdminSubmissionsPage
 ```
 
-Routes: `/combos` (public, tabbed), `/combos/create` (protected, mode selector). `ComboCard` accepts `onDeleted` callback; delete button shown for owner or admin.
+Routes: `/combos` (public, tabbed), `/combos/create` (protected, mode selector), `/admin/combo-reviews` (admin only). `ComboCard` accepts `onDeleted` callback; delete button shown for owner or admin.
+
+`CreateComboPage` modes: `'choose'` (initial), `'generate'` (calls `/preview` → populates build slots on success), `'build'` (manual slot picker + save). Name field is at the top, shared across all modes.
 
 `AdminRoute` redirects non-admins to `/combos`. `isAdmin()` decodes the JWT payload (no library, no API call) and checks `ClaimTypes.Role === "Admin"`.
 
@@ -183,13 +202,17 @@ Routes: `/combos` (public, tabbed), `/combos/create` (protected, mode selector).
 | Tricks | `/tricks` | Always |
 | Create Combo | `/combos/create` | Authenticated |
 | Preferences | `/preferences` | Authenticated |
-| Admin | `/admin/submissions` | Admin only |
+| Submissions | `/admin/submissions` | Admin only |
+| Combo Reviews | `/admin/combo-reviews` | Admin only |
 
 ### ComboCard features
 - Shows `combo.name` (bold, above displayText) when present
 - Shows `combo.ownerUserName` (not ownerEmail)
-- Favourite toggle button (♥/♡) visible when authenticated — calls `addFavourite`/`removeFavourite`, invalidates `['combos']` query
+- Favourite toggle: heart icon only (no text label) — calls `addFavourite`/`removeFavourite`, invalidates `['combos']` query
+- Visibility badge: "Pending Review" (amber), "Public" (primary), "Private" (grey) — from `combo.visibility`
+- "Submit for review" button (owner only, hidden when `visibility === 'PendingReview'`)
 - Delete button for owner or admin
+- Weak-foot tricks shown as `(wf)` (not `wk`)
 
 ### Difficulty badge
 - No "d" prefix — just the number
@@ -236,21 +259,23 @@ mobile/lib/
 │   ├── auth/auth_service.dart    # Token + isAdmin in SharedPreferences, JWT decode
 │   └── models/
 │       ├── combo.dart            # TrickDto, BuildComboTrickItem, ComboDto, ComboTrickDto,
-│       │                         # PagedResult, GenerateComboOverrides
-│       ├── user_preference.dart  # UserPreference with toJson/copyWith
+│       │                         # PagedResult, GenerateComboOverrides, PreviewTrickItem,
+│       │                         # PreviewComboResponse
+│       ├── user_preference.dart  # UserPreference with toJson/copyWith (allowedRevolutions)
 │       └── trick_submission.dart # TrickSubmissionDto with fromJson
 ├── features/
 │   ├── auth/                     # login_screen.dart (credential field), register_screen.dart
 │   ├── combos/                   # combos_screen.dart (tabbed: Public + Mine),
 │   │                             # create_combo_screen.dart (mode: choose/generate/build),
-│   │                             # combo_detail_screen.dart
+│   │                             # combo_detail_screen.dart (with inline edit for owners)
 │   ├── preferences/              # preferences_screen.dart
 │   ├── tricks/                   # tricks_screen.dart (/tricks, public, FAB → submit bottom sheet)
-│   └── admin/                    # admin_submissions_screen.dart (/admin/submissions)
+│   └── admin/                    # admin_submissions_screen.dart (/admin/submissions),
+│                                 # admin_combo_reviews_screen.dart (/admin/combo-reviews)
 ├── router/app_router.dart        # GoRouter config, auth + admin redirect; initialLocation: /combos
 └── widgets/
     ├── main_shell.dart           # Bottom nav: Combos, Tricks, Create (auth), Settings (auth), Admin (admin)
-    ├── combo_card.dart           # name display, ownerUserName, fav toggle, delete for owner/admin
+    ├── combo_card.dart           # name display, ownerUserName, fav toggle (icon only), delete for owner/admin
     └── rate_combo_dialog.dart    # Star rating AlertDialog
 ```
 
@@ -265,11 +290,16 @@ mobile/lib/
 | 3 | Settings | `/preferences` | Yes |
 | 4 | Admin | `/admin/submissions` | Admin only |
 
+Admin → "Combo Reviews" reachable via AppBar icon in `admin_submissions_screen.dart` (navigates to `/admin/combo-reviews`).
+
 ### combo_card.dart features
 - Shows `combo.name` (bold) above `displayText` when present
 - Shows `combo.ownerUserName` (not ownerEmail)
-- Favourite toggle button (Icons.favorite / Icons.favorite_border) visible when authenticated — calls `addFavourite`/`removeFavourite`, triggers `onRefresh`
+- Favourite toggle: `IconButton` with `Icons.favorite` / `Icons.favorite_border` (no text label) — calls `addFavourite`/`removeFavourite`, triggers `onRefresh`
+- Visibility chip: "Pending Review" (amber), "Public" (primary), "Private" (grey) — from `combo.visibility`
+- "Submit for review" button (owner, hidden when `visibility == 'PendingReview'`)
 - Delete button for owner or admin
+- Weak-foot tricks shown as `(wf)`
 
 ### Difficulty chip (mobile)
 - `_DiffChip` widget: colored chip — green.shade100/800 (1–4), yellow.shade100/900 (5–7), red.shade100/800 (8–10)

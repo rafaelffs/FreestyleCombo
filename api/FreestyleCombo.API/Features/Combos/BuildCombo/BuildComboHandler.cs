@@ -64,7 +64,7 @@ public class BuildComboHandler : IRequestHandler<BuildComboCommand, GenerateComb
             Name = string.IsNullOrWhiteSpace(request.Name) ? null : request.Name.Trim(),
             AverageDifficulty = avgDifficulty,
             TrickCount = ordered.Count,
-            IsPublic = request.IsPublic,
+            Visibility = request.IsPublic ? ComboVisibility.PendingReview : ComboVisibility.Private,
             CreatedAt = DateTime.UtcNow,
             AiDescription = null,
             ComboTricks = ordered.Select(t => new ComboTrick
@@ -88,6 +88,7 @@ public class BuildComboHandler : IRequestHandler<BuildComboCommand, GenerateComb
             AverageDifficulty = combo.AverageDifficulty,
             TrickCount = combo.TrickCount,
             IsPublic = combo.IsPublic,
+            Visibility = combo.Visibility.ToString(),
             CreatedAt = combo.CreatedAt,
             DisplayText = displayText,
             AiDescription = null,
@@ -104,7 +105,7 @@ public class BuildComboHandler : IRequestHandler<BuildComboCommand, GenerateComb
                     StrongFoot = t.StrongFoot,
                     NoTouch = t.NoTouch,
                     Difficulty = trick.Difficulty,
-                    Motion = trick.Motion
+                    Revolution = trick.Revolution
                 };
             }).ToList()
         };

@@ -90,6 +90,22 @@ class ApiClient {
 
   // ── Combos ──────────────────────────────────────────────────────────────
 
+  Future<PreviewComboResponse> previewCombo(
+      bool usePreferences, GenerateComboOverrides? overrides) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/combos/preview',
+        data: {
+          'usePreferences': usePreferences,
+          if (overrides != null) 'overrides': overrides.toJson(),
+        },
+      );
+      return PreviewComboResponse.fromJson(res.data!);
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
   Future<ComboDto> generateCombo(
       bool usePreferences, GenerateComboOverrides? overrides, {String? name}) async {
     try {
@@ -197,6 +213,25 @@ class ApiClient {
     }
   }
 
+  Future<ComboDto> updateCombo(
+      String id, {
+      String? name,
+      List<BuildComboTrickItem>? tricks,
+    }) async {
+    try {
+      final res = await _dio.put<Map<String, dynamic>>(
+        '/combos/$id',
+        data: {
+          if (name != null) 'name': name.isEmpty ? null : name,
+          if (tricks != null) 'tricks': tricks.map((t) => t.toJson()).toList(),
+        },
+      );
+      return ComboDto.fromJson(res.data!);
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
   Future<void> addFavourite(String id) async {
     try {
       await _dio.post('/combos/$id/favourite');
@@ -223,6 +258,33 @@ class ApiClient {
 
   // ── Ratings ─────────────────────────────────────────────────────────────
 
+  Future<List<ComboDto>> getPendingComboReviews() async {
+    try {
+      final res = await _dio.get<List<dynamic>>('/combos/pending-review');
+      return (res.data as List<dynamic>)
+          .map((e) => ComboDto.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> approveComboVisibility(String id) async {
+    try {
+      await _dio.post('/combos/$id/approve-visibility');
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> rejectComboVisibility(String id) async {
+    try {
+      await _dio.post('/combos/$id/reject-visibility');
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
   Future<void> rateCombo(String comboId, int score) async {
     try {
       await _dio.post('/combos/$comboId/ratings', data: {'score': score});
@@ -238,7 +300,7 @@ class ApiClient {
     required String abbreviation,
     required bool crossOver,
     required bool knee,
-    required double motion,
+    required double revolution,
     required int difficulty,
     required int commonLevel,
   }) async {
@@ -250,7 +312,7 @@ class ApiClient {
           'abbreviation': abbreviation,
           'crossOver': crossOver,
           'knee': knee,
-          'motion': motion,
+          'revolution': revolution,
           'difficulty': difficulty,
           'commonLevel': commonLevel,
         },

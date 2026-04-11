@@ -37,9 +37,14 @@ export function Navbar() {
                   Preferences
                 </Link>
                 {admin && (
-                  <Link to="/admin/submissions" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
-                    Admin
-                  </Link>
+                  <>
+                    <Link to="/admin/submissions" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
+                      Submissions
+                    </Link>
+                    <Link to="/admin/combo-reviews" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
+                      Combo Reviews
+                    </Link>
+                  </>
                 )}
               </>
             )}

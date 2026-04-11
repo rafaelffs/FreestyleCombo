@@ -10,7 +10,7 @@ public class TrickInfo
 {
     public string Name { get; set; } = string.Empty;
     public string Abbreviation { get; set; } = string.Empty;
-    public decimal Motion { get; set; }
+    public decimal Revolution { get; set; }
     public bool CrossOver { get; set; }
     public int Difficulty { get; set; }
     public bool StrongFoot { get; set; }

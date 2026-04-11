@@ -12,7 +12,7 @@ public class TrickConfiguration : IEntityTypeConfiguration<Trick>
         builder.Property(t => t.Id).ValueGeneratedOnAdd();
         builder.Property(t => t.Name).HasMaxLength(100).IsRequired();
         builder.Property(t => t.Abbreviation).HasMaxLength(20).IsRequired();
-        builder.Property(t => t.Motion).HasPrecision(3, 1);
+        builder.Property(t => t.Revolution).HasPrecision(3, 1);
         builder.Property(t => t.Difficulty).IsRequired();
         builder.Property(t => t.CommonLevel).IsRequired();
     }

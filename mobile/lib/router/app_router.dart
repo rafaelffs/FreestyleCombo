@@ -8,6 +8,7 @@ import '../features/combos/combo_detail_screen.dart';
 import '../features/preferences/preferences_screen.dart';
 import '../features/tricks/tricks_screen.dart';
 import '../features/admin/admin_submissions_screen.dart';
+import '../features/admin/admin_combo_reviews_screen.dart';
 import '../widgets/main_shell.dart';
 
 final appRouter = GoRouter(
@@ -38,6 +39,7 @@ final appRouter = GoRouter(
         GoRoute(path: '/combos/create', builder: (_, __) => const CreateComboScreen()),
         GoRoute(path: '/preferences', builder: (_, __) => const PreferencesScreen()),
         GoRoute(path: '/admin/submissions', builder: (_, __) => const AdminSubmissionsScreen()),
+        GoRoute(path: '/admin/combo-reviews', builder: (_, __) => const AdminComboReviewsScreen()),
         GoRoute(
           path: '/combos/:id',
           builder: (_, state) => ComboDetailScreen(id: state.pathParameters['id']!),

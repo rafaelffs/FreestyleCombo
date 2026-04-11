@@ -34,7 +34,7 @@ public class GetPreferencesHandler : IRequestHandler<GetPreferencesQuery, Prefer
             MaxConsecutiveNoTouch = pref.MaxConsecutiveNoTouch,
             IncludeCrossOver = pref.IncludeCrossOver,
             IncludeKnee = pref.IncludeKnee,
-            AllowedMotions = pref.AllowedMotions
+            AllowedRevolutions = pref.AllowedRevolutions
         };
     }
 }

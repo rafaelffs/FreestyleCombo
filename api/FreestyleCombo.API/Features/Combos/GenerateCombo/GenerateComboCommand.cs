@@ -17,5 +17,5 @@ public class GenerateComboOverrides
     public int? MaxConsecutiveNoTouch { get; set; }
     public bool? IncludeCrossOver { get; set; }
     public bool? IncludeKnee { get; set; }
-    public List<decimal>? AllowedMotions { get; set; }
+    public List<decimal>? AllowedRevolutions { get; set; }
 }

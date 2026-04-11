@@ -9,7 +9,7 @@ public class TrickSubmission
     public string Abbreviation { get; set; } = string.Empty;
     public bool CrossOver { get; set; }
     public bool Knee { get; set; }
-    public decimal Motion { get; set; }
+    public decimal Revolution { get; set; }
     public int Difficulty { get; set; }
     public int CommonLevel { get; set; }
     public SubmissionStatus Status { get; set; } = SubmissionStatus.Pending;

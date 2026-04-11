@@ -28,7 +28,7 @@ public class SubmitTrickHandler : IRequestHandler<SubmitTrickCommand, Guid>
             Abbreviation = request.Abbreviation,
             CrossOver = request.CrossOver,
             Knee = request.Knee,
-            Motion = request.Motion,
+            Revolution = request.Revolution,
             Difficulty = request.Difficulty,
             CommonLevel = request.CommonLevel,
             Status = SubmissionStatus.Pending,

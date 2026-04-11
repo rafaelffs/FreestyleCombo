@@ -68,12 +68,13 @@ export function ComboCard({ combo, showActions = false, onDeleted }: Props) {
             <Badge variant="secondary">
               Avg diff: {combo.averageDifficulty?.toFixed(1) ?? '—'}
             </Badge>
-            {combo.isPublic != null && (
-              combo.isPublic ? (
-                <Badge>Public</Badge>
-              ) : (
-                <Badge variant="outline">Private</Badge>
-              )
+            {combo.visibility === 'PendingReview' && (
+              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Pending Review</Badge>
+            )}
+            {combo.visibility === 'Public' && <Badge>Public</Badge>}
+            {combo.visibility === 'Private' && <Badge variant="outline">Private</Badge>}
+            {combo.visibility == null && combo.isPublic != null && (
+              combo.isPublic ? <Badge>Public</Badge> : <Badge variant="outline">Private</Badge>
             )}
             {combo.averageRating != null && combo.averageRating > 0 && (
               <Badge variant="secondary">
@@ -94,7 +95,7 @@ export function ComboCard({ combo, showActions = false, onDeleted }: Props) {
             >
               {t.position}. {t.abbreviation}
               {t.noTouch && <span className="text-indigo-500">(nt)</span>}
-              {!t.strongFoot && <span className="text-orange-500">(wk)</span>}
+              {!t.strongFoot && <span className="text-orange-500">(wf)</span>}
             </span>
           ))}
         </div>
@@ -110,29 +111,29 @@ export function ComboCard({ combo, showActions = false, onDeleted }: Props) {
               <Link to={`/combos/${combo.id}`}>View details</Link>
             </Button>
             {authed && (
-              <Button
-                variant="outline"
-                size="sm"
+              <button
+                type="button"
                 onClick={() => favMutation.mutate()}
                 disabled={favMutation.isPending}
-                className={favoured ? 'text-pink-600 hover:text-pink-700' : 'text-gray-500'}
+                className={`text-xl leading-none ${favoured ? 'text-pink-600' : 'text-gray-400 hover:text-pink-400'}`}
+                title={favoured ? 'Unfavourite' : 'Favourite'}
               >
-                {favoured ? '♥ Unfavourite' : '♡ Favourite'}
-              </Button>
+                {favoured ? '♥' : '♡'}
+              </button>
             )}
             {!isOwner && currentUserId && (
               <Button variant="outline" size="sm" onClick={() => setRatingOpen(true)}>
                 Rate
               </Button>
             )}
-            {isOwner && (
+            {isOwner && combo.visibility !== 'PendingReview' && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => visibilityMutation.mutate(!combo.isPublic)}
                 disabled={visibilityMutation.isPending}
               >
-                {combo.isPublic ? 'Make private' : 'Make public'}
+                {combo.isPublic ? 'Make private' : 'Submit for review'}
               </Button>
             )}
             {canDelete && (

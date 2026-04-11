@@ -39,7 +39,7 @@ public class ApproveSubmissionHandler : IRequestHandler<ApproveSubmissionCommand
             Abbreviation = submission.Abbreviation,
             CrossOver = submission.CrossOver,
             Knee = submission.Knee,
-            Motion = submission.Motion,
+            Revolution = submission.Revolution,
             Difficulty = submission.Difficulty,
             CommonLevel = submission.CommonLevel
         };

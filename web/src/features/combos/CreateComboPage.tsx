@@ -33,17 +33,18 @@ interface SlotItem extends BuildComboTrickItem {
 export function CreateComboPage() {
   const [mode, setMode] = useState<'choose' | 'generate' | 'build'>('choose')
 
+  // Shared name field
+  const [name, setName] = useState('')
+
   // Generate state
   const [usePrefs, setUsePrefs] = useState(false)
   const [overrides, setOverrides] = useState<GenerateComboOverrides>(GENERATE_DEFAULTS)
-  const [generateResult, setGenerateResult] = useState<ComboDto | null>(null)
-  const [generateName, setGenerateName] = useState('')
+  const [previewWarnings, setPreviewWarnings] = useState<string[]>([])
 
   // Build state
   const [search, setSearch] = useState('')
   const [slots, setSlots] = useState<SlotItem[]>([])
   const [isPublic, setIsPublic] = useState(false)
-  const [buildName, setBuildName] = useState('')
   const [buildResult, setBuildResult] = useState<ComboDto | null>(null)
   const [buildError, setBuildError] = useState<string | null>(null)
 
@@ -53,9 +54,23 @@ export function CreateComboPage() {
     enabled: mode === 'build',
   })
 
-  const generateMutation = useMutation({
-    mutationFn: () => combosApi.generate(usePrefs, usePrefs ? undefined : overrides, generateName || undefined),
-    onSuccess: ({ data }) => setGenerateResult(data),
+  const previewMutation = useMutation({
+    mutationFn: () => combosApi.preview(usePrefs, usePrefs ? undefined : overrides),
+    onSuccess: ({ data }) => {
+      setPreviewWarnings(data.warnings)
+      setSlots(
+        data.tricks.map((t) => ({
+          trickId: t.trickId,
+          position: t.position,
+          strongFoot: t.strongFoot,
+          noTouch: t.noTouch,
+          trickName: t.trickName,
+          abbreviation: t.abbreviation,
+          crossOver: t.crossOver,
+        })),
+      )
+      setMode('build')
+    },
   })
 
   const buildMutation = useMutation({
@@ -63,7 +78,7 @@ export function CreateComboPage() {
       combosApi.build(
         slots.map(({ trickId, position, strongFoot, noTouch }) => ({ trickId, position, strongFoot, noTouch })),
         isPublic,
-        buildName || undefined,
+        name || undefined,
       ),
     onSuccess: ({ data }) => { setBuildResult(data); setBuildError(null) },
     onError: (err) => setBuildError(extractError(err, 'Build failed')),
@@ -103,7 +118,7 @@ export function CreateComboPage() {
     ? slots.reduce((sum, s) => { const t = tricks.find((t) => t.id === s.trickId); return sum + (t?.difficulty ?? 0) }, 0) / slots.length
     : 0
 
-  const generateError = generateMutation.error ? extractError(generateMutation.error, 'Generation failed') : null
+  const previewError = previewMutation.error ? extractError(previewMutation.error, 'Preview failed') : null
 
   // ── Choose mode ───────────────────────────────────────────────────────────
   if (mode === 'choose') {
@@ -151,8 +166,14 @@ export function CreateComboPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Auto-generate Combo</h1>
-            <p className="mt-1 text-sm text-gray-500">Build a freestyle football combo based on your settings.</p>
+            <p className="mt-1 text-sm text-gray-500">Configure settings and generate — you'll be able to edit before saving.</p>
           </div>
+        </div>
+
+        {/* Name field at the top */}
+        <div className="space-y-1">
+          <Label htmlFor="combo-name">Combo name (optional)</Label>
+          <Input id="combo-name" placeholder="e.g. My signature combo" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
         </div>
 
         <Card>
@@ -204,28 +225,13 @@ export function CreateComboPage() {
               </div>
             )}
 
-            <div className="space-y-1">
-              <Label htmlFor="gen-name">Combo name (optional)</Label>
-              <Input id="gen-name" placeholder="e.g. My signature combo" value={generateName} onChange={(e) => setGenerateName(e.target.value)} maxLength={100} />
-            </div>
+            {previewError && <p className="text-sm text-red-600">{previewError}</p>}
 
-            {generateError && <p className="text-sm text-red-600">{generateError}</p>}
-
-            <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending} className="w-full sm:w-auto">
-              {generateMutation.isPending ? 'Generating…' : 'Generate Combo'}
+            <Button onClick={() => previewMutation.mutate()} disabled={previewMutation.isPending} className="w-full sm:w-auto">
+              {previewMutation.isPending ? 'Generating…' : 'Generate Combo'}
             </Button>
           </CardContent>
         </Card>
-
-        {generateResult && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold">Result</h2>
-              <Badge variant="secondary">{generateResult.trickCount} tricks</Badge>
-            </div>
-            <ComboCard combo={generateResult} showActions />
-          </div>
-        )}
       </div>
     )
   }
@@ -234,7 +240,7 @@ export function CreateComboPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-start gap-3">
-        <Button variant="ghost" size="sm" onClick={() => setMode('choose')} className="mt-1 shrink-0">
+        <Button variant="ghost" size="sm" onClick={() => { setMode('choose'); setSlots([]); setPreviewWarnings([]) }} className="mt-1 shrink-0">
           ← Back
         </Button>
         <div>
@@ -242,6 +248,20 @@ export function CreateComboPage() {
           <p className="mt-1 text-sm text-gray-500">Pick tricks one by one and configure each slot manually.</p>
         </div>
       </div>
+
+      {/* Name field at the top */}
+      <div className="space-y-1">
+        <Label htmlFor="combo-name">Combo name (optional)</Label>
+        <Input id="combo-name" placeholder="e.g. My signature combo" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
+      </div>
+
+      {previewWarnings.length > 0 && (
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 space-y-1">
+          {previewWarnings.map((w, i) => (
+            <p key={i} className="text-sm text-yellow-800">{w}</p>
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Left — trick picker */}
@@ -305,13 +325,9 @@ export function CreateComboPage() {
 
             {slots.length > 0 && (
               <div className="space-y-3 border-t border-gray-100 pt-3">
-                <div className="space-y-1">
-                  <Label htmlFor="build-name">Combo name (optional)</Label>
-                  <Input id="build-name" placeholder="e.g. My signature combo" value={buildName} onChange={(e) => setBuildName(e.target.value)} maxLength={100} />
-                </div>
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600" />
-                  Make public
+                  Submit for public review
                 </label>
                 {buildError && <p className="text-sm text-red-600">{buildError}</p>}
                 <Button onClick={() => buildMutation.mutate()} disabled={buildMutation.isPending || slots.length === 0} className="w-full">

@@ -52,7 +52,7 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
         var maxConsecutiveNoTouch = request.Overrides?.MaxConsecutiveNoTouch ?? savedPref?.MaxConsecutiveNoTouch ?? 2;
         var includeCrossOver = request.Overrides?.IncludeCrossOver ?? savedPref?.IncludeCrossOver ?? true;
         var includeKnee = request.Overrides?.IncludeKnee ?? savedPref?.IncludeKnee ?? true;
-        var allowedMotions = request.Overrides?.AllowedMotions ?? savedPref?.AllowedMotions ?? [];
+        var allowedRevolutions = request.Overrides?.AllowedRevolutions ?? savedPref?.AllowedRevolutions ?? [];
 
         // Step 1 — Filter trick pool
         var allTricks = await _trickRepo.GetAllAsync(ct: cancellationToken);
@@ -60,7 +60,7 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
 
         if (!includeCrossOver) pool = pool.Where(t => !t.CrossOver).ToList();
         if (!includeKnee) pool = pool.Where(t => !t.Knee).ToList();
-        if (allowedMotions.Count > 0) pool = pool.Where(t => allowedMotions.Contains(t.Motion)).ToList();
+        if (allowedRevolutions.Count > 0) pool = pool.Where(t => allowedRevolutions.Contains(t.Revolution)).ToList();
 
         if (pool.Count == 0)
             throw new InvalidOperationException("No tricks match your preferences.");
@@ -128,7 +128,7 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
             {
                 Name = ct2.Trick.Name,
                 Abbreviation = ct2.Trick.Abbreviation,
-                Motion = ct2.Trick.Motion,
+                Revolution = ct2.Trick.Revolution,
                 CrossOver = ct2.Trick.CrossOver,
                 Difficulty = ct2.Trick.Difficulty,
                 StrongFoot = ct2.StrongFoot,
@@ -147,7 +147,7 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
             Name = string.IsNullOrWhiteSpace(request.Name) ? null : request.Name.Trim(),
             AverageDifficulty = enhancementReq.AverageDifficulty,
             TrickCount = comboTricks.Count,
-            IsPublic = false,
+            Visibility = ComboVisibility.Private,
             CreatedAt = DateTime.UtcNow,
             AiDescription = string.IsNullOrEmpty(aiResult.Description) ? null : aiResult.Description,
             ComboTricks = comboTricks.Select(ct2 => new ComboTrick
@@ -171,6 +171,7 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
             AverageDifficulty = combo.AverageDifficulty,
             TrickCount = combo.TrickCount,
             IsPublic = combo.IsPublic,
+            Visibility = combo.Visibility.ToString(),
             CreatedAt = combo.CreatedAt,
             DisplayText = displayText,
             AiDescription = combo.AiDescription,
@@ -184,7 +185,7 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
                 StrongFoot = ct2.StrongFoot,
                 NoTouch = ct2.NoTouch,
                 Difficulty = ct2.Trick.Difficulty,
-                Motion = ct2.Trick.Motion
+                Revolution = ct2.Trick.Revolution
             }).ToList()
         };
     }

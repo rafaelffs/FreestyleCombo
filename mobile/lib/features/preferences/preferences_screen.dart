@@ -74,7 +74,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
         maxConsecutiveNoTouch: _maxConsecNoTouch,
         includeCrossOver: _includeCrossOver,
         includeKnee: _includeKnee,
-        allowedMotions: _pref?.allowedMotions ?? [],
+        allowedRevolutions: _pref?.allowedRevolutions ?? [],
       );
       _pref = await ApiClient.instance.upsertPreferences(updated);
       setState(() => _successMessage = 'Preferences saved!');

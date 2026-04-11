@@ -13,7 +13,7 @@ public class UserPreferenceConfiguration : IEntityTypeConfiguration<UserPreferen
 
         builder.HasIndex(p => p.UserId).IsUnique();
 
-        builder.Property(p => p.AllowedMotions)
+        builder.Property(p => p.AllowedRevolutions)
             .HasColumnType("jsonb")
             .HasConversion(
                 v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),

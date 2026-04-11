@@ -24,7 +24,7 @@ public class ComboRepository : IComboRepository
             .Include(c => c.ComboTricks).ThenInclude(ct2 => ct2.Trick)
             .Include(c => c.Ratings)
             .Include(c => c.Owner)
-            .Where(c => c.IsPublic);
+            .Where(c => c.Visibility == ComboVisibility.Public);
 
         if (maxDifficulty.HasValue)
             query = query.Where(c => c.AverageDifficulty <= maxDifficulty.Value);
@@ -50,7 +50,9 @@ public class ComboRepository : IComboRepository
             .Where(c => c.OwnerId == ownerId);
 
         if (isPublic.HasValue)
-            query = query.Where(c => c.IsPublic == isPublic.Value);
+            query = isPublic.Value
+                ? query.Where(c => c.Visibility != ComboVisibility.Private)
+                : query.Where(c => c.Visibility == ComboVisibility.Private);
 
         query = query.OrderByDescending(c => c.CreatedAt);
 
@@ -68,10 +70,21 @@ public class ComboRepository : IComboRepository
             .Where(c => c.OwnerId == ownerId);
 
         if (isPublic.HasValue)
-            query = query.Where(c => c.IsPublic == isPublic.Value);
+            query = isPublic.Value
+                ? query.Where(c => c.Visibility != ComboVisibility.Private)
+                : query.Where(c => c.Visibility == ComboVisibility.Private);
 
         return await query.ToListAsync(ct);
     }
+
+    public async Task<List<Combo>> GetPendingReviewAsync(CancellationToken ct = default) =>
+        await _db.Combos
+            .Include(c => c.ComboTricks).ThenInclude(ct2 => ct2.Trick)
+            .Include(c => c.Ratings)
+            .Include(c => c.Owner)
+            .Where(c => c.Visibility == ComboVisibility.PendingReview)
+            .OrderBy(c => c.CreatedAt)
+            .ToListAsync(ct);
 
     public async Task AddAsync(Combo combo, CancellationToken ct = default)
     {

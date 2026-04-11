@@ -44,7 +44,7 @@ public class ComboEnhancerService : IComboEnhancerService
 
                 Tricks:
                 {string.Join("\n", request.Tricks.OrderBy(t => t.Position).Select(t =>
-                    $"- {t.Name} ({t.Abbreviation}): {t.Motion} revolution(s), difficulty {t.Difficulty}" +
+                    $"- {t.Name} ({t.Abbreviation}): {t.Revolution} revolution(s), difficulty {t.Difficulty}" +
                     (t.CrossOver ? ", crossover" : "") +
                     (t.NoTouch ? ", no-touch into next" : "") +
                     (t.StrongFoot ? ", strong foot" : ", weak foot")

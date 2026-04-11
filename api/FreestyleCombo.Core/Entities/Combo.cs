@@ -1,5 +1,7 @@
 namespace FreestyleCombo.Core.Entities;
 
+public enum ComboVisibility { Private = 0, PendingReview = 1, Public = 2 }
+
 public class Combo
 {
     public Guid Id { get; set; }
@@ -7,7 +9,8 @@ public class Combo
     public string? Name { get; set; }
     public double AverageDifficulty { get; set; }
     public int TrickCount { get; set; }
-    public bool IsPublic { get; set; }
+    public ComboVisibility Visibility { get; set; } = ComboVisibility.Private;
+    public bool IsPublic => Visibility == ComboVisibility.Public;
     public DateTime CreatedAt { get; set; }
     public string? AiDescription { get; set; }
 

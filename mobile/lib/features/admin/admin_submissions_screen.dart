@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/api/api_client.dart';
 import '../../core/models/trick_submission.dart';
 
@@ -47,6 +48,11 @@ class _AdminSubmissionsScreenState extends State<AdminSubmissionsScreen> {
       appBar: AppBar(
         title: const Text('Pending Submissions'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.rule_folder_outlined),
+            tooltip: 'Combo Reviews',
+            onPressed: () => context.push('/admin/combo-reviews'),
+          ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
         ],
       ),
@@ -101,7 +107,7 @@ class _AdminSubmissionsScreenState extends State<AdminSubmissionsScreen> {
                         spacing: 16,
                         runSpacing: 4,
                         children: [
-                          _stat('Motion', s.motion.toString()),
+                          _stat('Revs', s.revolution.toString()),
                           _stat('Difficulty', '${s.difficulty}'),
                           _stat('Common Lvl', '${s.commonLevel}'),
                           _stat('CrossOver', s.crossOver ? 'Yes' : 'No'),

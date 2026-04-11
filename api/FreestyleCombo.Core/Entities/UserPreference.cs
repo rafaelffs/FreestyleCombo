@@ -11,7 +11,7 @@ public class UserPreference
     public int MaxConsecutiveNoTouch { get; set; } = 2;
     public bool IncludeCrossOver { get; set; } = true;
     public bool IncludeKnee { get; set; } = true;
-    public List<decimal> AllowedMotions { get; set; } = [];
+    public List<decimal> AllowedRevolutions { get; set; } = [];
 
     public AppUser User { get; set; } = null!;
 }

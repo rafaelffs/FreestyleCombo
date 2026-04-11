@@ -4,7 +4,7 @@ class TrickDto {
   final String abbreviation;
   final bool crossOver;
   final bool knee;
-  final double motion;
+  final double revolution;
   final int difficulty;
   final int commonLevel;
 
@@ -14,7 +14,7 @@ class TrickDto {
     required this.abbreviation,
     required this.crossOver,
     required this.knee,
-    required this.motion,
+    required this.revolution,
     required this.difficulty,
     required this.commonLevel,
   });
@@ -25,7 +25,7 @@ class TrickDto {
         abbreviation: j['abbreviation'] as String,
         crossOver: j['crossOver'] as bool,
         knee: j['knee'] as bool,
-        motion: (j['motion'] as num).toDouble(),
+        revolution: (j['revolution'] as num).toDouble(),
         difficulty: j['difficulty'] as int,
         commonLevel: j['commonLevel'] as int,
       );
@@ -35,7 +35,7 @@ class TrickDto {
         'abbreviation': abbreviation,
         'crossOver': crossOver,
         'knee': knee,
-        'motion': motion,
+        'revolution': revolution,
         'difficulty': difficulty,
         'commonLevel': commonLevel,
       };
@@ -70,7 +70,7 @@ class ComboTrickDto {
   final bool strongFoot;
   final bool noTouch;
   final int difficulty;
-  final double motion;
+  final double revolution;
 
   const ComboTrickDto({
     required this.trickId,
@@ -80,7 +80,7 @@ class ComboTrickDto {
     required this.strongFoot,
     required this.noTouch,
     required this.difficulty,
-    required this.motion,
+    required this.revolution,
   });
 
   factory ComboTrickDto.fromJson(Map<String, dynamic> j) => ComboTrickDto(
@@ -91,7 +91,7 @@ class ComboTrickDto {
         strongFoot: j['strongFoot'] as bool,
         noTouch: j['noTouch'] as bool,
         difficulty: j['difficulty'] as int,
-        motion: (j['motion'] as num).toDouble(),
+        revolution: (j['revolution'] as num).toDouble(),
       );
 }
 
@@ -103,6 +103,7 @@ class ComboDto {
   final double averageDifficulty;
   final int trickCount;
   final bool? isPublic;
+  final String? visibility;
   final String createdAt;
   final String displayText;
   final String? aiDescription;
@@ -119,6 +120,7 @@ class ComboDto {
     required this.averageDifficulty,
     required this.trickCount,
     this.isPublic,
+    this.visibility,
     required this.createdAt,
     required this.displayText,
     this.aiDescription,
@@ -136,6 +138,7 @@ class ComboDto {
         averageDifficulty: (j['averageDifficulty'] as num).toDouble(),
         trickCount: j['trickCount'] as int,
         isPublic: j['isPublic'] as bool?,
+        visibility: j['visibility'] as String?,
         createdAt: j['createdAt'] as String,
         displayText: j['displayText'] as String,
         aiDescription: j['aiDescription'] as String?,
@@ -160,6 +163,56 @@ class PagedResult<T> {
     required this.page,
     required this.pageSize,
   });
+}
+
+class PreviewTrickItem {
+  final String trickId;
+  final String trickName;
+  final String abbreviation;
+  final int position;
+  final bool strongFoot;
+  final bool noTouch;
+  final int difficulty;
+  final bool crossOver;
+  final double revolution;
+
+  const PreviewTrickItem({
+    required this.trickId,
+    required this.trickName,
+    required this.abbreviation,
+    required this.position,
+    required this.strongFoot,
+    required this.noTouch,
+    required this.difficulty,
+    required this.crossOver,
+    required this.revolution,
+  });
+
+  factory PreviewTrickItem.fromJson(Map<String, dynamic> j) => PreviewTrickItem(
+        trickId: j['trickId'] as String,
+        trickName: j['trickName'] as String,
+        abbreviation: j['abbreviation'] as String,
+        position: j['position'] as int,
+        strongFoot: j['strongFoot'] as bool,
+        noTouch: j['noTouch'] as bool,
+        difficulty: j['difficulty'] as int,
+        crossOver: j['crossOver'] as bool,
+        revolution: (j['revolution'] as num).toDouble(),
+      );
+}
+
+class PreviewComboResponse {
+  final List<PreviewTrickItem> tricks;
+  final List<String> warnings;
+
+  const PreviewComboResponse({required this.tricks, required this.warnings});
+
+  factory PreviewComboResponse.fromJson(Map<String, dynamic> j) => PreviewComboResponse(
+        tricks: (j['tricks'] as List<dynamic>)
+            .map((t) => PreviewTrickItem.fromJson(t as Map<String, dynamic>))
+            .toList(),
+        warnings: (j['warnings'] as List<dynamic>).cast<String>(),
+      );
 }
 
 class GenerateComboOverrides {

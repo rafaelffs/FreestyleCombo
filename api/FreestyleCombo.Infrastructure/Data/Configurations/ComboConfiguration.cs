@@ -12,6 +12,8 @@ public class ComboConfiguration : IEntityTypeConfiguration<Combo>
         builder.Property(c => c.Id).ValueGeneratedOnAdd();
         builder.Property(c => c.CreatedAt).IsRequired();
         builder.Property(c => c.AiDescription).HasMaxLength(2000);
+        builder.Property(c => c.Visibility).HasDefaultValue(ComboVisibility.Private);
+        builder.Ignore(c => c.IsPublic);
 
         builder.HasOne(c => c.Owner)
             .WithMany(u => u.Combos)
