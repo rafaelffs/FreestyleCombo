@@ -1,0 +1,152 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: ci
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Build React app
+        run: |
+          cd web
+          npm ci
+          npm run build
+          cd ..
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Create deployment directories on server
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "mkdir -p /opt/freestylecombo && mkdir -p /var/www/freestylecombo"
+
+      - name: Sync docker-compose.prod.yml to server
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            docker-compose.prod.yml \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/freestylecombo/
+
+      - name: Sync nginx config to server
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            nginx/nginx.conf \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/freestylecombo/nginx.conf.new
+
+      - name: Sync React build to server
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            web/dist/ \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/var/www/freestylecombo/
+
+      - name: Deploy containers and run migrations
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
+            set -e
+            cd /opt/freestylecombo
+            docker compose -f docker-compose.prod.yml up --build -d
+            
+            # Wait for API to be ready
+            echo "Waiting for API to be ready..."
+            for i in {1..30}; do
+              if curl -s http://localhost:5050/swagger > /dev/null 2>&1; then
+                echo "API is ready"
+                break
+              fi
+              echo "Attempt $i/30: Waiting for API..."
+              sleep 2
+            done
+            
+            # Run database migrations
+            echo "Running database migrations..."
+            docker compose -f docker-compose.prod.yml exec -T api \
+              dotnet ef database update \
+              --project FreestyleCombo.Infrastructure \
+              --startup-project FreestyleCombo.API
+            
+            echo "Deployment successful"
+          EOF
+
+      - name: Update and reload Nginx config
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
+            set -e
+            
+            # Test new config
+            sudo nginx -t -c /opt/freestylecombo/nginx.conf.new
+            
+            # Deploy new config
+            sudo cp /opt/freestylecombo/nginx.conf.new /etc/nginx/conf.d/freestylecombo.conf
+            
+            # Reload Nginx
+            sudo systemctl reload nginx
+            
+            echo "Nginx config updated and reloaded"
+          EOF
+
+      - name: Verify deployment
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
+            set -e
+            
+            echo "Verifying API..."
+            TRIES=0
+            while [ $TRIES -lt 10 ]; do
+              if curl -s http://localhost/swagger > /dev/null 2>&1; then
+                echo "✓ React app and API proxying working"
+                break
+              fi
+              TRIES=$((TRIES + 1))
+              sleep 1
+            done
+            
+            if [ $TRIES -eq 10 ]; then
+              echo "✗ API verification failed"
+              exit 1
+            fi
+            
+            echo "✓ Deployment verified successfully"
+          EOF
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key
+
+  notify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Deployment status
+        run: |
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "✓ Production deployment successful"
+          else
+            echo "✗ Production deployment failed"
+            exit 1
+          fi

@@ -19,7 +19,7 @@ FreestyleCombo/
 │   └── FreestyleCombo.Tests/     # xUnit + FluentAssertions + Moq
 ├── web/                          # React 19, Vite, TypeScript, Tailwind v4, TanStack Query
 ├── mobile/                       # Flutter (Dart), go_router, dio, shared_preferences
-├── docker-compose.yml            # postgres:16, redis:7, api (host port 5050)
+├── docker-compose.yml            # postgres:16, api (host port 5050)
 └── .github/workflows/ci.yml      # Runs on push to main/feature/**
 ```
 

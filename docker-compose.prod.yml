@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: freestyle_combo
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - freestylecombo_network
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./api
+      dockerfile: FreestyleCombo.API/Dockerfile
+    ports:
+      - "127.0.0.1:5050:8080"  # Expose only to localhost; host Nginx will proxy to it
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=db;Database=freestyle_combo;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      JwtSettings__Secret: "${JWT_SECRET}"
+      JwtSettings__Issuer: "FreestyleComboAPI"
+      JwtSettings__Audience: "FreestyleComboApp"
+      Anthropic__ApiKey: "${ANTHROPIC_API_KEY}"
+    depends_on:
+      - db
+    networks:
+      - freestylecombo_network
+    restart: unless-stopped
+
+networks:
+  freestylecombo_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
