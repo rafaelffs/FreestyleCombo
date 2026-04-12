@@ -1,6 +1,6 @@
 # FreestyleCombo
 
-A full-stack freestyle football combo generator. Users register/login, generate combos with AI-written descriptions (powered by Claude), rate each other's public combos, and save their preferences. A Hangfire background job runs weekly to adjust trick difficulty weights based on aggregate ratings.
+A full-stack freestyle football combo generator. Users register/login, generate and build combos, rate public combos, save named preferences, and manage favourites/completions. The API includes Hangfire background jobs and optional AI integrations.
 
 ---
 
@@ -10,30 +10,22 @@ A full-stack freestyle football combo generator. Users register/login, generate 
 - [Tech Stack](#tech-stack)
 - [Prerequisites](#prerequisites)
 - [Running with Docker (recommended)](#running-with-docker-recommended)
+- [Production Deployment](#production-deployment)
 - [Running Locally (without Docker)](#running-locally-without-docker)
 - [Environment Variables](#environment-variables)
 - [Database Migrations](#database-migrations)
 - [Tests](#tests)
 - [Mobile Setup](#mobile-setup)
-- [Project Structure](#project-structure)
 
 ---
 
 ## Architecture
 
-```
-FreestyleCombo/
-├── api/                          # ASP.NET Core 10, Vertical Slice, .NET 9
-│   ├── FreestyleCombo.Core/      # Entities, Interfaces, Result<T>
-│   ├── FreestyleCombo.Infrastructure/  # EF Core, Repositories, Seeder, Migrations
-│   ├── FreestyleCombo.AI/        # Anthropic SDK (ComboEnhancerService), Hangfire job
-│   ├── FreestyleCombo.API/       # MediatR Vertical Slices, Controllers, Program.cs
-│   └── FreestyleCombo.Tests/     # xUnit + FluentAssertions + Moq
-├── web/                          # React 19, Vite, TypeScript, Tailwind v4, TanStack Query
-├── mobile/                       # Flutter (Dart), go_router, dio, shared_preferences
-├── docker-compose.yml            # postgres:16, api (host port 5050)
-└── .github/workflows/ci.yml      # Runs on push to main/feature/**
-```
+- API: ASP.NET Core + PostgreSQL + Hangfire
+- Web: React + Vite served by Nginx in production
+- Mobile: Flutter client consuming the same API
+- Dev runtime: Docker Compose (`db` + `api`)
+- Prod runtime: Hetzner VPS with host Nginx + Docker Compose (`db` + `api`)
 
 ---
 
@@ -85,7 +77,7 @@ This starts PostgreSQL and the API together.
 
 ```bash
 # From the project root
-docker-compose up
+docker compose up
 ```
 
 | Service | URL |
@@ -97,6 +89,43 @@ docker-compose up
 The web frontend is **not** included in Docker — run it separately (see below).
 
 > **Anthropic API key:** `appsettings.Development.json` is gitignored. Set `Anthropic__ApiKey` as an environment variable or add it to `docker-compose.yml` under the `api` service's `environment` block.
+
+---
+
+## Production Deployment
+
+Production uses a single Hetzner VPS with this model:
+
+- Host Nginx listens on `80/443`
+- Nginx proxies `/api/*` to `127.0.0.1:5050` (API container)
+- Nginx serves web static files from `/var/www/freestylecombo`
+- Docker Compose runs only `db` and `api` (`docker-compose.prod.yml`)
+
+Required files for production:
+
+- `docker-compose.prod.yml`
+- `nginx/nginx.conf`
+- `.github/workflows/deploy.yml`
+
+First-time manual server setup (one-time):
+
+```bash
+sudo apt update
+sudo apt install -y docker.io docker-compose-v2 nginx git curl
+sudo systemctl enable --now docker
+sudo systemctl enable --now nginx
+
+sudo mkdir -p /opt/freestylecombo /var/www/freestylecombo
+sudo chown -R ubuntu:ubuntu /opt/freestylecombo /var/www/freestylecombo
+```
+
+CD workflow secrets required:
+
+- `DEPLOY_HOST`
+- `DEPLOY_USER`
+- `DEPLOY_SSH_KEY`
+
+After secrets are set, pushing to `main` triggers CI and then deployment.
 
 ---
 
@@ -116,7 +145,7 @@ dotnet run
 
 ```bash
 cd web
-npm install
+npm ci
 npm run dev
 # Frontend available at http://localhost:5173
 # Dev server proxies /api/* → http://localhost:5050
@@ -137,6 +166,12 @@ See the [Mobile Setup](#mobile-setup) section below.
 | `JwtSettings__Issuer` | docker-compose / appsettings | `FreestyleComboAPI` |
 | `JwtSettings__Audience` | docker-compose / appsettings | `FreestyleComboApp` |
 | `Anthropic__ApiKey` | docker-compose / appsettings | Your Anthropic API key |
+
+Production (`/opt/freestylecombo/.env`) uses:
+
+- `POSTGRES_PASSWORD`
+- `JWT_SECRET`
+- `ANTHROPIC_API_KEY`
 
 Example `appsettings.Development.json` (not committed):
 
@@ -216,47 +251,7 @@ Edit [mobile/lib/core/api/api_client.dart](mobile/lib/core/api/api_client.dart) 
 | iOS simulator | `http://localhost:5050/api` |
 | Physical device | `http://<your-local-ip>:5050/api` |
 
----
-
-## Project Structure
-
-### API — Data Model
-
-| Entity | Key fields |
-|---|---|
-| `AppUser` | `IdentityUser<Guid>`, `ICollection<Combo>`, `ICollection<ComboRating>`, `UserPreference?` |
-| `Trick` | `Id, Name, Abbreviation, CrossOver, Knee, Motion, Difficulty, CommonLevel` |
-| `Combo` | `Id, OwnerId, TotalDifficulty, TrickCount, IsPublic, CreatedAt, AiDescription` |
-| `ComboTrick` | `Id, ComboId, TrickId, Position, StrongFoot, NoTouch` |
-| `ComboRating` | `Id, ComboId, RatedByUserId, Score, CreatedAt` |
-| `UserPreference` | `Id, UserId, MaxDifficulty, ComboLength, StrongFootPercentage, NoTouchPercentage, MaxConsecutiveNoTouch, IncludeCrossOver, IncludeKnee, AllowedMotions` (`jsonb`) |
-
-### Combo Generation Algorithm
-
-1. Filter trick pool by `MaxDifficulty`, `IncludeCrossOver`, `IncludeKnee`, `AllowedMotions`
-2. Split slots: `StrongFootPercentage` → strong-foot slots, remainder → weak-foot slots
-3. Weighted random pick (weight = `CommonLevel`); fill by position
-4. Shuffle positions
-5. Annotate NoTouch — only on CrossOver tricks, respecting `NoTouchPercentage` and `MaxConsecutiveNoTouch`
-6. Call Claude via `IComboEnhancerService.EnhanceAsync()` → AI description → save combo
-
-### Web — Directory Structure
-
-```
-web/src/
-├── lib/
-│   ├── api.ts          # axios instance, all API functions + DTO types
-│   ├── auth.ts         # localStorage token management
-│   └── utils.ts        # cn() helper (clsx + tailwind-merge)
-├── components/
-│   ├── ui/             # Button, Input, Label, Card, Badge, Textarea, Select, Dialog
-│   └── layout/         # Navbar, Layout (Outlet), ProtectedRoute
-└── features/
-    ├── auth/           # LoginPage, RegisterPage
-    ├── combos/         # GenerateComboPage, PublicCombosPage, MyCombosPage,
-    │                   # ComboDetailPage, ComboCard, RateComboDialog
-    └── preferences/    # PreferencesPage
-```
+For full product and API behavior details, see `CLAUDE.md`.
 
 ### Mobile — Directory Structure
 
