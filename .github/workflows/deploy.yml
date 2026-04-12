@@ -41,6 +41,21 @@ jobs:
           ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
             "mkdir -p /opt/freestylecombo && mkdir -p /var/www/freestylecombo"
 
+      - name: Preflight server access
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
+            set -e
+            echo "Checking docker access..."
+            docker --version
+            echo "Checking passwordless sudo for deploy user..."
+            if ! sudo -n true 2>/dev/null; then
+              echo "ERROR: passwordless sudo is not configured for deploy user."
+              echo "Run on server as root: echo '${{ secrets.DEPLOY_USER }} ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/${{ secrets.DEPLOY_USER }} && chmod 440 /etc/sudoers.d/${{ secrets.DEPLOY_USER }}"
+              exit 1
+            fi
+            echo "Preflight checks passed."
+          EOF
+
       - name: Sync docker-compose.prod.yml to server
         run: |
           rsync -avz --delete \
