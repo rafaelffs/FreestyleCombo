@@ -287,26 +287,34 @@ class _ComboCardState extends State<ComboCard> {
                               const SizedBox(width: 8),
                               Tooltip(
                                 message: 'Rate this combo',
-                                child: SizedBox(
-                                  width: 34,
-                                  height: 34,
-                                  child: OutlinedButton(
-                                    onPressed: _openRating,
-                                    style: OutlinedButton.styleFrom(
-                                      padding: EdgeInsets.zero,
-                                      minimumSize: const Size(34, 34),
-                                      side: BorderSide(color: Colors.grey.shade300),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
+                                child: OutlinedButton(
+                                  onPressed: _openRating,
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    minimumSize: const Size(34, 34),
+                                    side: BorderSide(color: Colors.grey.shade300),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          Icon(Icons.star, color: Colors.grey.shade300, size: 18),
+                                          Icon(Icons.star_half, color: Colors.amber, size: 18),
+                                        ],
                                       ),
-                                    ),
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        Icon(Icons.star, color: Colors.grey.shade300, size: 18),
-                                        Icon(Icons.star_half, color: Colors.amber, size: 18),
+                                      if (combo.averageRating > 0) ...[
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          combo.averageRating.toStringAsFixed(1),
+                                          style: const TextStyle(fontSize: 11),
+                                        ),
                                       ],
-                                    ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -371,30 +379,41 @@ class _ComboCardState extends State<ComboCard> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      _Chip(
-                          label:
-                              'Diff: ${combo.averageDifficulty.toStringAsFixed(1)}'),
-                      if (combo.averageRating > 0) ...[
-                        const SizedBox(height: 4),
-                        _Chip(
-                          label:
-                              '★ ${combo.averageRating.toStringAsFixed(1)} (${combo.totalRatings})',
-                          color: Colors.amber.shade100,
-                        ),
-                      ],
-                    ],
-                  ),
+                  _Chip(label: 'Diff: ${combo.averageDifficulty.toStringAsFixed(1)}'),
                 ],
               ),
               if (combo.ownerUserName != null) ...[
                 const SizedBox(height: 4),
-                Text(
-                  'by ${combo.ownerUserName}',
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                ),
+                Builder(builder: (context) {
+                  final byText = TextSpan(
+                    text: 'by ',
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  );
+                  if (combo.ownerId != null) {
+                    return GestureDetector(
+                      onTap: () => context.push('/users/${combo.ownerId}'),
+                      child: RichText(
+                        text: TextSpan(
+                          children: [
+                            byText,
+                            TextSpan(
+                              text: combo.ownerUserName,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.indigo[600],
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  return Text(
+                    'by ${combo.ownerUserName}',
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  );
+                }),
               ],
               if (combo.tricks != null && combo.tricks!.isNotEmpty) ...[
                 const SizedBox(height: 8),

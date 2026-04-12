@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 const _tokenKey = 'fc_token';
 const _userIdKey = 'fc_user_id';
 const _isAdminKey = 'fc_is_admin';
+const _userNameKey = 'fc_user_name';
 
 class AuthService {
   static AuthService? _instance;
@@ -18,6 +19,7 @@ class AuthService {
 
   String? get token => _prefs?.getString(_tokenKey);
   String? get userId => _prefs?.getString(_userIdKey);
+  String? get userName => _prefs?.getString(_userNameKey);
   bool get isAuthenticated => token != null;
   bool get isAdmin => _prefs?.getBool(_isAdminKey) ?? false;
 
@@ -26,6 +28,14 @@ class AuthService {
     await prefs.setString(_tokenKey, token);
     await prefs.setString(_userIdKey, userId);
     await prefs.setBool(_isAdminKey, _extractIsAdmin(token));
+    final name = _extractUserName(token);
+    if (name != null) await prefs.setString(_userNameKey, name);
+    _prefs = prefs;
+  }
+
+  Future<void> setUserName(String name) async {
+    final prefs = _prefs ?? await SharedPreferences.getInstance();
+    await prefs.setString(_userNameKey, name);
     _prefs = prefs;
   }
 
@@ -34,6 +44,26 @@ class AuthService {
     await prefs.remove(_tokenKey);
     await prefs.remove(_userIdKey);
     await prefs.remove(_isAdminKey);
+    await prefs.remove(_userNameKey);
+  }
+
+  String? _extractUserName(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      var payload = parts[1].replaceAll('-', '+').replaceAll('_', '/');
+      switch (payload.length % 4) {
+        case 2:
+          payload += '==';
+        case 3:
+          payload += '=';
+      }
+      final decoded = utf8.decode(base64.decode(payload));
+      final json = jsonDecode(decoded) as Map<String, dynamic>;
+      return json['unique_name'] as String?;
+    } catch (_) {
+      return null;
+    }
   }
 
   bool _extractIsAdmin(String token) {

@@ -478,8 +478,13 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                   itemBuilder: (_, i) {
                     final t = _filtered[i];
                     return ListTile(
-                      title: Text(t.name),
-                      subtitle: Text(t.abbreviation, style: const TextStyle(fontSize: 12)),
+                      title: Row(
+                        children: [
+                          Text(t.abbreviation, style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 13)),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(t.name, style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.normal), overflow: TextOverflow.ellipsis)),
+                        ],
+                      ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [

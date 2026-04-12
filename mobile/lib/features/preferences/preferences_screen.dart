@@ -92,29 +92,68 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
           ),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+      body: RefreshIndicator(
               onRefresh: _load,
-              child: _error != null
-                  ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
-                  : _prefs.isEmpty
-                      ? ListView(
-                          children: const [
-                            SizedBox(height: 80),
-                            Center(child: Text('No preferences saved yet.\nTap + to create one.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey))),
-                          ],
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _prefs.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 8),
-                          itemBuilder: (_, i) => _PrefCard(
-                            pref: _prefs[i],
-                            onEdit: () => _openForm(existing: _prefs[i]),
-                            onDelete: () => _delete(_prefs[i]),
-                          ),
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  // ── Account section ────────────────────────────────────
+                  Card(
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.indigo.shade50,
+                        child: Text(
+                          (AuthService.instance.userName ?? 'U')
+                              .substring(0, 1)
+                              .toUpperCase(),
+                          style: TextStyle(color: Colors.indigo.shade700),
                         ),
+                      ),
+                      title: Text(
+                        AuthService.instance.userName ?? 'My Account',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: const Text('Edit profile & password'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push('/account'),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  Text('Combo Preferences',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleSmall
+                          ?.copyWith(color: Colors.grey[600])),
+                  const SizedBox(height: 8),
+                  if (_loading)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_error != null)
+                    Text(_error!, style: const TextStyle(color: Colors.red))
+                  else if (_prefs.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 32),
+                      child: Center(
+                          child: Text(
+                              'No preferences saved yet.\nTap + to create one.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.grey))),
+                    )
+                  else
+                    ...List.generate(
+                      _prefs.length,
+                      (i) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _PrefCard(
+                          pref: _prefs[i],
+                          onEdit: () => _openForm(existing: _prefs[i]),
+                          onDelete: () => _delete(_prefs[i]),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openForm(),

@@ -206,7 +206,7 @@ web/src/
     └── tricks/         # TricksPage (/tricks, public, inline submit form), AdminSubmissionsPage (/admin/approvals)
 ```
 
-Routes: `/combos` (public, tabbed), `/combos/create` (protected, mode selector), `/admin/approvals` (admin only). Old admin routes `/admin/submissions` and `/admin/combo-reviews` redirect to `/admin/approvals`. Create route remains accessible from the "Create new" button inside `/combos`.
+Routes: `/combos` (public, tabbed), `/combos/create` (protected, mode selector), `/admin/approvals` (admin only), `/admin/users` (admin only), `/account` (protected), `/users/:id` (public). Old admin routes `/admin/submissions` and `/admin/combo-reviews` redirect to `/admin/approvals`. Create route remains accessible from the "Create new" button inside `/combos`.
 
 `CreateComboPage` modes: `'choose'` (initial), `'generate'` (calls `/preview` → populates build slots on success), `'build'` (manual slot picker + save). Name field is at the top, shared across all modes. In generate mode: a `<select>` dropdown lists user's saved preferences by name (first option: "Custom"). When a preference is selected, all fields are shown read-only/locked; when "Custom", all fields are editable. Passes `preferenceId` (not the old `usePreferences` bool) to preview API.
 
@@ -221,10 +221,33 @@ Routes: `/combos` (public, tabbed), `/combos/create` (protected, mode selector),
 | Tricks | `/tricks` | Always |
 | Preferences | `/preferences` | Authenticated |
 | Approvals | `/admin/approvals` | Admin only |
+| Users | `/admin/users` | Admin only |
+
+Navbar right side shows a profile dropdown (username + chevron) when authenticated: "My Account" → `/account`, then "Logout". Unauthenticated shows Login/Register buttons.
+
+`auth.ts` stores username in localStorage (`fc_user_name`) extracted from the JWT `unique_name` claim. `getUserName()` and `setUserName()` are exported.
+
+### Account & User Profile
+- `GET /api/account/me` — returns `ProfileDto { id, userName, email, isAdmin }` (auth required)
+- `PUT /api/account/me` — update username/email
+- `PUT /api/account/me/password` — change password (requires currentPassword)
+- `GET /api/account/{id}` — public profile `PublicProfileDto { id, userName, email }` (no auth)
+- `AccountPage` at `/account` — two sections: edit profile form, change password form
+- `UserProfilePage` at `/users/:id` — shows username + email with initial avatar
+- "by [username]" on ComboCard links to `/users/{ownerId}`
+
+### Admin User Management (`/api/admin/users`)
+- `GET /api/admin/users` — list all users with `AdminUserDto { id, userName, email, isAdmin, comboCount }`
+- `PUT /api/admin/users/{id}` — edit username/email
+- `PUT /api/admin/users/{id}/password` — reset password (no current password required)
+- `PUT /api/admin/users/{id}/role` — `{ isAdmin: bool }` — assign/revoke Admin role
+- `DELETE /api/admin/users/{id}` — delete user account (EF cascades handle related data)
+- `AdminUsersPage` at `/admin/users` — table with Edit/Reset pw/Toggle admin/Delete per row
 
 ### ComboCard features
 - Shows `combo.name` (bold, above displayText) when present
 - Shows `combo.ownerUserName` (not ownerEmail)
+- "by [username]" is a link to `/users/{combo.ownerId}` when ownerId is set
 - Favourite toggle: heart icon only (no text label), displayed in a top icon row above combo name — calls `addFavourite`/`removeFavourite`, invalidates `['combos']` query
 - Visibility is icon-based near actions (owner only): globe icon only (`🌐`) with neutral color for private (click opens confirm modal to submit as public), yellow for pending approval, blue for public
 - No Private/Public text badges on combo cards
@@ -295,9 +318,15 @@ mobile/lib/
     └── rate_combo_dialog.dart    # Star rating AlertDialog
 ```
 
-`AuthService.isAdmin` decodes the JWT on `setCredentials()` and persists the result in SharedPreferences (`fc_is_admin`). Admin routes (`/admin/*`) are redirect-guarded in the router.
+`AuthService.isAdmin` decodes the JWT on `setCredentials()` and persists the result in SharedPreferences (`fc_is_admin`). `AuthService.userName` extracts `unique_name` claim from JWT and persists in SharedPreferences (`fc_user_name`). Admin routes (`/admin/*`) are redirect-guarded in the router.
 
-`preferences_screen.dart` shows a `ListView` of `_PrefCard` tiles (name + stats) with Edit/Delete icon buttons. FAB opens `_PreferenceForm` in a `showModalBottomSheet`. `_PreferenceForm` handles both create and update — calls `createPreference` or `updatePreference` based on whether `initial` is set.
+`preferences_screen.dart` shows an **Account card** at the top (username + "Edit profile & password" → `/account`), then a list of `_PrefCard` tiles. FAB opens `_PreferenceForm` in a `showModalBottomSheet`.
+
+`account_screen.dart` at `/account` — two cards: edit username/email form, change password form. Calls `AuthService.instance.setUserName()` on successful username update.
+
+`user_profile_screen.dart` at `/users/:id` — shows username + email with a letter avatar.
+
+`admin_users_screen.dart` at `/admin/users` — ListView of user tiles with PopupMenuButton: Edit (AlertDialog), Reset password (AlertDialog), Toggle admin role, Delete (confirm dialog).
 
 `create_combo_screen.dart` generate view: `_usePrefs` switch replaced with a `DropdownButtonFormField<String?>` (null = Custom, value = preferenceId). Loading preferences via `_loadPreferences()` when entering generate mode. When a preference is selected, its values are copied to the state variables and sliders/switches have `onChanged: null` (read-only). Passes `_selectedPrefId` (not `_usePrefs`) to `previewCombo()`.
 
@@ -309,9 +338,12 @@ mobile/lib/
 | 2 | Settings | `/preferences` | Yes |
 | 3 | Admin | `/admin/approvals` | Admin only |
 
+New mobile routes: `/account` (protected), `/users/:id` (public), `/admin/users` (admin only).
+
 ### combo_card.dart features
 - Shows `combo.name` (bold) above `displayText` when present
 - Shows `combo.ownerUserName` (not ownerEmail)
+- "by [username]" is tappable (GestureDetector → `context.push('/users/${combo.ownerId}')`) when ownerId is set, styled as indigo underline
 - Favourite toggle: `Icons.favorite` / `Icons.favorite_border` (no text label), displayed in a top icon row above combo name — calls `addFavourite`/`removeFavourite`, triggers `onRefresh`
 - Visibility is icon-based near actions (owner only): `Icons.public` only with neutral color for private (click opens confirm modal to submit as public), yellow for pending approval, blue for public
 - No Private/Public text chips on combo cards

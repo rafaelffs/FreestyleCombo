@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useRef, useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tricksApi, trickSubmissionsApi, extractError, type TrickDto, type SubmitTrickRequest } from '@/lib/api'
 import { isAdmin, isAuthenticated } from '@/lib/auth'
@@ -13,6 +13,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+
+type SortKey = 'abbreviation' | 'name' | 'revolution' | 'difficulty' | 'crossOver' | 'knee'
+type SortDir = 'asc' | 'desc'
 
 const SUBMIT_DEFAULTS: SubmitTrickRequest = {
   name: '',
@@ -40,21 +43,59 @@ const EMPTY_FORM: Omit<TrickDto, 'id'> = {
   commonLevel: 1,
 }
 
+interface SortHeaderProps {
+  label: string
+  col: SortKey
+  sortKey: SortKey
+  sortDir: SortDir
+  onSort: (col: SortKey) => void
+  className?: string
+  center?: boolean
+}
+
+function SortHeader({ label, col, sortKey, sortDir, onSort, className = '', center }: SortHeaderProps) {
+  const active = sortKey === col
+  return (
+    <th
+      onClick={() => onSort(col)}
+      className={`cursor-pointer select-none px-4 py-3 text-xs font-medium uppercase text-gray-500 hover:text-gray-800 ${center ? 'text-center' : 'text-left'} ${className}`}
+    >
+      <span className={`inline-flex items-center gap-1 ${center ? 'justify-center w-full' : ''}`}>
+        {label}
+        <span className={`text-[10px] ${active ? 'text-indigo-500' : 'text-gray-300'}`}>
+          {active ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+        </span>
+      </span>
+    </th>
+  )
+}
+
 export function TricksPage() {
   const queryClient = useQueryClient()
   const admin = isAdmin()
   const authed = isAuthenticated()
 
+  // Filters
   const [search, setSearch] = useState('')
-  const [filterCrossOver, setFilterCrossOver] = useState<boolean | undefined>(undefined)
-  const [filterKnee, setFilterKnee] = useState<boolean | undefined>(undefined)
-  const [maxDiff, setMaxDiff] = useState<number | undefined>(undefined)
+  const [minDiff, setMinDiff] = useState<number | undefined>()
+  const [maxDiff, setMaxDiff] = useState<number | undefined>()
+  const [filterRevs, setFilterRevs] = useState<number[]>([])
+  const [revDropdownOpen, setRevDropdownOpen] = useState(false)
+  const revDropdownRef = useRef<HTMLDivElement>(null)
+  const [filterCrossOver, setFilterCrossOver] = useState(false)
+  const [filterKnee, setFilterKnee] = useState(false)
 
+  // Sort
+  const [sortKey, setSortKey] = useState<SortKey>('abbreviation')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+
+  // Edit / delete
   const [editTrick, setEditTrick] = useState<TrickDto | null>(null)
   const [editForm, setEditForm] = useState<Omit<TrickDto, 'id'>>(EMPTY_FORM)
   const [editError, setEditError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
+  // Submit
   const [showSubmit, setShowSubmit] = useState(false)
   const [submitForm, setSubmitForm] = useState<SubmitTrickRequest>(SUBMIT_DEFAULTS)
   const [submitted, setSubmitted] = useState(false)
@@ -62,6 +103,17 @@ export function TricksPage() {
   function updateSubmit<K extends keyof SubmitTrickRequest>(key: K, value: SubmitTrickRequest[K]) {
     setSubmitForm((prev) => ({ ...prev, [key]: value }))
   }
+
+  // Close rev dropdown when clicking outside
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (revDropdownRef.current && !revDropdownRef.current.contains(e.target as Node)) {
+        setRevDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   const submitMutation = useMutation({
     mutationFn: () => trickSubmissionsApi.submit(submitForm),
@@ -74,15 +126,8 @@ export function TricksPage() {
   })
 
   const { data: tricks = [], isLoading } = useQuery({
-    queryKey: ['tricks', filterCrossOver, filterKnee, maxDiff],
-    queryFn: () =>
-      tricksApi
-        .getAll({
-          crossOver: filterCrossOver,
-          knee: filterKnee,
-          maxDifficulty: maxDiff,
-        })
-        .then((r) => r.data),
+    queryKey: ['tricks'],
+    queryFn: () => tricksApi.getAll().then((r) => r.data),
   })
 
   const updateMutation = useMutation({
@@ -116,10 +161,57 @@ export function TricksPage() {
     updateMutation.mutate(editForm)
   }
 
-  const filtered = tricks.filter((t) =>
-    t.name.toLowerCase().includes(search.toLowerCase()) ||
-    t.abbreviation.toLowerCase().includes(search.toLowerCase()),
+  function handleSort(col: SortKey) {
+    if (sortKey === col) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(col)
+      setSortDir('asc')
+    }
+  }
+
+  function toggleRev(rev: number) {
+    setFilterRevs((prev) =>
+      prev.includes(rev) ? prev.filter((r) => r !== rev) : [...prev, rev],
+    )
+  }
+
+  const revOptions = useMemo(
+    () => [...new Set(tricks.map((t) => t.revolution))].sort((a, b) => a - b),
+    [tricks],
   )
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase()
+    let list = tricks.filter(
+      (t) =>
+        (q === '' || t.name.toLowerCase().includes(q) || t.abbreviation.toLowerCase().includes(q)) &&
+        (minDiff === undefined || t.difficulty >= minDiff) &&
+        (maxDiff === undefined || t.difficulty <= maxDiff) &&
+        (filterRevs.length === 0 || filterRevs.includes(t.revolution)) &&
+        (!filterCrossOver || t.crossOver) &&
+        (!filterKnee || t.knee),
+    )
+
+    list = [...list].sort((a, b) => {
+      let av: string | number
+      let bv: string | number
+      switch (sortKey) {
+        case 'abbreviation': av = a.abbreviation; bv = b.abbreviation; break
+        case 'name': av = a.name; bv = b.name; break
+        case 'revolution': av = a.revolution; bv = b.revolution; break
+        case 'difficulty': av = a.difficulty; bv = b.difficulty; break
+        case 'crossOver': av = a.crossOver ? 1 : 0; bv = b.crossOver ? 1 : 0; break
+        case 'knee': av = a.knee ? 1 : 0; bv = b.knee ? 1 : 0; break
+        default: av = ''; bv = ''
+      }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1
+      if (av > bv) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+
+    return list
+  }, [tricks, search, minDiff, maxDiff, filterRevs, filterCrossOver, filterKnee, sortKey, sortDir])
 
   return (
     <div className="space-y-6">
@@ -137,7 +229,7 @@ export function TricksPage() {
 
       {submitted && <p className="text-sm text-green-600">Trick submitted! It will be reviewed by an admin.</p>}
 
-      {/* Inline submit form — above filters */}
+      {/* Inline submit form */}
       {showSubmit && (
         <Card>
           <CardHeader><CardTitle>Submit a Trick</CardTitle></CardHeader>
@@ -148,12 +240,12 @@ export function TricksPage() {
             >
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 <div className="space-y-1">
-                  <Label>Name</Label>
-                  <Input value={submitForm.name} onChange={(e) => updateSubmit('name', e.target.value)} placeholder="e.g. Crossover" required />
-                </div>
-                <div className="space-y-1">
                   <Label>Abbreviation</Label>
                   <Input value={submitForm.abbreviation} onChange={(e) => updateSubmit('abbreviation', e.target.value)} placeholder="e.g. CO" required />
+                </div>
+                <div className="space-y-1">
+                  <Label>Name</Label>
+                  <Input value={submitForm.name} onChange={(e) => updateSubmit('name', e.target.value)} placeholder="e.g. Crossover" required />
                 </div>
                 <div className="space-y-1">
                   <Label>Revolution (revs)</Label>
@@ -192,7 +284,8 @@ export function TricksPage() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-4">
-          <div className="flex flex-wrap items-end gap-4">
+          <div className="flex flex-wrap items-end gap-3">
+            {/* Search */}
             <div className="flex-1 space-y-1 min-w-[160px]">
               <Label>Search</Label>
               <Input
@@ -201,39 +294,104 @@ export function TricksPage() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
+
+            {/* Min / Max Difficulty */}
             <div className="space-y-1">
-              <Label>Max Difficulty</Label>
+              <Label>Min Diff</Label>
               <Input
                 type="number"
                 min={1}
                 max={10}
-                placeholder="Any"
-                className="w-24"
-                value={maxDiff ?? ''}
-                onChange={(e) =>
-                  setMaxDiff(e.target.value ? Number(e.target.value) : undefined)
-                }
+                placeholder="1"
+                className="w-20"
+                value={minDiff ?? ''}
+                onChange={(e) => setMinDiff(e.target.value ? Number(e.target.value) : undefined)}
               />
             </div>
+            <div className="space-y-1">
+              <Label>Max Diff</Label>
+              <Input
+                type="number"
+                min={1}
+                max={10}
+                placeholder="10"
+                className="w-20"
+                value={maxDiff ?? ''}
+                onChange={(e) => setMaxDiff(e.target.value ? Number(e.target.value) : undefined)}
+              />
+            </div>
+
+            {/* Revolutions dropdown */}
+            <div className="space-y-1" ref={revDropdownRef}>
+              <Label>Revolutions</Label>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setRevDropdownOpen((o) => !o)}
+                  className="flex h-9 min-w-[110px] items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-3 text-sm hover:border-gray-400"
+                >
+                  <span className="text-gray-700">
+                    {filterRevs.length === 0
+                      ? 'Any'
+                      : filterRevs.length === 1
+                        ? `${filterRevs[0]} rev`
+                        : `${filterRevs.length} selected`}
+                  </span>
+                  <svg className="h-4 w-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {revDropdownOpen && (
+                  <div className="absolute left-0 top-full z-50 mt-1 w-44 rounded-md border border-gray-200 bg-white shadow-lg">
+                    {filterRevs.length > 0 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setFilterRevs([])}
+                          className="block w-full px-3 py-1.5 text-left text-xs text-indigo-600 hover:bg-gray-50"
+                        >
+                          Clear selection
+                        </button>
+                        <div className="border-t border-gray-100" />
+                      </>
+                    )}
+                    <div className="max-h-48 overflow-y-auto py-1">
+                      {revOptions.map((rev) => (
+                        <label
+                          key={rev}
+                          className="flex cursor-pointer items-center gap-2 px-3 py-1.5 hover:bg-gray-50"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={filterRevs.includes(rev)}
+                            onChange={() => toggleRev(rev)}
+                            className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600"
+                          />
+                          <span className="text-sm text-gray-700">{rev} rev{rev !== 1 ? 's' : ''}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* CO / Knee checkboxes */}
             <div className="flex items-center gap-4 pb-0.5">
               <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={filterCrossOver === true}
-                  onChange={(e) =>
-                    setFilterCrossOver(e.target.checked ? true : undefined)
-                  }
+                  checked={filterCrossOver}
+                  onChange={(e) => setFilterCrossOver(e.target.checked)}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600"
                 />
-                CrossOver only
+                CO only
               </label>
               <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={filterKnee === true}
-                  onChange={(e) =>
-                    setFilterKnee(e.target.checked ? true : undefined)
-                  }
+                  checked={filterKnee}
+                  onChange={(e) => setFilterKnee(e.target.checked)}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600"
                 />
                 Knee only
@@ -251,23 +409,23 @@ export function TricksPage() {
       ) : (
         <div className="overflow-x-auto rounded-lg border border-gray-200">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+            <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left">Name</th>
-                <th className="px-4 py-3 text-left">Abbrev</th>
-                <th className="px-4 py-3 text-center">Revs</th>
-                <th className="px-4 py-3 text-center">Diff</th>
-                <th className="px-4 py-3 text-center">CO</th>
-                <th className="px-4 py-3 text-center">Knee</th>
-                {admin && <th className="px-4 py-3 text-right">Actions</th>}
+                <SortHeader label="Abbrev" col="abbreviation" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Name" col="name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label="Revs" col="revolution" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} center />
+                <SortHeader label="Diff" col="difficulty" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} center />
+                <SortHeader label="CO" col="crossOver" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} center />
+                <SortHeader label="Knee" col="knee" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} center />
+                {admin && <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtered.map((trick) => (
                 <tr key={trick.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 font-medium">{trick.name}</td>
-                  <td className="px-4 py-2 font-mono text-xs text-gray-600">{trick.abbreviation}</td>
-                  <td className="px-4 py-2 text-center">{trick.revolution}</td>
+                  <td className="px-4 py-2 font-mono text-xs font-semibold text-gray-900">{trick.abbreviation}</td>
+                  <td className="px-4 py-2 text-gray-700">{trick.name}</td>
+                  <td className="px-4 py-2 text-center text-gray-600">{trick.revolution}</td>
                   <td className="px-4 py-2 text-center">
                     <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(trick.difficulty)}`}>
                       {trick.difficulty}
@@ -321,21 +479,21 @@ export function TricksPage() {
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2 space-y-1">
-                <Label>Name</Label>
-                <Input
-                  value={editForm.name}
-                  onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-                  maxLength={100}
-                  required
-                />
-              </div>
               <div className="space-y-1">
                 <Label>Abbreviation</Label>
                 <Input
                   value={editForm.abbreviation}
                   onChange={(e) => setEditForm((f) => ({ ...f, abbreviation: e.target.value }))}
                   maxLength={20}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Name</Label>
+                <Input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                  maxLength={100}
                   required
                 />
               </div>

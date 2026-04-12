@@ -1,6 +1,7 @@
+import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { isAuthenticated, isAdmin, clearToken } from '@/lib/auth'
+import { isAuthenticated, isAdmin, clearToken, getUserName } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { adminApi } from '@/lib/api'
 
@@ -8,6 +9,10 @@ export function Navbar() {
   const navigate = useNavigate()
   const authed = isAuthenticated()
   const admin = isAdmin()
+  const userName = getUserName()
+
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   const { data: pendingData } = useQuery({
     queryKey: ['pending-count'],
@@ -21,6 +26,17 @@ export function Navbar() {
     clearToken()
     navigate('/login')
   }
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   return (
     <nav className="border-b border-gray-200 bg-white">
@@ -42,23 +58,54 @@ export function Navbar() {
                   Preferences
                 </Link>
                 {admin && (
-                  <Link to="/admin/approvals" className="flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800">
-                    Approvals
-                    {pendingCount > 0 && (
-                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-xs font-semibold text-white">
-                        {pendingCount}
-                      </span>
-                    )}
-                  </Link>
+                  <>
+                    <Link to="/admin/approvals" className="flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800">
+                      Approvals
+                      {pendingCount > 0 && (
+                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-xs font-semibold text-white">
+                          {pendingCount}
+                        </span>
+                      )}
+                    </Link>
+                    <Link to="/admin/users" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
+                      Users
+                    </Link>
+                  </>
                 )}
               </>
             )}
           </div>
           <div className="flex items-center gap-3">
             {authed ? (
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                Logout
-              </Button>
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setMenuOpen((o) => !o)}
+                  className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                >
+                  <span>{userName ?? 'Account'}</span>
+                  <svg className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {menuOpen && (
+                  <div className="absolute right-0 z-50 mt-1 w-44 rounded-md border border-gray-200 bg-white shadow-lg">
+                    <Link
+                      to="/account"
+                      onClick={() => setMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      My Account
+                    </Link>
+                    <div className="my-1 border-t border-gray-100" />
+                    <button
+                      onClick={() => { setMenuOpen(false); handleLogout() }}
+                      className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <>
                 <Button variant="ghost" size="sm" asChild>

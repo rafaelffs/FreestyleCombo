@@ -8,13 +8,16 @@ import '../features/combos/combo_detail_screen.dart';
 import '../features/preferences/preferences_screen.dart';
 import '../features/tricks/tricks_screen.dart';
 import '../features/admin/admin_submissions_screen.dart';
+import '../features/admin/admin_users_screen.dart';
+import '../features/account/account_screen.dart';
+import '../features/users/user_profile_screen.dart';
 import '../widgets/main_shell.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/combos',
   redirect: (context, state) {
     final authed = AuthService.instance.isAuthenticated;
-    final protectedRoutes = ['/combos/create', '/preferences', '/admin'];
+    final protectedRoutes = ['/combos/create', '/preferences', '/admin', '/account'];
     final authRoutes = ['/login', '/register'];
 
     if (!authed && protectedRoutes.any((r) => state.matchedLocation.startsWith(r))) {
@@ -37,12 +40,19 @@ final appRouter = GoRouter(
         GoRoute(path: '/tricks', builder: (_, __) => const TricksScreen()),
         GoRoute(path: '/combos/create', builder: (_, __) => const CreateComboScreen()),
         GoRoute(path: '/preferences', builder: (_, __) => const PreferencesScreen()),
+        GoRoute(path: '/account', builder: (_, __) => const AccountScreen()),
         GoRoute(path: '/admin/approvals', builder: (_, __) => const AdminSubmissionsScreen()),
+        GoRoute(path: '/admin/users', builder: (_, __) => const AdminUsersScreen()),
         GoRoute(path: '/admin/submissions', redirect: (_, __) => '/admin/approvals'),
         GoRoute(path: '/admin/combo-reviews', redirect: (_, __) => '/admin/approvals'),
         GoRoute(
           path: '/combos/:id',
           builder: (_, state) => ComboDetailScreen(id: state.pathParameters['id']!),
+        ),
+        GoRoute(
+          path: '/users/:id',
+          builder: (_, state) =>
+              UserProfileScreen(userId: state.pathParameters['id']!),
         ),
       ],
     ),

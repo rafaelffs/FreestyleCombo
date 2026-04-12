@@ -3,6 +3,7 @@ import '../auth/auth_service.dart';
 import '../models/combo.dart';
 import '../models/trick_submission.dart';
 import '../models/user_preference.dart';
+import '../models/user.dart';
 
 // Change to your machine's local IP when testing on a physical device.
 // Android emulator: http://10.0.2.2:5050
@@ -477,6 +478,108 @@ class ApiClient {
     try {
       final res = await _dio.get<Map<String, dynamic>>('/admin/pending-count');
       return (res.data!['total'] as num).toInt();
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  // ── Account ──────────────────────────────────────────────────────────────
+
+  Future<ProfileDto> getProfile() async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>('/account/me');
+      return ProfileDto.fromJson(res.data!);
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<ProfileDto> updateProfile({String? userName, String? email}) async {
+    try {
+      final res = await _dio.put<Map<String, dynamic>>(
+        '/account/me',
+        data: {
+          if (userName != null) 'userName': userName,
+          if (email != null) 'email': email,
+        },
+      );
+      return ProfileDto.fromJson(res.data!);
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> changePassword(
+      String currentPassword, String newPassword) async {
+    try {
+      await _dio.put('/account/me/password',
+          data: {
+            'currentPassword': currentPassword,
+            'newPassword': newPassword,
+          });
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<PublicProfileDto> getPublicProfile(String id) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>('/account/$id');
+      return PublicProfileDto.fromJson(res.data!);
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  // ── Admin: Users ─────────────────────────────────────────────────────────
+
+  Future<List<AdminUserDto>> getAdminUsers() async {
+    try {
+      final res = await _dio.get<List<dynamic>>('/admin/users');
+      return (res.data as List<dynamic>)
+          .map((e) => AdminUserDto.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<AdminUserDto> updateAdminUser(String id,
+      {String? userName, String? email}) async {
+    try {
+      final res = await _dio.put<Map<String, dynamic>>(
+        '/admin/users/$id',
+        data: {
+          if (userName != null) 'userName': userName,
+          if (email != null) 'email': email,
+        },
+      );
+      return AdminUserDto.fromJson(res.data!);
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> resetUserPassword(String id, String newPassword) async {
+    try {
+      await _dio.put('/admin/users/$id/password',
+          data: {'newPassword': newPassword});
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> updateUserRole(String id, bool isAdmin) async {
+    try {
+      await _dio.put('/admin/users/$id/role', data: {'isAdmin': isAdmin});
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> deleteUser(String id) async {
+    try {
+      await _dio.delete('/admin/users/$id');
     } on DioException catch (e) {
       throw Exception(_extractMessage(e));
     }

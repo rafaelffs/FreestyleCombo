@@ -186,7 +186,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
                 type="button"
                 onClick={() => completeMutation.mutate()}
                 disabled={completeMutation.isPending}
-                className={`inline-flex h-8 items-center justify-center gap-1 rounded-md border bg-white px-2 transition-colors disabled:cursor-not-allowed ${
+                className={`inline-flex h-8 cursor-pointer items-center justify-center gap-1 rounded-md border bg-white px-2 transition-colors disabled:cursor-not-allowed ${
                   completed
                     ? 'border-green-200 text-green-600 hover:border-green-300'
                     : 'border-gray-200 text-gray-400 hover:border-green-300 hover:text-green-500'
@@ -235,10 +235,13 @@ export function ComboCard({ combo, showActions = false }: Props) {
               <button
                 type="button"
                 onClick={() => setRatingOpen(true)}
-                className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white transition-colors hover:border-yellow-300"
+                className="inline-flex h-8 cursor-pointer items-center justify-center gap-1 rounded-md border border-gray-200 bg-white px-2 transition-colors hover:border-yellow-300"
                 title="Rate this combo"
               >
                 <HalfStarIcon />
+                {combo.averageRating != null && combo.averageRating > 0 && (
+                  <span className="text-xs font-medium">{combo.averageRating.toFixed(1)}</span>
+                )}
               </button>
             )}
           </div>
@@ -252,18 +255,25 @@ export function ComboCard({ combo, showActions = false }: Props) {
                 <p className="text-sm font-mono font-semibold text-gray-900 truncate">{combo.displayText}</p>
               )}
               {combo.ownerUserName && (
-                <p className="mt-0.5 text-xs text-gray-500">by {combo.ownerUserName}</p>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  by{' '}
+                  {combo.ownerId ? (
+                    <Link
+                      to={`/users/${combo.ownerId}`}
+                      className="hover:underline hover:text-indigo-600"
+                    >
+                      {combo.ownerUserName}
+                    </Link>
+                  ) : (
+                    combo.ownerUserName
+                  )}
+                </p>
               )}
             </div>
             <div className="flex shrink-0 flex-wrap gap-1 items-start">
               <Badge variant="secondary">
                 {combo.averageDifficulty?.toFixed(1) ?? '—'}
               </Badge>
-              {combo.averageRating != null && combo.averageRating > 0 && (
-                <Badge variant="secondary">
-                  ★ {combo.averageRating.toFixed(1)}
-                </Badge>
-              )}
             </div>
           </div>
         </CardHeader>
@@ -286,7 +296,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
                 <button
                   type="button"
                   onClick={() => setExpanded((e) => !e)}
-                  className="inline-flex items-center rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-300 transition-colors"
+                  className="inline-flex cursor-pointer items-center rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-300 transition-colors"
                 >
                   {expanded ? 'Show less' : `+${tricks.length - TRICKS_LIMIT} more`}
                 </button>

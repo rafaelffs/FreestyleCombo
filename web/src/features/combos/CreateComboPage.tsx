@@ -342,8 +342,8 @@ export function CreateComboPage() {
                 {filteredTricks.map((trick) => (
                   <button key={trick.id} type="button" onClick={() => addTrick(trick)} className="flex w-full items-center justify-between px-2 py-2 text-left hover:bg-indigo-50 transition-colors">
                     <div>
-                      <span className="text-sm font-medium">{trick.name}</span>
-                      <span className="ml-2 font-mono text-xs text-gray-500">{trick.abbreviation}</span>
+                      <span className="font-mono text-xs font-semibold text-gray-900">{trick.abbreviation}</span>
+                      <span className="ml-2 text-sm text-gray-500">{trick.name}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       {trick.crossOver && <Badge variant="secondary">CO</Badge>}
@@ -373,8 +373,8 @@ export function CreateComboPage() {
                 <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2">
                   <span className="w-5 shrink-0 text-xs font-bold text-gray-400">{slot.position}</span>
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium">{slot.trickName}</span>
-                    <span className="ml-1.5 font-mono text-xs text-gray-500">{slot.abbreviation}</span>
+                    <span className="font-mono text-xs font-semibold text-gray-900">{slot.abbreviation}</span>
+                    <span className="ml-1.5 text-sm text-gray-500">{slot.trickName}</span>
                   </div>
                   <label className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer">
                     <input type="checkbox" checked={slot.strongFoot} onChange={() => toggleStrongFoot(i)} className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600" />

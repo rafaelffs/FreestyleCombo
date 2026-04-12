@@ -10,6 +10,9 @@ import { ComboDetailPage } from '@/features/combos/ComboDetailPage'
 import { PreferencesPage } from '@/features/preferences/PreferencesPage'
 import { TricksPage } from '@/features/tricks/TricksPage'
 import { AdminSubmissionsPage } from '@/features/tricks/AdminSubmissionsPage'
+import { AccountPage } from '@/features/account/AccountPage'
+import { UserProfilePage } from '@/features/users/UserProfilePage'
+import { AdminUsersPage } from '@/features/admin/AdminUsersPage'
 
 export default function App() {
   return (
@@ -22,16 +25,19 @@ export default function App() {
           <Route path="/combos" element={<CombosPage />} />
           <Route path="/combos/:id" element={<ComboDetailPage />} />
           <Route path="/tricks" element={<TricksPage />} />
+          <Route path="/users/:id" element={<UserProfilePage />} />
 
           {/* Protected */}
           <Route element={<ProtectedRoute />}>
             <Route path="/combos/create" element={<CreateComboPage />} />
             <Route path="/preferences" element={<PreferencesPage />} />
+            <Route path="/account" element={<AccountPage />} />
           </Route>
 
           {/* Admin only */}
           <Route element={<AdminRoute />}>
             <Route path="/admin/approvals" element={<AdminSubmissionsPage />} />
+            <Route path="/admin/users" element={<AdminUsersPage />} />
           </Route>
 
           {/* Redirects for old routes */}
