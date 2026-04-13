@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { combosApi } from '@/lib/api'
 import { ComboCard } from './ComboCard'
-import { Button } from '@/components/ui/button'
 import { isAuthenticated } from '@/lib/auth'
 
 type Tab = 'public' | 'mine' | 'favourites'
@@ -43,17 +42,21 @@ export function CombosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Combos</h1>
-          <p className="mt-1 text-sm text-gray-500">Browse public combos or view your own.</p>
-        </div>
-        {authed && (
-          <Button asChild>
-            <Link to="/combos/create">Create new</Link>
-          </Button>
-        )}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Combos</h1>
+        <p className="mt-1 text-sm text-gray-500">Browse public combos or view your own.</p>
       </div>
+
+      {/* FAB */}
+      {authed && (
+        <Link
+          to="/combos/create"
+          className="fixed bottom-6 right-6 z-40 inline-flex h-14 items-center gap-2 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-indigo-700 active:bg-indigo-800"
+        >
+          <span className="text-lg leading-none">+</span>
+          Create
+        </Link>
+      )}
 
       {/* Tab bar */}
       <div className="flex gap-1 border-b border-gray-200">

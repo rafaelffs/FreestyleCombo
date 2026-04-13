@@ -215,17 +215,22 @@ export function TricksPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tricks</h1>
-          <p className="mt-1 text-sm text-gray-500">Browse all freestyle football tricks.</p>
-        </div>
-        {authed && (
-          <Button variant={showSubmit ? 'outline' : 'default'} onClick={() => setShowSubmit((v) => !v)}>
-            {showSubmit ? 'Cancel' : '+ Submit a Trick'}
-          </Button>
-        )}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Tricks</h1>
+        <p className="mt-1 text-sm text-gray-500">Browse all freestyle football tricks.</p>
       </div>
+
+      {/* FAB */}
+      {authed && (
+        <button
+          type="button"
+          onClick={() => setShowSubmit((v) => !v)}
+          className="fixed bottom-6 right-6 z-40 inline-flex h-14 cursor-pointer items-center gap-2 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-indigo-700 active:bg-indigo-800"
+        >
+          <span className="text-lg leading-none">{showSubmit ? '✕' : '+'}</span>
+          {showSubmit ? 'Cancel' : 'Submit'}
+        </button>
+      )}
 
       {submitted && <p className="text-sm text-green-600">Trick submitted! It will be reviewed by an admin.</p>}
 
