@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
 import { AdminRoute } from '@/components/layout/AdminRoute'
+import { LandingPage } from '@/features/home/LandingPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
 import { CombosPage } from '@/features/combos/CombosPage'
@@ -49,7 +50,7 @@ export default function App() {
           <Route path="/admin/submissions" element={<Navigate to="/admin/approvals" replace />} />
           <Route path="/admin/combo-reviews" element={<Navigate to="/admin/approvals" replace />} />
 
-          <Route path="/" element={<Navigate to="/combos" replace />} />
+          <Route path="/" element={<LandingPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
