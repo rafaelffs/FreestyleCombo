@@ -110,7 +110,7 @@ Users can have **multiple named preferences** (1:many). No limit on count. Futur
 | `DELETE` | `/api/preferences/{id}` | User | Delete preference (owner check, 403 otherwise) → 204 |
 
 `PreferenceDto` includes `Id`, `Name`, and all settings fields. Request body: `PreferenceRequest` with `Name` (required, max 100) + all settings fields with defaults.  
-Validation: `Name` NotEmpty MaxLength(100), same field limits as before.
+Validation: `Name` NotEmpty MaxLength(100), same field limits as before. `AllowedRevolutions` items must be between `0.5` and `4.0`.
 
 ### Trick Submission API (`/api/trick-submissions`)
 | Method | Route | Auth | Description |
@@ -121,7 +121,7 @@ Validation: `Name` NotEmpty MaxLength(100), same field limits as before.
 | `POST` | `/{id}/approve` | Admin | Approve → creates a `Trick` |
 | `POST` | `/{id}/reject` | Admin | Reject the submission |
 
-Validation for `SubmitTrickCommand`: Name NotEmpty MaxLength(100), Abbreviation NotEmpty MaxLength(20), Revolution InclusiveBetween(0.5, 10), Difficulty InclusiveBetween(1, 10), CommonLevel InclusiveBetween(1, 10).
+Validation for `SubmitTrickCommand`: Name NotEmpty MaxLength(100), Abbreviation NotEmpty MaxLength(20), Revolution InclusiveBetween(0.5, 4), Difficulty InclusiveBetween(1, 10), CommonLevel InclusiveBetween(1, 10).
 
 ### JWT — Role claim
 `LoginHandler.GenerateToken()` now calls `GetRolesAsync(user)` and adds `ClaimTypes.Role` claims. The `Admin` role is included in the JWT for admin users. Web/mobile decode the JWT payload client-side to check `isAdmin` — no extra API call needed.
@@ -158,6 +158,8 @@ AddSecurityRequirement(_ => new OpenApiSecurityRequirement {
 | `MaxDifficulty` | 1 | 10 | all validators + UIs |
 | `StrongFootPercentage` | 0 | 100 | all validators + UIs |
 | `NoTouchPercentage` | 0 | 100 | all validators + UIs |
+| `Revolution` | 0.5 | **4** | Trick create/update/submission validators |
+| `AllowedRevolutions[]` | 0.5 | **4** | Preference + combo override validators |
 
 ### Combo generation algorithm
 **Preview** (steps 1–5, `POST /api/combos/preview`): no AI, no DB save — returns trick list + warnings.  
@@ -405,7 +407,7 @@ cd api
 dotnet test
 ```
 
-11 unit tests covering: combo generation (length, no-match, NoTouch logic, display text, preferences), rating validation (own combo, duplicate, not found, private), and weight adjustment job.
+18 unit tests covering: combo generation (length, no-match, NoTouch logic, display text, preferences), rating validation (own combo, duplicate, not found, private), revolution boundary validation (trick create/update/submission, preference and combo override allowed revolutions, preview override validation), and weight adjustment job.
 
 ---
 

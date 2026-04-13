@@ -249,7 +249,7 @@ export function TricksPage() {
                 </div>
                 <div className="space-y-1">
                   <Label>Revolution (revs)</Label>
-                  <Input type="number" min={0.5} max={10} step={0.5} value={submitForm.revolution} onChange={(e) => updateSubmit('revolution', Number(e.target.value))} />
+                  <Input type="number" min={0.5} max={4} step={0.5} value={submitForm.revolution} onChange={(e) => updateSubmit('revolution', Number(e.target.value))} />
                 </div>
                 <div className="space-y-1">
                   <Label>Difficulty (1–10)</Label>

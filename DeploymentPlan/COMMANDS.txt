@@ -1,0 +1,307 @@
+================================================================
+FREESTYLECOMBO — USEFUL COMMANDS CHEATSHEET
+================================================================
+
+VPS: 178.104.158.9
+SSH Key: ~/.ssh/freestylecombo_deploy
+Repo on VPS: /opt/freestylecombo
+
+
+----------------------------------------------------------------
+SSH ACCESS
+----------------------------------------------------------------
+
+# Connect to VPS
+ssh -i ~/.ssh/freestylecombo_deploy ubuntu@178.104.158.9
+
+
+----------------------------------------------------------------
+DOCKER (run on VPS)
+----------------------------------------------------------------
+
+# View running containers
+docker ps
+
+# Start production containers (from repo dir)
+cd /opt/freestylecombo
+docker compose -f docker-compose.prod.yml up -d
+
+# Stop containers
+docker compose -f docker-compose.prod.yml down
+
+# Restart containers
+docker compose -f docker-compose.prod.yml restart
+
+# View API logs (live)
+docker compose -f docker-compose.prod.yml logs -f api
+
+# View DB logs
+docker compose -f docker-compose.prod.yml logs -f db
+
+# Pull latest images and redeploy
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d --build
+
+# Get Postgres container internal Docker IP (needed for SSH tunnel)
+docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' freestylecombo-db-1
+
+
+----------------------------------------------------------------
+SSH TUNNEL TO PRODUCTION POSTGRES (for DBeaver / psql)
+----------------------------------------------------------------
+
+# Step 1: get container IP on VPS (run from VPS or via SSH)
+CONTAINER_IP=$(ssh -i ~/.ssh/freestylecombo_deploy ubuntu@178.104.158.9 \
+  "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' freestylecombo-db-1")
+echo $CONTAINER_IP
+
+# Step 2: open tunnel (replace <CONTAINER_IP> with value from step 1)
+ssh -i ~/.ssh/freestylecombo_deploy \
+  -N -L 55432:<CONTAINER_IP>:5432 \
+  ubuntu@178.104.158.9
+
+# DBeaver / psql connection (while tunnel is open):
+#   Host:     127.0.0.1
+#   Port:     55432
+#   Database: freestyle_combo
+#   User:     postgres
+#   Password: (see .env on VPS — command below)
+
+# Get Postgres password from VPS
+ssh -i ~/.ssh/freestylecombo_deploy ubuntu@178.104.158.9 \
+  "grep '^POSTGRES_PASSWORD=' /opt/freestylecombo/.env | cut -d= -f2-"
+
+# One-liner: open tunnel using auto-detected container IP
+ssh -i ~/.ssh/freestylecombo_deploy ubuntu@178.104.158.9 \
+  -N -L 55432:$(ssh -i ~/.ssh/freestylecombo_deploy ubuntu@178.104.158.9 \
+    "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' freestylecombo-db-1"):5432
+
+
+----------------------------------------------------------------
+PSQL DIRECT ON VPS (no tunnel needed)
+----------------------------------------------------------------
+
+# Run psql inside the db container
+ssh -i ~/.ssh/freestylecombo_deploy ubuntu@178.104.158.9 \
+  "docker exec -it freestylecombo-db-1 psql -U postgres -d freestyle_combo"
+
+
+----------------------------------------------------------------
+NGINX (run on VPS)
+----------------------------------------------------------------
+
+# Test nginx config
+sudo nginx -t
+
+# Reload nginx (after config changes)
+sudo systemctl reload nginx
+
+# Restart nginx
+sudo systemctl restart nginx
+
+# View nginx status
+sudo systemctl status nginx
+
+# View nginx error log
+sudo tail -f /var/log/nginx/error.log
+
+
+----------------------------------------------------------------
+CI/CD — GITHUB ACTIONS (run locally)
+----------------------------------------------------------------
+
+# List recent workflow runs
+env -u GITHUB_TOKEN gh run list --repo rafaelffs/FreestyleCombo --limit 10
+
+# Watch a specific run (live)
+env -u GITHUB_TOKEN gh run watch --repo rafaelffs/FreestyleCombo
+
+# View logs of last Deploy run
+RUN_ID=$(env -u GITHUB_TOKEN gh run list \
+  --repo rafaelffs/FreestyleCombo \
+  --workflow "Deploy to Production" \
+  --limit 1 --json databaseId --jq '.[0].databaseId')
+env -u GITHUB_TOKEN gh run view "$RUN_ID" --repo rafaelffs/FreestyleCombo --log
+
+# View failed logs only
+env -u GITHUB_TOKEN gh run view "$RUN_ID" --repo rafaelffs/FreestyleCombo --log-failed
+
+# Manually re-run last Deploy workflow
+env -u GITHUB_TOKEN gh run rerun "$RUN_ID" --repo rafaelffs/FreestyleCombo
+
+
+----------------------------------------------------------------
+MAKEFILE (run from repo root)
+----------------------------------------------------------------
+
+make dev           # API (watch) + Web (vite) in parallel — Ctrl+C stops both
+make api           # API only (dotnet watch run)
+make web           # Web only (npm run dev)
+make mobile        # Mobile only (flutter run)
+make test          # Run all API unit tests
+make install       # npm install + flutter pub get + dotnet restore
+
+make docker-up     # Start local docker-compose stack (detached)
+make docker-down   # Stop local docker-compose stack
+make docker-build  # Rebuild images and start
+make docker-logs   # Tail API logs from local Docker
+
+make migration     # Prompt for name and add EF Core migration
+make migrate       # Apply pending EF Core migrations
+
+make clean         # Clean build artifacts (dotnet + flutter + vite)
+
+# Note: 'make dev' runs API and Web in parallel in the same terminal.
+# Flutter cannot be backgrounded cleanly this way — run 'make mobile'
+# in a separate terminal alongside 'make dev'.
+
+
+----------------------------------------------------------------
+LOCAL DEVELOPMENT
+----------------------------------------------------------------
+
+## API (ASP.NET Core)
+# Prerequisites: .NET 10 SDK, local Postgres on port 5432
+# Connection string + secrets in: api/FreestyleCombo.API/appsettings.Development.json
+
+cd api/FreestyleCombo.API
+dotnet run
+
+# API listens on http://localhost:5050
+# Swagger: http://localhost:5050/swagger
+# Hangfire: http://localhost:5050/hangfire
+
+# Run with hot-reload
+dotnet watch run
+
+# Run unit tests
+cd api
+dotnet test
+
+
+## WEB (React + Vite)
+# Prerequisites: Node.js 20+
+
+cd web
+npm install       # first time only
+npm run dev       # → http://localhost:5173
+
+# Dev server proxies /api/* → http://localhost:5050 (see vite.config.ts)
+# Build for production preview
+npm run build && npm run preview
+
+
+## MOBILE (Flutter)
+# Prerequisites: Flutter 3.19+, Dart 3.3+
+# API base URL is in: mobile/lib/core/api/api_client.dart
+#   Android emulator : http://10.0.2.2:5050/api
+#   iOS simulator    : http://localhost:5050/api
+#   Physical device  : http://<your-local-IP>:5050/api
+
+cd mobile
+flutter pub get   # first time only
+flutter run       # picks connected device/emulator automatically
+
+# Run on a specific device
+flutter devices
+flutter run -d <device-id>
+
+# Build release APK (Android)
+flutter build apk --release
+
+# Build release IPA (iOS, requires Xcode)
+flutter build ipa --release
+
+
+## DOCKER (full stack, local)
+# Starts postgres + api; does NOT include web dev server
+
+docker-compose up             # foreground
+docker-compose up -d          # detached
+docker-compose down           # stop and remove containers
+
+# Rebuild API image and restart (after code changes)
+docker-compose up -d --build api
+
+# Rebuild everything from scratch
+docker-compose down
+docker-compose up -d --build
+
+# View live API logs
+docker-compose logs -f api
+
+# View live DB logs
+docker-compose logs -f db
+
+# Access postgres locally (Docker)
+docker-compose exec db psql -U postgres -d freestyle_combo
+
+
+----------------------------------------------------------------
+EF CORE MIGRATIONS (run locally from api/)
+----------------------------------------------------------------
+
+cd api
+
+# Add a new migration
+dotnet ef migrations add <MigrationName> \
+  --project FreestyleCombo.Infrastructure \
+  --startup-project FreestyleCombo.API
+
+# Apply migrations to production DB (via tunnel on 55432)
+# Set connection string to tunnel target first, then:
+dotnet ef database update \
+  --project FreestyleCombo.Infrastructure \
+  --startup-project FreestyleCombo.API
+
+# Note: API container also runs MigrateAsync() on startup automatically
+
+
+----------------------------------------------------------------
+SMOKE TESTS (run locally)
+----------------------------------------------------------------
+
+# Public tricks endpoint
+curl http://178.104.158.9/api/tricks
+
+# Swagger UI
+open http://178.104.158.9/swagger/index.html
+
+# Hangfire dashboard
+open http://178.104.158.9/hangfire
+
+# React frontend
+open http://178.104.158.9
+
+
+----------------------------------------------------------------
+VPS ENVIRONMENT
+----------------------------------------------------------------
+
+# View .env file on VPS
+ssh -i ~/.ssh/freestylecombo_deploy ubuntu@178.104.158.9 \
+  "cat /opt/freestylecombo/.env"
+
+# Edit .env file on VPS (e.g. to update API key)
+ssh -i ~/.ssh/freestylecombo_deploy ubuntu@178.104.158.9 \
+  "nano /opt/freestylecombo/.env"
+
+# After editing .env, restart API container to pick up changes
+ssh -i ~/.ssh/freestylecombo_deploy ubuntu@178.104.158.9 \
+  "cd /opt/freestylecombo && docker compose -f docker-compose.prod.yml restart api"
+
+
+----------------------------------------------------------------
+NOTES
+----------------------------------------------------------------
+
+- The GITHUB_TOKEN env var in your local shell may be invalid/revoked.
+  Always prefix gh commands with: env -u GITHUB_TOKEN gh ...
+
+- PostgreSQL has NO host port exposed in production (only internal Docker network).
+  Always use the SSH tunnel approach above to connect externally.
+
+- CD pipeline triggers automatically on push to main (after CI passes).
+  Manual trigger is also available via GitHub Actions UI or gh run rerun.
+
+================================================================

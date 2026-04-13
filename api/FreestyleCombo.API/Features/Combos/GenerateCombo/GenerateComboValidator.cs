@@ -13,6 +13,7 @@ public class GenerateComboValidator : AbstractValidator<GenerateComboCommand>
             RuleFor(x => x.Overrides!.StrongFootPercentage).InclusiveBetween(0, 100).When(x => x.Overrides!.StrongFootPercentage.HasValue);
             RuleFor(x => x.Overrides!.NoTouchPercentage).InclusiveBetween(0, 100).When(x => x.Overrides!.NoTouchPercentage.HasValue);
             RuleFor(x => x.Overrides!.MaxConsecutiveNoTouch).InclusiveBetween(0, 30).When(x => x.Overrides!.MaxConsecutiveNoTouch.HasValue);
+            RuleForEach(x => x.Overrides!.AllowedRevolutions).InclusiveBetween(0.5m, 4m).When(x => x.Overrides!.AllowedRevolutions != null);
         });
     }
 }

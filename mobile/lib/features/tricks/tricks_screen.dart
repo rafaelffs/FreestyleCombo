@@ -652,8 +652,8 @@ class _InlineSubmitFormState extends State<_InlineSubmitForm> {
               child: Slider(
                 value: _revolution,
                 min: 0.5,
-                max: 10,
-                divisions: 19,
+                max: 4,
+                divisions: 7,
                 onChanged: (v) => setState(() => _revolution = v),
               ),
             ),
