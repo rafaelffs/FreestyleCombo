@@ -4,6 +4,16 @@ import { Pencil, KeyRound, ShieldCheck, ShieldOff, Trash2 } from 'lucide-react'
 import { adminApi, extractError, type AdminUserDto } from '@/lib/api'
 import { getUserId } from '@/lib/auth'
 
+function RoleBadge({ isAdmin }: { isAdmin: boolean }) {
+  return isAdmin ? (
+    <span className="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
+      Admin
+    </span>
+  ) : (
+    <span className="text-gray-400 text-xs">User</span>
+  )
+}
+
 export function AdminUsersPage() {
   const qc = useQueryClient()
   const currentUserId = getUserId()
@@ -68,13 +78,52 @@ export function AdminUsersPage() {
     onError: (err) => setDeleteError(extractError(err, 'Failed to delete user.')),
   })
 
-  if (isLoading) return <p className="p-6 text-sm text-gray-500">Loading…</p>
+  if (isLoading) return <p className="text-sm text-gray-500">Loading…</p>
+
+  function ActionButtons({ user }: { user: AdminUserDto }) {
+    return (
+      <>
+        <button
+          onClick={() => startEdit(user)}
+          title="Edit user"
+          className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border border-indigo-200 bg-white text-indigo-600 transition-colors hover:border-indigo-300 hover:bg-indigo-50"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+        <button
+          onClick={() => { setResetId(user.id); setResetPw(''); setResetError('') }}
+          title="Reset password"
+          className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border border-yellow-200 bg-white text-yellow-600 transition-colors hover:border-yellow-300 hover:bg-yellow-50"
+        >
+          <KeyRound className="h-4 w-4" />
+        </button>
+        <button
+          onClick={() => toggleRole.mutate({ id: user.id, isAdmin: !user.isAdmin })}
+          disabled={toggleRole.isPending}
+          title={user.isAdmin ? 'Revoke admin' : 'Make admin'}
+          className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {user.isAdmin ? <ShieldOff className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+        </button>
+        {user.id !== currentUserId && (
+          <button
+            onClick={() => { setDeleteId(user.id); setDeleteError('') }}
+            title="Delete user"
+            className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border border-red-200 bg-white text-red-600 transition-colors hover:border-red-300 hover:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+      </>
+    )
+  }
 
   return (
-    <div className="mx-auto max-w-5xl p-6">
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">Users</h1>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-gray-900">Users</h1>
 
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+      {/* Desktop table — hidden on mobile */}
+      <div className="hidden sm:block overflow-hidden rounded-lg border border-gray-200 bg-white">
         <table className="w-full text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-left">
             <tr>
@@ -96,48 +145,12 @@ export function AdminUsersPage() {
                 </td>
                 <td className="px-4 py-3 text-gray-600">{user.email}</td>
                 <td className="px-4 py-3">
-                  {user.isAdmin ? (
-                    <span className="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
-                      Admin
-                    </span>
-                  ) : (
-                    <span className="text-gray-400">User</span>
-                  )}
+                  <RoleBadge isAdmin={user.isAdmin} />
                 </td>
                 <td className="px-4 py-3 text-gray-600">{user.comboCount}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => startEdit(user)}
-                      title="Edit user"
-                      className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-indigo-200 bg-white text-indigo-600 transition-colors hover:border-indigo-300 hover:bg-indigo-50"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => { setResetId(user.id); setResetPw(''); setResetError('') }}
-                      title="Reset password"
-                      className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-yellow-200 bg-white text-yellow-600 transition-colors hover:border-yellow-300 hover:bg-yellow-50"
-                    >
-                      <KeyRound className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => toggleRole.mutate({ id: user.id, isAdmin: !user.isAdmin })}
-                      disabled={toggleRole.isPending}
-                      title={user.isAdmin ? 'Revoke admin' : 'Make admin'}
-                      className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {user.isAdmin ? <ShieldOff className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
-                    </button>
-                    {user.id !== currentUserId && (
-                      <button
-                        onClick={() => { setDeleteId(user.id); setDeleteError('') }}
-                        title="Delete user"
-                        className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-red-200 bg-white text-red-600 transition-colors hover:border-red-300 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
+                    <ActionButtons user={user} />
                   </div>
                 </td>
               </tr>
@@ -146,9 +159,33 @@ export function AdminUsersPage() {
         </table>
       </div>
 
+      {/* Mobile card list — hidden on sm+ */}
+      <div className="space-y-3 sm:hidden">
+        {users?.map((user) => (
+          <div key={user.id} className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-900 truncate">
+                  {user.userName}
+                  {user.id === currentUserId && (
+                    <span className="ml-2 text-xs text-gray-400">(you)</span>
+                  )}
+                </p>
+                <p className="text-sm text-gray-500 truncate">{user.email}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{user.comboCount} combos</p>
+              </div>
+              <RoleBadge isAdmin={user.isAdmin} />
+            </div>
+            <div className="flex gap-2">
+              <ActionButtons user={user} />
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* Edit modal */}
       {editingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
             <h2 className="mb-4 text-lg font-semibold">Edit User</h2>
             <div className="space-y-3">
@@ -193,7 +230,7 @@ export function AdminUsersPage() {
 
       {/* Reset password modal */}
       {resetId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
             <h2 className="mb-4 text-lg font-semibold">Reset Password</h2>
             <div className="space-y-3">
@@ -230,7 +267,7 @@ export function AdminUsersPage() {
 
       {/* Delete confirm modal */}
       {deleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
             <h2 className="mb-2 text-lg font-semibold">Delete User</h2>
             <p className="mb-4 text-sm text-gray-600">

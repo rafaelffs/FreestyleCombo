@@ -12,6 +12,7 @@ export function Navbar() {
   const userName = getUserName()
 
   const [menuOpen, setMenuOpen] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const { data: pendingData } = useQuery({
@@ -27,7 +28,7 @@ export function Navbar() {
     navigate('/login')
   }
 
-  // Close dropdown when clicking outside
+  // Close desktop dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -41,11 +42,15 @@ export function Navbar() {
   return (
     <nav className="border-b border-gray-200 bg-white">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        {/* Top bar */}
         <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center gap-6">
-            <Link to="/" className="text-xl font-bold text-indigo-600">
-              FreestyleCombo
-            </Link>
+          {/* Logo */}
+          <Link to="/" className="text-xl font-bold text-indigo-600 shrink-0">
+            FreestyleCombo
+          </Link>
+
+          {/* Desktop nav links — hidden on mobile */}
+          <div className="hidden md:flex items-center gap-6">
             <Link to="/combos" className="text-sm text-gray-600 hover:text-gray-900">
               Combos
             </Link>
@@ -75,7 +80,9 @@ export function Navbar() {
               </>
             )}
           </div>
-          <div className="flex items-center gap-3">
+
+          {/* Desktop account / auth — hidden on mobile */}
+          <div className="hidden md:flex items-center gap-3">
             {authed ? (
               <div className="relative" ref={menuRef}>
                 <button
@@ -117,8 +124,118 @@ export function Navbar() {
               </>
             )}
           </div>
+
+          {/* Mobile hamburger button — hidden on md+ */}
+          <button
+            type="button"
+            className="md:hidden inline-flex h-11 w-11 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100"
+            onClick={() => setMobileOpen((o) => !o)}
+            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+          >
+            {mobileOpen ? (
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
         </div>
       </div>
+
+      {/* Mobile drawer */}
+      {mobileOpen && (
+        <div className="md:hidden border-t border-gray-100 bg-white px-4 pb-4 pt-2 space-y-0.5">
+          <Link
+            to="/combos"
+            onClick={() => setMobileOpen(false)}
+            className="block rounded-md px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Combos
+          </Link>
+          <Link
+            to="/tricks"
+            onClick={() => setMobileOpen(false)}
+            className="block rounded-md px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Tricks
+          </Link>
+          {authed && (
+            <>
+              <Link
+                to="/preferences"
+                onClick={() => setMobileOpen(false)}
+                className="block rounded-md px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Preferences
+              </Link>
+              {admin && (
+                <>
+                  <Link
+                    to="/admin/approvals"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-2 rounded-md px-3 py-3 text-sm font-medium text-indigo-600 hover:bg-indigo-50"
+                  >
+                    Approvals
+                    {pendingCount > 0 && (
+                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-xs font-semibold text-white">
+                        {pendingCount}
+                      </span>
+                    )}
+                  </Link>
+                  <Link
+                    to="/admin/users"
+                    onClick={() => setMobileOpen(false)}
+                    className="block rounded-md px-3 py-3 text-sm font-medium text-indigo-600 hover:bg-indigo-50"
+                  >
+                    Users
+                  </Link>
+                </>
+              )}
+            </>
+          )}
+
+          <div className="border-t border-gray-100 pt-2 mt-1 space-y-0.5">
+            {authed ? (
+              <>
+                <Link
+                  to="/account"
+                  onClick={() => setMobileOpen(false)}
+                  className="block rounded-md px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  My Account ({userName})
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => { setMobileOpen(false); handleLogout() }}
+                  className="block w-full rounded-md px-3 py-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  onClick={() => setMobileOpen(false)}
+                  className="block rounded-md px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/register"
+                  onClick={() => setMobileOpen(false)}
+                  className="block rounded-md px-3 py-3 text-sm font-medium text-indigo-600 hover:bg-indigo-50"
+                >
+                  Register
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </nav>
   )
 }

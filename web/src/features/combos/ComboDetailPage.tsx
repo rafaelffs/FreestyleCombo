@@ -159,8 +159,8 @@ export function ComboDetailPage() {
 
           <div>
             <h3 className="mb-2 text-sm font-medium text-gray-700">Tricks</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <table className="w-full min-w-[400px] text-sm">
                 <thead>
                   <tr className="border-b text-left text-gray-500">
                     <th className="pb-1 pr-4">#</th>
@@ -239,7 +239,7 @@ export function ComboDetailPage() {
               <div className="space-y-2">
                 <p className="text-sm font-medium text-gray-700">Add tricks</p>
                 <Input placeholder="Search…" value={trickSearch} onChange={(e) => setTrickSearch(e.target.value)} />
-                <div className="max-h-60 overflow-y-auto divide-y divide-gray-100 rounded border">
+                <div className="max-h-[40vh] overflow-y-auto divide-y divide-gray-100 rounded border lg:max-h-60">
                   {filteredTricks.map((trick) => (
                     <button key={trick.id} type="button" onClick={() => addTrick(trick)} className="flex w-full items-center justify-between px-2 py-1.5 text-left hover:bg-indigo-50 transition-colors">
                       <span className="text-sm">{trick.name} <span className="font-mono text-xs text-gray-400">{trick.abbreviation}</span></span>
@@ -252,7 +252,7 @@ export function ComboDetailPage() {
               {/* Slot list */}
               <div className="space-y-2">
                 <p className="text-sm font-medium text-gray-700">Combo ({editSlots.length} tricks)</p>
-                <div className="space-y-1 max-h-60 overflow-y-auto">
+                <div className="space-y-1 max-h-[40vh] overflow-y-auto lg:max-h-60">
                   {editSlots.length === 0 && <p className="text-sm text-gray-400 py-2">No tricks added.</p>}
                   {editSlots.map((slot, i) => (
                     <div key={i} className="flex items-center gap-2 rounded border border-gray-200 px-2 py-1.5">

@@ -238,7 +238,7 @@ export function TricksPage() {
               onSubmit={(e) => { e.preventDefault(); submitMutation.mutate() }}
               className="space-y-4"
             >
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
                 <div className="space-y-1">
                   <Label>Abbreviation</Label>
                   <Input value={submitForm.abbreviation} onChange={(e) => updateSubmit('abbreviation', e.target.value)} placeholder="e.g. CO" required />
@@ -284,9 +284,10 @@ export function TricksPage() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-4">
-          <div className="flex flex-wrap items-end gap-3">
-            {/* Search */}
-            <div className="flex-1 space-y-1 min-w-[160px]">
+          {/* All filters: 2-col grid on mobile (search spans full width), single flex row on sm+ */}
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end">
+            {/* Search — full width on mobile */}
+            <div className="col-span-2 space-y-1 sm:flex-1 sm:min-w-[160px]">
               <Label>Search</Label>
               <Input
                 placeholder="Name or abbreviation"
@@ -303,7 +304,7 @@ export function TricksPage() {
                 min={1}
                 max={10}
                 placeholder="1"
-                className="w-20"
+                className="w-full sm:w-20"
                 value={minDiff ?? ''}
                 onChange={(e) => setMinDiff(e.target.value ? Number(e.target.value) : undefined)}
               />
@@ -315,7 +316,7 @@ export function TricksPage() {
                 min={1}
                 max={10}
                 placeholder="10"
-                className="w-20"
+                className="w-full sm:w-20"
                 value={maxDiff ?? ''}
                 onChange={(e) => setMaxDiff(e.target.value ? Number(e.target.value) : undefined)}
               />
@@ -328,7 +329,7 @@ export function TricksPage() {
                 <button
                   type="button"
                   onClick={() => setRevDropdownOpen((o) => !o)}
-                  className="flex h-9 min-w-[110px] items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-3 text-sm hover:border-gray-400"
+                  className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-3 text-sm hover:border-gray-400 sm:w-auto sm:min-w-[110px]"
                 >
                   <span className="text-gray-700">
                     {filterRevs.length === 0
@@ -376,8 +377,8 @@ export function TricksPage() {
               </div>
             </div>
 
-            {/* CO / Knee checkboxes */}
-            <div className="flex items-center gap-4 pb-0.5">
+            {/* CO / Knee checkboxes — spans full width on mobile */}
+            <div className="col-span-2 flex items-center gap-4 pb-0.5 sm:col-span-1">
               <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                 <input
                   type="checkbox"
@@ -397,7 +398,7 @@ export function TricksPage() {
                 Knee only
               </label>
             </div>
-          </div>
+          </div>{/* end filters grid */}
         </CardContent>
       </Card>
 
@@ -407,8 +408,8 @@ export function TricksPage() {
       {isLoading ? (
         <p className="text-gray-500">Loading…</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto -mx-4 sm:mx-0 rounded-lg border border-gray-200">
+          <table className="w-full min-w-[480px] text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <SortHeader label="Abbrev" col="abbreviation" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
@@ -478,7 +479,7 @@ export function TricksPage() {
             <DialogTitle>Edit Trick</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label>Abbreviation</Label>
                 <Input

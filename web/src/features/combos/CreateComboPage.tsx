@@ -33,6 +33,7 @@ interface SlotItem extends BuildComboTrickItem {
 export function CreateComboPage() {
   const navigate = useNavigate()
   const [mode, setMode] = useState<'choose' | 'generate' | 'build'>('choose')
+  const [mobileBuildTab, setMobileBuildTab] = useState<'tricks' | 'combo'>('tricks')
 
   // Shared name field
   const [name, setName] = useState('')
@@ -102,6 +103,7 @@ export function CreateComboPage() {
       ...prev,
       { trickId: trick.id, position: prev.length + 1, strongFoot: true, noTouch: false, trickName: trick.name, abbreviation: trick.abbreviation, crossOver: trick.crossOver },
     ])
+    if (window.innerWidth < 1024) setMobileBuildTab('combo')
   }
 
   function removeSlot(index: number) {
@@ -205,7 +207,7 @@ export function CreateComboPage() {
             </div>
 
             {/* Fields — editable when Custom, read-only when preference selected */}
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
               <div className="space-y-1">
                 <Label>Combo Length</Label>
                 <Input
@@ -329,16 +331,34 @@ export function CreateComboPage() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* Mobile tab switcher — only visible below lg */}
+      <div className="flex border-b border-gray-200 lg:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileBuildTab('tricks')}
+          className={`flex-1 py-3 text-sm font-medium transition-colors ${mobileBuildTab === 'tricks' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          Tricks {filteredTricks.length > 0 && `(${filteredTricks.length})`}
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileBuildTab('combo')}
+          className={`flex-1 py-3 text-sm font-medium transition-colors ${mobileBuildTab === 'combo' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          My Combo {slots.length > 0 && `(${slots.length})`}
+        </button>
+      </div>
+
+      <div className="lg:grid lg:gap-6 lg:grid-cols-2">
         {/* Left — trick picker */}
-        <Card>
+        <Card className={mobileBuildTab === 'tricks' ? 'block' : 'hidden lg:block'}>
           <CardHeader><CardTitle>Available Tricks</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <Input placeholder="Search by name or abbreviation…" value={search} onChange={(e) => setSearch(e.target.value)} />
             {tricksLoading ? (
               <p className="text-sm text-gray-500">Loading…</p>
             ) : (
-              <div className="max-h-[480px] overflow-y-auto divide-y divide-gray-100">
+              <div className="max-h-[60vh] overflow-y-auto divide-y divide-gray-100 lg:max-h-[480px]">
                 {filteredTricks.map((trick) => (
                   <button key={trick.id} type="button" onClick={() => addTrick(trick)} className="flex w-full items-center justify-between px-2 py-2 text-left hover:bg-indigo-50 transition-colors">
                     <div>
@@ -359,7 +379,7 @@ export function CreateComboPage() {
         </Card>
 
         {/* Right — combo builder */}
-        <Card>
+        <Card className={mobileBuildTab === 'combo' ? 'block' : 'hidden lg:block'}>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>My Combo</CardTitle>
