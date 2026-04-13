@@ -407,7 +407,7 @@ cd api
 dotnet test
 ```
 
-18 unit tests covering: combo generation (length, no-match, NoTouch logic, display text, preferences), rating validation (own combo, duplicate, not found, private), revolution boundary validation (trick create/update/submission, preference and combo override allowed revolutions, preview override validation), and weight adjustment job.
+120 unit tests covering: combo generation/build/preview, combo visibility and deletion permissions, combo query/update handlers, pending combo review mapping, favourites/completions, auth login/register flows, account/admin handler flows, trick CRUD handlers, preference CRUD handlers, trick submission review flows, query handlers (tricks/preferences/ratings/pending approvals/submissions), revolution boundary validation (trick create/update/submission, preference and combo override allowed revolutions, preview override validation, rating score bounds), and weight adjustment job/aggregator behavior.
 
 ---
 
