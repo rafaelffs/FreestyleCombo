@@ -118,7 +118,8 @@ public class GenerateComboHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         result.DisplayText.Should().NotContain("(nt)");
-        result.DisplayText.Split(' ').Should().HaveCount(3);
+        // "combo" filler words are inserted on foot transitions; count only trick abbreviations
+        result.DisplayText.Split(' ').Where(w => w != "combo").Should().HaveCount(3);
     }
 
     [Fact]

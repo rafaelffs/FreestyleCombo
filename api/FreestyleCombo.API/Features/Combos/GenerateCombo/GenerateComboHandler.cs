@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using FreestyleCombo.AI.Models;
 using FreestyleCombo.AI.Services;
-
+using FreestyleCombo.API.Features.Combos;
 using FreestyleCombo.Core.Entities;
 using FreestyleCombo.Core.Interfaces;
 using MediatR;
@@ -58,9 +58,10 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
         var includeKnee = request.Overrides?.IncludeKnee ?? savedPref?.IncludeKnee ?? true;
         var allowedRevolutions = request.Overrides?.AllowedRevolutions ?? savedPref?.AllowedRevolutions ?? [];
 
-        // Step 1 — Filter trick pool
+        // Step 1 — Filter trick pool (exclude transition tricks from random selection)
         var allTricks = await _trickRepo.GetAllAsync(ct: cancellationToken);
-        var pool = allTricks.Where(t => t.Difficulty <= maxDifficulty).ToList();
+        var transitionTrick = allTricks.FirstOrDefault(t => t.IsTransition);
+        var pool = allTricks.Where(t => !t.IsTransition && t.Difficulty <= maxDifficulty).ToList();
 
         if (!includeCrossOver) pool = pool.Where(t => !t.CrossOver).ToList();
         if (!includeKnee) pool = pool.Where(t => !t.Knee).ToList();
@@ -98,8 +99,8 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
         for (int i = 0; i < weakSlots; i++)
             slots.Add((WeightedPick(weakPool, rng), false));
 
-        // Step 4 — Shuffle
-        slots = [.. slots.OrderBy(_ => rng.Next())];
+        // Step 4 — Sequence (constraint-aware ordering + transition trick insertion)
+        slots = ComboSequencer.Sequence(slots, rng, transitionTrick);
 
         // Step 5 — Annotate NoTouch (only CrossOver tricks can be no-touch)
         var comboTricks = new List<(Trick Trick, bool StrongFoot, bool NoTouch, int Position)>();
@@ -112,8 +113,10 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
 
             if (i > 0 && trick.CrossOver && consecutiveNoTouch < maxConsecutiveNoTouch)
             {
+                var prevWasCross = slots[i - 1].Trick.CrossOver;
+                var effectivePct = prevWasCross ? Math.Max(noTouchPct, 70) : noTouchPct;
                 var roll = rng.Next(1, 101);
-                noTouch = roll <= noTouchPct;
+                noTouch = roll <= effectivePct;
             }
 
             consecutiveNoTouch = noTouch ? consecutiveNoTouch + 1 : 0;

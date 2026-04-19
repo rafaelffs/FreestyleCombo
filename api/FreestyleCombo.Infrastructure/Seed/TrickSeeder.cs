@@ -102,4 +102,25 @@ public static class TrickSeeder
         await db.Tricks.AddRangeAsync(tricks, ct);
         await db.SaveChangesAsync(ct);
     }
+
+    public static async Task SeedTransitionTricksAsync(AppDbContext db, CancellationToken ct = default)
+    {
+        if (await db.Tricks.AnyAsync(t => t.IsTransition, ct))
+            return;
+
+        db.Tricks.Add(new Trick
+        {
+            Id = Guid.NewGuid(),
+            Name = "Combo",
+            Abbreviation = "combo",
+            CrossOver = false,
+            Knee = false,
+            Revolution = 1.0m,
+            Difficulty = 1,
+            CommonLevel = 1,
+            IsTransition = true
+        });
+
+        await db.SaveChangesAsync(ct);
+    }
 }

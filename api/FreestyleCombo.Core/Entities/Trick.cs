@@ -10,6 +10,7 @@ public class Trick
     public decimal Revolution { get; set; }
     public int Difficulty { get; set; }
     public int CommonLevel { get; set; }
+    public bool IsTransition { get; set; }
 
     public ICollection<ComboTrick> ComboTricks { get; set; } = [];
 }
