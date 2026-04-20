@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { accountApi, extractError } from '@/lib/api'
 import { setUserName } from '@/lib/auth'
+import { SEO } from '@/components/SEO'
 
 export function AccountPage() {
   const qc = useQueryClient()
@@ -73,6 +74,7 @@ export function AccountPage() {
 
   return (
     <div className="mx-auto max-w-xl space-y-8 p-6">
+      <SEO title="My Account — FreestyleCombo" description="Manage your FreestyleCombo account settings." noIndex />
       <h1 className="text-2xl font-bold text-gray-900">My Account</h1>
 
       {/* Current info */}

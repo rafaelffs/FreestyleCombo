@@ -1,6 +1,7 @@
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { accountApi } from '@/lib/api'
+import { SEO } from '@/components/SEO'
 
 export function UserProfilePage() {
   const { id } = useParams<{ id: string }>()
@@ -18,6 +19,11 @@ export function UserProfilePage() {
 
   return (
     <div className="mx-auto max-w-md p-6">
+      <SEO
+        title={`${profile.userName}'s Profile — FreestyleCombo`}
+        description={`View ${profile.userName}'s freestyle football profile and combos.`}
+        path={`/users/${id}`}
+      />
       <div className="rounded-lg border border-gray-200 bg-white p-6 text-center shadow-sm">
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 text-2xl font-bold text-indigo-600">
           {profile.userName.charAt(0).toUpperCase()}

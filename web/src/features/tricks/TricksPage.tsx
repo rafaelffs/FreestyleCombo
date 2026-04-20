@@ -2,6 +2,7 @@ import { useMemo, useRef, useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tricksApi, trickSubmissionsApi, extractError, type TrickDto, type SubmitTrickRequest } from '@/lib/api'
 import { isAdmin, isAuthenticated } from '@/lib/auth'
+import { SEO } from '@/components/SEO'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -215,6 +216,11 @@ export function TricksPage() {
 
   return (
     <div className="space-y-6">
+      <SEO
+        title="Trick Library — FreestyleCombo"
+        description="Browse all freestyle football tricks, filter by difficulty, and submit new tricks for review."
+        path="/tricks"
+      />
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Tricks</h1>
         <p className="mt-1 text-sm text-gray-500">Browse all freestyle football tricks.</p>

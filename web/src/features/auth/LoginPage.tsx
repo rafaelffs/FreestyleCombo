@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { SEO } from '@/components/SEO'
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -30,6 +31,11 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-[70vh] items-center justify-center">
+      <SEO
+        title="Login — FreestyleCombo"
+        description="Log in to your FreestyleCombo account."
+        path="/login"
+      />
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Sign in</CardTitle>

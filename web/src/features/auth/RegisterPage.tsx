@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { SEO } from '@/components/SEO'
 
 export function RegisterPage() {
   const navigate = useNavigate()
@@ -31,6 +32,11 @@ export function RegisterPage() {
 
   return (
     <div className="flex min-h-[70vh] items-center justify-center">
+      <SEO
+        title="Register — FreestyleCombo"
+        description="Create a free account to generate and share freestyle football combos."
+        path="/register"
+      />
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Create account</CardTitle>

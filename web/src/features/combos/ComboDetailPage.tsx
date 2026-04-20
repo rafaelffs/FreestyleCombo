@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { combosApi, tricksApi, extractError, type BuildComboTrickItem } from '@/lib/api'
 import { getUserId, isAdmin } from '@/lib/auth'
+import { SEO } from '@/components/SEO'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -125,6 +126,11 @@ export function ComboDetailPage() {
 
   return (
     <div className="space-y-6">
+      <SEO
+        title={`${combo.name ?? 'Combo'} — FreestyleCombo`}
+        description={combo.aiDescription ?? `A freestyle football combo with ${combo.trickCount} tricks.`}
+        path={`/combos/${id}`}
+      />
       <div className="flex items-center gap-3">
         <Link to="/combos" className="text-sm text-gray-500 hover:text-gray-700">
           ← Back

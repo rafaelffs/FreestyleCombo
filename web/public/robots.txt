@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /account
+Disallow: /preferences
+Disallow: /combos/create
+
+Sitemap: https://freestylecombo.com/sitemap.xml

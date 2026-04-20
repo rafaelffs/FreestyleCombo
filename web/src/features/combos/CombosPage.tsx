@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { combosApi } from '@/lib/api'
 import { ComboCard } from './ComboCard'
 import { isAuthenticated } from '@/lib/auth'
+import { SEO } from '@/components/SEO'
 
 type Tab = 'public' | 'mine' | 'favourites'
 
@@ -42,6 +43,11 @@ export function CombosPage() {
 
   return (
     <div className="space-y-6">
+      <SEO
+        title="Public Combos — FreestyleCombo"
+        description="Browse and rate freestyle football combos shared by the community."
+        path="/combos"
+      />
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Combos</h1>
         <p className="mt-1 text-sm text-gray-500">Browse public combos or view your own.</p>

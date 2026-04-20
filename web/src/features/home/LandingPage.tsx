@@ -1,11 +1,17 @@
 import { Link } from 'react-router-dom'
 import { isAuthenticated } from '@/lib/auth'
+import { SEO } from '@/components/SEO'
 
 export function LandingPage() {
   const authed = isAuthenticated()
 
   return (
     <div className="space-y-12">
+      <SEO
+        title="FreestyleCombo — Freestyle Football Combo Generator"
+        description="Generate, build and share freestyle football combos. Rate other players' combos and level up your skills."
+        path="/"
+      />
       {/* Hero */}
       <div className="text-center space-y-4 pt-6 sm:pt-10">
         <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">
