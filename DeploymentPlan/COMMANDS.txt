@@ -76,7 +76,7 @@ ssh -i ~/.ssh/freestylecombo_deploy ubuntu@178.104.158.9 \
   -N -L 55432:$(ssh -i ~/.ssh/freestylecombo_deploy ubuntu@178.104.158.9 \
     "docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' freestylecombo-db-1"):5432
 
-
+ 
 ----------------------------------------------------------------
 PSQL DIRECT ON VPS (no tunnel needed)
 ----------------------------------------------------------------
