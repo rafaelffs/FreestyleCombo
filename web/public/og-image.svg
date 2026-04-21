@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="icon-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7C6EF0"/>
+      <stop offset="100%" stop-color="#5B4AD4"/>
+    </linearGradient>
+    <clipPath id="ball-clip">
+      <circle cx="248" cy="315" r="108"/>
+    </clipPath>
+  </defs>
+
+  <!-- Page background -->
+  <rect width="1200" height="630" fill="#F8F9FF"/>
+  <!-- Subtle gradient accent -->
+  <ellipse cx="200" cy="315" rx="500" ry="400" fill="#EEF0FF" opacity="0.6"/>
+
+  <!-- App Icon (size ~235px, centred vertically at 315) -->
+  <rect x="130" y="197" width="235" height="235" rx="61" fill="url(#icon-bg)"/>
+
+  <!-- White ball -->
+  <circle cx="248" cy="315" r="108" fill="white"/>
+
+  <!-- Pentagon patches — Telstar pattern, tilt=15°, scaled to r=108 -->
+  <g clip-path="url(#ball-clip)" fill="#5B4AD4">
+    <!-- cx=248 cy=315, r=108 → inner r*0.34=36.7, outer r*0.75=81, patch r*0.23=24.8 -->
+    <!-- Center pentagon -->
+    <polygon points="257.6,276.1 278.5,315.0 257.3,354.2 220.7,342.5 219.2,287.4"/>
+    <!-- Outer pentagon 0 (top-right) -->
+    <polygon points="307.5,234.0 325.7,258.0 308.7,282.7 282.3,275.3 280.4,248.9"/>
+    <!-- Outer pentagon 1 (right) -->
+    <polygon points="330.4,359.7 313.6,385.2 285.6,376.6 284.0,349.6 310.3,338.6"/>
+    <!-- Outer pentagon 2 (bottom) -->
+    <polygon points="254.1,408.1 228.1,400.5 226.5,373.5 251.3,362.5 269.7,384.4"/>
+    <!-- Outer pentagon 3 (left) -->
+    <polygon points="200.4,357.5 198.8,330.5 224.5,321.0 242.2,342.5 226.2,366.0"/>
+    <!-- Outer pentagon 4 (top-left) -->
+    <polygon points="215.8,264.2 241.6,254.7 260.8,276.1 245.3,299.1 219.3,292.4"/>
+  </g>
+
+  <!-- Seam lines -->
+  <g clip-path="url(#ball-clip)" fill="none" stroke="#5B4AD4" stroke-width="7.3" stroke-linecap="round">
+    <path d="M257.6,276.1 Q294.1,261.9 307.5,261.1"/>
+    <path d="M257.6,276.1 Q243.3,251.4 232.1,241.4"/>
+    <path d="M278.5,315.0 Q314.4,330.9 320.8,345.7"/>
+    <path d="M278.5,315.0 Q314.3,295.4 316.7,274.2"/>
+    <path d="M257.3,354.2 Q246.6,387.0 240.6,396.8"/>
+    <path d="M257.3,354.2 Q291.5,364.6 304.9,372.5"/>
+    <path d="M220.7,342.5 Q193.3,338.3 185.1,329.0"/>
+    <path d="M220.7,342.5 Q220.1,379.0 232.1,392.8"/>
+    <path d="M219.2,287.4 Q217.6,253.5 232.1,241.4"/>
+    <path d="M219.2,287.4 Q186.6,298.4 175.7,308.4"/>
+  </g>
+
+  <!-- Ball outline -->
+  <circle cx="248" cy="315" r="108" fill="none" stroke="#5B4AD4" stroke-width="3.7" opacity="0.2"/>
+
+  <!-- Wordmark -->
+  <!-- FREESTYLE label -->
+  <text x="415" y="288" font-family="'Helvetica Neue', Arial, sans-serif" font-size="36" font-weight="600"
+        fill="#5B4AD4" letter-spacing="10">FREESTYLE</text>
+  <!-- Combo -->
+  <text x="410" y="380" font-family="'Helvetica Neue', Arial, sans-serif" font-size="110" font-weight="800"
+        fill="#1C1B2E" letter-spacing="-2">Combo</text>
+
+  <!-- Tagline -->
+  <text x="415" y="430" font-family="'Helvetica Neue', Arial, sans-serif" font-size="28" font-weight="400"
+        fill="#6B7280">Generate, build and share freestyle football combos.</text>
+</svg>

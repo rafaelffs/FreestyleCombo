@@ -81,38 +81,20 @@ export function LandingPage() {
         )}
 
         {/* Submit a Trick */}
-        {authed ? (
-          <Link
-            to="/tricks"
-            className="flex flex-col items-start gap-4 rounded-xl border-2 border-gray-200 p-6 text-left hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
-          >
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-2xl">
-              🎯
-            </div>
-            <div>
-              <p className="text-lg font-semibold text-gray-900">Submit a Trick</p>
-              <p className="mt-1 text-sm text-gray-500">
-                Know a trick that's not in the library? Submit it for review.
-              </p>
-            </div>
-          </Link>
-        ) : (
-          <Link
-            to="/login"
-            className="flex flex-col items-start gap-4 rounded-xl border-2 border-gray-200 p-6 text-left hover:border-indigo-400 hover:bg-indigo-50 transition-colors opacity-75"
-          >
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-2xl">
-              🎯
-            </div>
-            <div>
-              <p className="text-lg font-semibold text-gray-900">Submit a Trick</p>
-              <p className="mt-1 text-sm text-gray-500">
-                Know a trick that's not in the library? Submit it for review.
-              </p>
-              <p className="mt-2 text-xs font-medium text-indigo-600">Login to get started →</p>
-            </div>
-          </Link>
-        )}
+        <Link
+          to="/tricks"
+          className="flex flex-col items-start gap-4 rounded-xl border-2 border-gray-200 p-6 text-left hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-2xl">
+            🎯
+          </div>
+          <div>
+            <p className="text-lg font-semibold text-gray-900">Trick Library</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Browse all tricks. Know one that's missing? Login to submit it for review.
+            </p>
+          </div>
+        </Link>
       </div>
 
       {/* Browse links */}

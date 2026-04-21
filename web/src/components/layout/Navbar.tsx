@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { isAuthenticated, isAdmin, clearToken, getUserName } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { adminApi } from '@/lib/api'
+import { Logo } from '@/components/Logo'
 
 export function Navbar() {
   const navigate = useNavigate()
@@ -45,8 +46,8 @@ export function Navbar() {
         {/* Top bar */}
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="text-xl font-bold text-indigo-600 shrink-0">
-            FreestyleCombo
+          <Link to="/" className="shrink-0 flex items-center">
+            <Logo iconSize={38} />
           </Link>
 
           {/* Desktop nav links — hidden on mobile */}

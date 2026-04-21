@@ -1,0 +1,17 @@
+{
+  "name": "FreestyleCombo",
+  "short_name": "FSCombo",
+  "description": "Generate, build and share freestyle football combos.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8F9FF",
+  "theme_color": "#5B4AD4",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}
