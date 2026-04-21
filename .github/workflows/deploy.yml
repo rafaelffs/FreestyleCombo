@@ -144,16 +144,19 @@ jobs:
       - name: Verify deployment
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
-            set -e
-            for i in $(seq 1 10); do
+            TRIES=0
+            while [ $TRIES -lt 10 ]; do
               if curl -fsS http://localhost/api/tricks > /dev/null; then
                 echo "✓ Deployment verified"
-                exit 0
+                break
               fi
+              TRIES=$((TRIES + 1))
               sleep 2
             done
-            echo "✗ Verification failed"
-            exit 1
+            if [ $TRIES -eq 10 ]; then
+              echo "✗ Verification failed"
+              exit 1
+            fi
           EOF
 
       - name: Cleanup
