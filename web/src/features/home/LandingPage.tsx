@@ -21,27 +21,6 @@ export function LandingPage() {
           Generate, build, and share freestyle football combos. Rate other players' combos and level up your skills.
         </p>
 
-        {!authed && (
-          <div className="space-y-3 pt-2">
-            <p className="text-sm text-gray-500">
-              Register or login to generate a combo or submit a trick.
-            </p>
-            <div className="flex justify-center gap-3">
-              <Link
-                to="/register"
-                className="inline-flex h-10 items-center rounded-md bg-indigo-600 px-5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
-              >
-                Register
-              </Link>
-              <Link
-                to="/login"
-                className="inline-flex h-10 items-center rounded-md border border-gray-300 bg-white px-5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Login
-              </Link>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Action cards */}
