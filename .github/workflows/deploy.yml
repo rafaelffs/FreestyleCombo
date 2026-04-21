@@ -6,10 +6,17 @@ on:
     types: [completed]
     branches: [main]
 
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/freestylecombo-api
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    permissions:
+      contents: read
+      packages: write   # needed to push to GHCR
 
     steps:
       - name: Checkout code
@@ -17,6 +24,7 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
+      # ── React build (served by host Nginx, no Docker involved) ──────────────
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -27,8 +35,27 @@ jobs:
           cd web
           npm ci
           npm run build
-          cd ..
 
+      # ── Docker image build & push to GHCR ───────────────────────────────────
+      # This runs in CI so the VPS never has to compile .NET — just pull & swap.
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./api
+          file: ./api/FreestyleCombo.API/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.event.workflow_run.head_sha }}
+
+      # ── SSH setup ───────────────────────────────────────────────────────────
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
@@ -41,21 +68,7 @@ jobs:
           ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
             "mkdir -p /opt/freestylecombo && mkdir -p /var/www/freestylecombo"
 
-      - name: Preflight server access
-        run: |
-          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
-            set -e
-            echo "Checking docker access..."
-            docker --version
-            echo "Checking passwordless sudo for deploy user..."
-            if ! sudo -n true 2>/dev/null; then
-              echo "ERROR: passwordless sudo is not configured for deploy user."
-              echo "Run on server as root: echo '${{ secrets.DEPLOY_USER }} ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/${{ secrets.DEPLOY_USER }} && chmod 440 /etc/sudoers.d/${{ secrets.DEPLOY_USER }}"
-              exit 1
-            fi
-            echo "Preflight checks passed."
-          EOF
-
+      # ── Sync static files to VPS ────────────────────────────────────────────
       - name: Sync docker-compose.prod.yml to server
         run: |
           rsync -avz --delete \
@@ -65,7 +78,7 @@ jobs:
 
       - name: Sync nginx config to server
         run: |
-          rsync -avz --delete \
+          rsync -avz \
             -e "ssh -i ~/.ssh/deploy_key" \
             nginx/nginx.conf \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/freestylecombo/nginx.conf.new
@@ -77,72 +90,75 @@ jobs:
             web/dist/ \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/var/www/freestylecombo/
 
-      - name: Deploy containers and run migrations
+      # ── Deploy: pull pre-built image and do a fast container swap ───────────
+      # The DB container is never touched — only the API container is restarted.
+      # Downtime = docker container stop + start (seconds, not minutes).
+      - name: Deploy API container
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << EOF
+            set -e
+            cd /opt/freestylecombo
+
+            # Log in to GHCR with the token passed from CI (valid for this run)
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+            # Ensure DB is running (no-op if already up)
+            docker compose -f docker-compose.prod.yml up -d --no-deps db
+
+            # Pull the newly pushed image — this happens while the old container is still serving traffic
+            docker compose -f docker-compose.prod.yml pull api
+
+            # Swap the API container only; DB is untouched
+            docker compose -f docker-compose.prod.yml up -d --no-deps api
+
+            docker logout ghcr.io
+          EOF
+
+      - name: Wait for API to be ready
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
             set -e
-            cd /opt/freestylecombo
-            docker compose -f docker-compose.prod.yml up --build -d
-            
-            # Wait for API to be ready
-            echo "Waiting for API to be ready..."
-            for i in {1..30}; do
-              if curl -s http://localhost:5050/swagger > /dev/null 2>&1; then
+            echo "Waiting for API..."
+            for i in $(seq 1 30); do
+              if curl -sf http://localhost:5050/swagger > /dev/null 2>&1; then
                 echo "API is ready"
                 break
               fi
-              echo "Attempt $i/30: Waiting for API..."
-              sleep 2
+              echo "Attempt $i/30..."
+              sleep 3
             done
-            
-            echo "Deployment successful"
           EOF
 
+      # ── Nginx config hot-reload (zero downtime) ──────────────────────────────
       - name: Update and reload Nginx config
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
             set -e
-            
-            # Deploy new config
             sudo cp /opt/freestylecombo/nginx.conf.new /etc/nginx/conf.d/freestylecombo.conf
-
-            # Test full nginx configuration
             sudo nginx -t
-            
-            # Reload Nginx
             sudo systemctl reload nginx
-            
-            echo "Nginx config updated and reloaded"
+            echo "Nginx reloaded"
           EOF
 
+      # ── Verify ──────────────────────────────────────────────────────────────
       - name: Verify deployment
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
             set -e
-            
-            echo "Verifying API..."
-            TRIES=0
-            while [ $TRIES -lt 10 ]; do
+            for i in $(seq 1 10); do
               if curl -fsS http://localhost/api/tricks > /dev/null; then
-                echo "✓ React app and API proxying working"
-                break
+                echo "✓ Deployment verified"
+                exit 0
               fi
-              TRIES=$((TRIES + 1))
-              sleep 1
+              sleep 2
             done
-            
-            if [ $TRIES -eq 10 ]; then
-              echo "✗ API verification failed"
-              exit 1
-            fi
-            
-            echo "✓ Deployment verified successfully"
+            echo "✗ Verification failed"
+            exit 1
           EOF
 
       - name: Cleanup
         if: always()
-        run: |
-          rm -f ~/.ssh/deploy_key
+        run: rm -f ~/.ssh/deploy_key
 
   notify:
     needs: deploy

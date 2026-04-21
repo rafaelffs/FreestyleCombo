@@ -12,9 +12,7 @@ services:
     restart: unless-stopped
 
   api:
-    build:
-      context: ./api
-      dockerfile: FreestyleCombo.API/Dockerfile
+    image: ghcr.io/rafaelffs/freestylecombo-api:latest
     ports:
       - "127.0.0.1:5050:8080"  # Expose only to localhost; host Nginx will proxy to it
     environment:
