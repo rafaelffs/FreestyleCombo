@@ -146,7 +146,7 @@ jobs:
           ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
             TRIES=0
             while [ $TRIES -lt 10 ]; do
-              if curl -fsS http://localhost/api/tricks > /dev/null; then
+              if curl -fsS http://localhost:5050/api/tricks > /dev/null; then
                 echo "✓ Deployment verified"
                 break
               fi
