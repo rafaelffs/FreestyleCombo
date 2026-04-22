@@ -179,7 +179,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
                 type="button"
                 onClick={() => favMutation.mutate()}
                 disabled={favMutation.isPending}
-                className={`inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border bg-white transition-colors disabled:cursor-not-allowed ${
+                className={`inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border bg-white transition-colors disabled:cursor-not-allowed ${
                   favoured ? 'border-pink-200 text-pink-600 hover:border-red-300' : 'border-gray-200 text-gray-500 hover:border-red-300 hover:text-pink-400'
                 }`}
                 title={favoured ? t('combos.favouriteRemove') : t('combos.favouriteAdd')}
@@ -192,7 +192,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
                 type="button"
                 onClick={() => completeMutation.mutate()}
                 disabled={completeMutation.isPending}
-                className={`inline-flex h-11 cursor-pointer items-center justify-center gap-1 rounded-md border bg-white px-2 transition-colors disabled:cursor-not-allowed ${
+                className={`inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border bg-white transition-colors disabled:cursor-not-allowed ${
                   completed
                     ? 'border-green-200 text-green-600 hover:border-green-300'
                     : 'border-gray-200 text-gray-400 hover:border-green-300 hover:text-green-500'
@@ -200,9 +200,6 @@ export function ComboCard({ combo, showActions = false }: Props) {
                 title={completed ? t('combos.markNotDone') : t('combos.markDone')}
               >
                 {completed ? <CheckCircleIconFilled /> : <CheckCircleIconOutline />}
-                {completionCount > 0 && (
-                  <span className="text-xs font-medium">{completionCount}</span>
-                )}
               </button>
             )}
             {(isOwner || adminUser) && (() => {
@@ -216,7 +213,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
                   onClick={() => { if (canAct) openVisibilityModal() }}
                   disabled={visibilityMutation.isPending}
                   className={[
-                    'inline-flex h-11 w-11 items-center justify-center rounded-md border bg-white transition-colors disabled:cursor-not-allowed',
+                    'inline-flex h-8 w-8 items-center justify-center rounded-md border bg-white transition-colors disabled:cursor-not-allowed',
                     canAct ? 'cursor-pointer' : 'cursor-default',
                     visibilityState === 'pending' ? 'border-yellow-200 text-yellow-500' : '',
                     visibilityState === 'pending' && canAct ? 'hover:border-blue-300' : '',
@@ -235,13 +232,10 @@ export function ComboCard({ combo, showActions = false }: Props) {
               <button
                 type="button"
                 onClick={() => setRatingOpen(true)}
-                className="inline-flex h-11 cursor-pointer items-center justify-center gap-1 rounded-md border border-gray-200 bg-white px-2 transition-colors hover:border-yellow-300"
+                className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white transition-colors hover:border-yellow-300"
                 title={t('combos.rateComboTitle')}
               >
                 <HalfStarIcon />
-                {combo.averageRating != null && combo.averageRating > 0 && (
-                  <span className="text-xs font-medium">{combo.averageRating.toFixed(1)}</span>
-                )}
               </button>
             )}
           </div>
