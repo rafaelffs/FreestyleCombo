@@ -7,6 +7,47 @@ import { Button } from '@/components/ui/button'
 import { adminApi } from '@/lib/api'
 import { Logo } from '@/components/Logo'
 
+function USFlagIcon() {
+  return (
+    <svg viewBox="0 0 19 14" className="h-3.5 w-5 rounded-[2px] border border-gray-200" aria-hidden="true">
+      <rect width="19" height="14" fill="#B22234" />
+      <rect y="2" width="19" height="2" fill="#fff" />
+      <rect y="6" width="19" height="2" fill="#fff" />
+      <rect y="10" width="19" height="2" fill="#fff" />
+      <rect width="8" height="8" fill="#3C3B6E" />
+      <circle cx="1.6" cy="1.4" r="0.45" fill="#fff" />
+      <circle cx="3.3" cy="1.4" r="0.45" fill="#fff" />
+      <circle cx="5" cy="1.4" r="0.45" fill="#fff" />
+      <circle cx="6.7" cy="1.4" r="0.45" fill="#fff" />
+      <circle cx="2.45" cy="2.8" r="0.45" fill="#fff" />
+      <circle cx="4.15" cy="2.8" r="0.45" fill="#fff" />
+      <circle cx="5.85" cy="2.8" r="0.45" fill="#fff" />
+      <circle cx="1.6" cy="4.2" r="0.45" fill="#fff" />
+      <circle cx="3.3" cy="4.2" r="0.45" fill="#fff" />
+      <circle cx="5" cy="4.2" r="0.45" fill="#fff" />
+      <circle cx="6.7" cy="4.2" r="0.45" fill="#fff" />
+      <circle cx="2.45" cy="5.6" r="0.45" fill="#fff" />
+      <circle cx="4.15" cy="5.6" r="0.45" fill="#fff" />
+      <circle cx="5.85" cy="5.6" r="0.45" fill="#fff" />
+      <circle cx="1.6" cy="7" r="0.45" fill="#fff" />
+      <circle cx="3.3" cy="7" r="0.45" fill="#fff" />
+      <circle cx="5" cy="7" r="0.45" fill="#fff" />
+      <circle cx="6.7" cy="7" r="0.45" fill="#fff" />
+    </svg>
+  )
+}
+
+function BRFlagIcon() {
+  return (
+    <svg viewBox="0 0 19 14" className="h-3.5 w-5 rounded-[2px] border border-gray-200" aria-hidden="true">
+      <rect width="19" height="14" fill="#009B3A" />
+      <path d="M9.5 2l6 5-6 5-6-5 6-5z" fill="#FFDF00" />
+      <circle cx="9.5" cy="7" r="2.2" fill="#002776" />
+      <path d="M7.4 7.3c1.2-.8 3-.8 4.2 0" stroke="#fff" strokeWidth="0.45" fill="none" />
+    </svg>
+  )
+}
+
 export function Navbar() {
   const navigate = useNavigate()
   const authed = isAuthenticated()
@@ -39,7 +80,12 @@ export function Navbar() {
     void i18n.changeLanguage(next)
   }
 
+  const isWindows =
+    typeof navigator !== 'undefined' &&
+    navigator.userAgent.toLowerCase().includes('windows')
   const langFlag = isPortuguese ? '🇧🇷' : '🇺🇸'
+  const langLabel = isPortuguese ? 'PT-BR' : 'EN'
+  const langFlagIcon = isPortuguese ? <BRFlagIcon /> : <USFlagIcon />
 
   // Close desktop dropdown when clicking outside
   useEffect(() => {
@@ -100,10 +146,22 @@ export function Navbar() {
             <button
               type="button"
               onClick={toggleLanguage}
-              className="rounded-md px-2 py-1 text-base hover:bg-gray-100 border border-gray-200"
+              className={[
+                'rounded-md border border-gray-200 hover:bg-gray-100',
+                isWindows
+                  ? 'inline-flex items-center gap-1.5 px-2 py-1 text-xs font-semibold text-gray-700'
+                  : 'px-2 py-1 text-base',
+              ].join(' ')}
               title="Switch language"
             >
-              {langFlag}
+              {isWindows ? (
+                <>
+                  {langFlagIcon}
+                  <span>{langLabel}</span>
+                </>
+              ) : (
+                langFlag
+              )}
             </button>
 
             {authed ? (
@@ -260,9 +318,21 @@ export function Navbar() {
             <button
               type="button"
               onClick={toggleLanguage}
-              className="block w-full rounded-md px-3 py-3 text-left text-sm font-medium text-gray-500 hover:bg-gray-50"
+              className={[
+                'w-full rounded-md px-3 py-3 text-left hover:bg-gray-50',
+                isWindows
+                  ? 'flex items-center gap-2 text-sm font-medium text-gray-500'
+                  : 'text-base font-medium text-gray-500',
+              ].join(' ')}
             >
-              {langFlag}
+              {isWindows ? (
+                <>
+                  {langFlagIcon}
+                  <span>{langLabel}</span>
+                </>
+              ) : (
+                langFlag
+              )}
             </button>
           </div>
         </div>

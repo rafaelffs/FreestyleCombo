@@ -195,7 +195,7 @@ dotnet ef database update --project FreestyleCombo.Infrastructure --startup-proj
 - Supported languages: `en` (English), `pt-BR` (Portuguese Brazil) — `pt` also maps to pt-BR
 - Auto-detection order: `localStorage` → browser `navigator` locale
 - Manual override: language toggle button in Navbar (desktop + mobile drawer)
-- Navbar flag selection normalizes detected locales by language family: English variants (for example `en-US`) show `🇺🇸`, Portuguese variants show `🇧🇷`
+- Navbar language indicator normalizes detected locales by language family: default UI uses emoji flags (`🇺🇸`/`🇧🇷`); on Windows clients it falls back to inline flag icon + label (`EN`/`PT-BR`) for reliable rendering
 - Persistence: `localStorage` key `fc_lang` stores the user's manual choice
 - Translation files: `web/src/locales/en.json`, `web/src/locales/pt-BR.json`
 - Config: `web/src/lib/i18n.ts` (imported as side-effect in `main.tsx`)
