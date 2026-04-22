@@ -92,7 +92,7 @@ export function CombosPage() {
           {publicQuery.isLoading && <p className="text-gray-500">{t('common.loading')}</p>}
           {publicQuery.error && <p className="text-red-600">{t('combos.loadingError')}</p>}
           {publicQuery.data?.length === 0 && <p className="text-gray-500">{t('combos.noPublic')}</p>}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             {publicQuery.data?.map((combo) => (
               <ComboCard key={combo.id} combo={combo} showActions={authed} />
             ))}
@@ -113,7 +113,7 @@ export function CombosPage() {
               </Link>
             </p>
           )}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             {mineItems.map((combo) => (
               <ComboCard key={combo.id} combo={combo} showActions />
             ))}
@@ -129,7 +129,7 @@ export function CombosPage() {
           {!favouritesQuery.isLoading && favouritesQuery.data?.length === 0 && (
             <p className="text-gray-500">{t('combos.noFavourites')}</p>
           )}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             {favouritesQuery.data?.map((combo) => (
               <ComboCard key={combo.id} combo={combo} showActions />
             ))}
