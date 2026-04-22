@@ -95,7 +95,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
   const [favoured, setFavoured] = useState(combo.isFavourited ?? false)
   const [favError, setFavError] = useState<string | null>(null)
   const [completed, setCompleted] = useState(combo.isCompleted ?? false)
-  const [completionCount, setCompletionCount] = useState(combo.completionCount ?? 0)
+  const [, setCompletionCount] = useState(combo.completionCount ?? 0)
   const [visibilityModal, setVisibilityModal] = useState<VisibilityModalConfig | null>(null)
   const [expanded, setExpanded] = useState(false)
 
