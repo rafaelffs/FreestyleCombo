@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { combosApi } from '@/lib/api'
 import { ComboCard } from './ComboCard'
 import { isAuthenticated } from '@/lib/auth'
@@ -10,6 +11,7 @@ type Tab = 'public' | 'mine' | 'favourites'
 
 export function CombosPage() {
   const authed = isAuthenticated()
+  const { t } = useTranslation()
   const [tab, setTab] = useState<Tab>(authed ? 'mine' : 'public')
 
   const publicQuery = useQuery({
@@ -35,10 +37,10 @@ export function CombosPage() {
   // Mine only shows Private + PendingReview (not Public)
   const mineItems = mineQuery.data?.filter((c) => c.visibility !== 'Public') ?? []
 
-  const tabs: { key: Tab; label: string; authOnly?: boolean }[] = [
-    { key: 'public', label: 'Public (All)' },
-    { key: 'mine', label: 'Mine', authOnly: true },
-    { key: 'favourites', label: 'Favourites', authOnly: true },
+  const tabs: { key: Tab; labelKey: string; authOnly?: boolean }[] = [
+    { key: 'public', labelKey: 'combos.tabPublic' },
+    { key: 'mine', labelKey: 'combos.tabMine', authOnly: true },
+    { key: 'favourites', labelKey: 'combos.tabFavourites', authOnly: true },
   ]
 
   return (
@@ -49,8 +51,8 @@ export function CombosPage() {
         path="/combos"
       />
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Combos</h1>
-        <p className="mt-1 text-sm text-gray-500">Browse public combos or view your own.</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('combos.pageTitle')}</h1>
+        <p className="mt-1 text-sm text-gray-500">{t('combos.pageSubtitle')}</p>
       </div>
 
       {/* FAB */}
@@ -60,13 +62,13 @@ export function CombosPage() {
           className="fixed bottom-6 right-6 z-40 inline-flex h-14 items-center gap-2 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-indigo-700 active:bg-indigo-800"
         >
           <span className="text-lg leading-none">+</span>
-          Create
+          {t('combos.createFab')}
         </Link>
       )}
 
       {/* Tab bar */}
       <div className="flex gap-1 border-b border-gray-200">
-        {tabs.map(({ key, label, authOnly }) => {
+        {tabs.map(({ key, labelKey, authOnly }) => {
           if (authOnly && !authed) return null
           return (
             <button
@@ -78,7 +80,7 @@ export function CombosPage() {
                   : 'text-gray-500 hover:text-gray-900'
               }`}
             >
-              {label}
+              {t(labelKey)}
             </button>
           )
         })}
@@ -87,9 +89,9 @@ export function CombosPage() {
       {/* Public (All) tab */}
       {tab === 'public' && (
         <>
-          {publicQuery.isLoading && <p className="text-gray-500">Loading…</p>}
-          {publicQuery.error && <p className="text-red-600">Failed to load combos.</p>}
-          {publicQuery.data?.length === 0 && <p className="text-gray-500">No public combos yet.</p>}
+          {publicQuery.isLoading && <p className="text-gray-500">{t('common.loading')}</p>}
+          {publicQuery.error && <p className="text-red-600">{t('combos.loadingError')}</p>}
+          {publicQuery.data?.length === 0 && <p className="text-gray-500">{t('combos.noPublic')}</p>}
           <div className="grid gap-4 sm:grid-cols-2">
             {publicQuery.data?.map((combo) => (
               <ComboCard key={combo.id} combo={combo} showActions={authed} />
@@ -101,13 +103,13 @@ export function CombosPage() {
       {/* Mine tab */}
       {tab === 'mine' && authed && (
         <>
-          {mineQuery.isLoading && <p className="text-gray-500">Loading…</p>}
-          {mineQuery.error && <p className="text-red-600">Failed to load combos.</p>}
+          {mineQuery.isLoading && <p className="text-gray-500">{t('common.loading')}</p>}
+          {mineQuery.error && <p className="text-red-600">{t('combos.loadingError')}</p>}
           {!mineQuery.isLoading && mineItems.length === 0 && (
             <p className="text-gray-500">
-              You haven't created any private combos yet.{' '}
+              {t('combos.noMine')}{' '}
               <Link to="/combos/create" className="text-indigo-600 hover:underline">
-                Create one now!
+                {t('combos.createOneNow')}
               </Link>
             </p>
           )}
@@ -122,10 +124,10 @@ export function CombosPage() {
       {/* Favourites tab */}
       {tab === 'favourites' && authed && (
         <>
-          {favouritesQuery.isLoading && <p className="text-gray-500">Loading…</p>}
-          {favouritesQuery.error && <p className="text-red-600">Failed to load favourites.</p>}
+          {favouritesQuery.isLoading && <p className="text-gray-500">{t('common.loading')}</p>}
+          {favouritesQuery.error && <p className="text-red-600">{t('combos.favouritesError')}</p>}
           {!favouritesQuery.isLoading && favouritesQuery.data?.length === 0 && (
-            <p className="text-gray-500">You haven't favourited any combos yet.</p>
+            <p className="text-gray-500">{t('combos.noFavourites')}</p>
           )}
           <div className="grid gap-4 sm:grid-cols-2">
             {favouritesQuery.data?.map((combo) => (

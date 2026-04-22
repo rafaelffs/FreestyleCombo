@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { preferencesApi, extractError, type UserPreference, type PreferencePayload } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,6 +33,7 @@ function PreferenceForm({
   error: string | null
 }) {
   const [form, setForm] = useState<PreferencePayload>(initial)
+  const { t } = useTranslation()
 
   function update<K extends keyof PreferencePayload>(key: K, value: PreferencePayload[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -46,11 +48,11 @@ function PreferenceForm({
       className="space-y-4"
     >
       <div className="space-y-1">
-        <Label>Name</Label>
+        <Label>{t('preferences.fieldName')}</Label>
         <Input
           required
           maxLength={100}
-          placeholder="e.g. NT Combinations"
+          placeholder={t('preferences.fieldNamePlaceholder')}
           value={form.name}
           onChange={(e) => update('name', e.target.value)}
         />
@@ -58,23 +60,23 @@ function PreferenceForm({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
         <div className="space-y-1">
-          <Label>Combo Length</Label>
+          <Label>{t('preferences.comboLength')}</Label>
           <Input type="number" min={1} max={100} value={form.comboLength} onChange={(e) => update('comboLength', Number(e.target.value))} />
         </div>
         <div className="space-y-1">
-          <Label>Max Difficulty</Label>
+          <Label>{t('preferences.maxDifficulty')}</Label>
           <Input type="number" min={1} max={10} value={form.maxDifficulty} onChange={(e) => update('maxDifficulty', Number(e.target.value))} />
         </div>
         <div className="space-y-1">
-          <Label>Strong Foot %</Label>
+          <Label>{t('preferences.strongFootPct')}</Label>
           <Input type="number" min={0} max={100} value={form.strongFootPercentage} onChange={(e) => update('strongFootPercentage', Number(e.target.value))} />
         </div>
         <div className="space-y-1">
-          <Label>No-Touch %</Label>
+          <Label>{t('preferences.noTouchPct')}</Label>
           <Input type="number" min={0} max={100} value={form.noTouchPercentage} onChange={(e) => update('noTouchPercentage', Number(e.target.value))} />
         </div>
         <div className="space-y-1">
-          <Label>Max Consecutive NT</Label>
+          <Label>{t('preferences.maxConsecutiveNT')}</Label>
           <Input type="number" min={0} max={30} value={form.maxConsecutiveNoTouch} onChange={(e) => update('maxConsecutiveNoTouch', Number(e.target.value))} />
         </div>
       </div>
@@ -82,11 +84,11 @@ function PreferenceForm({
       <div className="flex flex-wrap gap-4">
         <div className="flex items-center gap-2">
           <input id="pf-crossover" type="checkbox" checked={form.includeCrossOver} onChange={(e) => update('includeCrossOver', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600" />
-          <Label htmlFor="pf-crossover">Include Crossover</Label>
+          <Label htmlFor="pf-crossover">{t('preferences.includeCrossover')}</Label>
         </div>
         <div className="flex items-center gap-2">
           <input id="pf-knee" type="checkbox" checked={form.includeKnee} onChange={(e) => update('includeKnee', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600" />
-          <Label htmlFor="pf-knee">Include Knee</Label>
+          <Label htmlFor="pf-knee">{t('preferences.includeKnee')}</Label>
         </div>
       </div>
 
@@ -94,10 +96,10 @@ function PreferenceForm({
 
       <div className="flex gap-2">
         <Button type="submit" disabled={isPending}>
-          {isPending ? 'Saving…' : 'Save'}
+          {isPending ? t('common.saving') : t('common.save')}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
-          Cancel
+          {t('common.cancel')}
         </Button>
       </div>
     </form>
@@ -114,6 +116,7 @@ function PreferenceCard({
   const [editing, setEditing] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
 
   const updateMutation = useMutation({
     mutationFn: (payload: PreferencePayload) => preferencesApi.update(pref.id, payload),
@@ -123,15 +126,20 @@ function PreferenceCard({
     },
   })
 
-  const updateError = updateMutation.error ? extractError(updateMutation.error, 'Save failed') : null
+  const updateError = updateMutation.error ? extractError(updateMutation.error, t('preferences.saveFailed')) : null
 
-  const stats = `Length ${pref.comboLength} · Diff ≤${pref.maxDifficulty} · SF ${pref.strongFootPercentage}% · NT ${pref.noTouchPercentage}%`
+  const stats = t('preferences.stats', {
+    length: pref.comboLength,
+    maxDiff: pref.maxDifficulty,
+    sf: pref.strongFootPercentage,
+    nt: pref.noTouchPercentage,
+  })
 
   if (editing) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Edit preference</CardTitle>
+          <CardTitle className="text-base">{t('preferences.editPrefTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <PreferenceForm
@@ -153,25 +161,25 @@ function PreferenceCard({
           <p className="font-semibold text-gray-900">{pref.name}</p>
           <p className="mt-0.5 text-xs text-gray-500">{stats}</p>
           <p className="mt-0.5 text-xs text-gray-400">
-            {pref.includeCrossOver ? 'CO ✓' : 'CO ✗'} · {pref.includeKnee ? 'Knee ✓' : 'Knee ✗'} · Max consec NT {pref.maxConsecutiveNoTouch}
+            {pref.includeCrossOver ? 'CO ✓' : 'CO ✗'} · {pref.includeKnee ? `${t('preferences.kneeLabel')} ✓` : `${t('preferences.kneeLabel')} ✗`} · {t('preferences.maxConsecLabel')} {pref.maxConsecutiveNoTouch}
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
           <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
-            Edit
+            {t('common.edit')}
           </Button>
           {deleteConfirm ? (
             <div className="flex gap-1">
               <Button variant="destructive" size="sm" onClick={() => onDelete(pref.id)}>
-                Confirm
+                {t('preferences.confirmDelete')}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm(false)}>
-                No
+                {t('common.no')}
               </Button>
             </div>
           ) : (
             <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => setDeleteConfirm(true)}>
-              Delete
+              {t('common.delete')}
             </Button>
           )}
         </div>
@@ -183,6 +191,7 @@ function PreferenceCard({
 export function PreferencesPage() {
   const queryClient = useQueryClient()
   const [creating, setCreating] = useState(false)
+  const { t } = useTranslation()
 
   const { data: prefs = [], isLoading } = useQuery({
     queryKey: ['preferences'],
@@ -202,14 +211,14 @@ export function PreferencesPage() {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['preferences'] }),
   })
 
-  const createError = createMutation.error ? extractError(createMutation.error, 'Create failed') : null
+  const createError = createMutation.error ? extractError(createMutation.error, t('preferences.createFailed')) : null
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Preferences</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('preferences.pageTitle')}</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Save named preference presets to quickly apply when generating combos.
+          {t('preferences.pageSubtitle')}
         </p>
       </div>
 
@@ -220,13 +229,13 @@ export function PreferencesPage() {
         className="fixed bottom-6 right-6 z-40 inline-flex h-14 cursor-pointer items-center gap-2 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-indigo-700 active:bg-indigo-800"
       >
         <span className="text-lg leading-none">{creating ? '✕' : '+'}</span>
-        {creating ? 'Cancel' : 'New'}
+        {creating ? t('common.cancel') : t('preferences.fabNew')}
       </button>
 
       {creating && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">New preference</CardTitle>
+            <CardTitle className="text-base">{t('preferences.newPrefTitle')}</CardTitle>
           </CardHeader>
           <CardContent>
             <PreferenceForm
@@ -241,9 +250,9 @@ export function PreferencesPage() {
       )}
 
       {isLoading ? (
-        <p className="text-gray-500">Loading…</p>
+        <p className="text-gray-500">{t('common.loading')}</p>
       ) : prefs.length === 0 && !creating ? (
-        <p className="text-sm text-gray-400">No preferences saved yet. Create one to get started.</p>
+        <p className="text-sm text-gray-400">{t('preferences.noneYet')}</p>
       ) : (
         <div className="space-y-3">
           {prefs.map((pref) => (

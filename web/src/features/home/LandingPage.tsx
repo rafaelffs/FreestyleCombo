@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { isAuthenticated } from '@/lib/auth'
 import { SEO } from '@/components/SEO'
 
 export function LandingPage() {
   const authed = isAuthenticated()
+  const { t } = useTranslation()
 
   return (
     <div className="space-y-12">
@@ -18,9 +20,8 @@ export function LandingPage() {
           FreestyleCombo
         </h1>
         <p className="mx-auto max-w-xl text-lg text-gray-500">
-          Generate, build, and share freestyle football combos. Rate other players' combos and level up your skills.
+          {t('home.subtitle')}
         </p>
-
       </div>
 
       {/* Action cards */}
@@ -35,9 +36,9 @@ export function LandingPage() {
               ✨
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900 sm:text-lg">Create a Combo</p>
+              <p className="text-sm font-semibold text-gray-900 sm:text-lg">{t('home.createCombo')}</p>
               <p className="mt-1 hidden text-sm text-gray-500 sm:block">
-                Auto-generate or manually build a combo from your trick library.
+                {t('home.createComboDesc')}
               </p>
             </div>
           </Link>
@@ -50,9 +51,9 @@ export function LandingPage() {
               ✨
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900 sm:text-lg">Create a Combo</p>
+              <p className="text-sm font-semibold text-gray-900 sm:text-lg">{t('home.createCombo')}</p>
               <p className="mt-1 hidden text-sm text-gray-500 sm:block">
-                Auto-generate or manually build a combo from your trick library.
+                {t('home.createComboDesc')}
               </p>
             </div>
           </Link>
@@ -67,9 +68,9 @@ export function LandingPage() {
             🎯
           </div>
           <div>
-            <p className="text-sm font-semibold text-gray-900 sm:text-lg">Trick Library</p>
+            <p className="text-sm font-semibold text-gray-900 sm:text-lg">{t('home.trickLibrary')}</p>
             <p className="mt-1 hidden text-sm text-gray-500 sm:block">
-              Browse all tricks. Know one that's missing? Login to submit it for review.
+              {t('home.trickLibraryDesc')}
             </p>
           </div>
         </Link>
@@ -81,13 +82,13 @@ export function LandingPage() {
           to="/combos"
           className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors"
         >
-          <span>🏆</span> Browse public combos
+          <span>🏆</span> {t('home.browsePublicCombos')}
         </Link>
         <Link
           to="/tricks"
           className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors"
         >
-          <span>📖</span> Browse tricks
+          <span>📖</span> {t('home.browseTricks')}
         </Link>
       </div>
     </div>

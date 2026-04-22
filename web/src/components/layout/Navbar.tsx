@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { isAuthenticated, isAdmin, clearToken, getUserName } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { adminApi } from '@/lib/api'
@@ -11,6 +12,7 @@ export function Navbar() {
   const authed = isAuthenticated()
   const admin = isAdmin()
   const userName = getUserName()
+  const { t, i18n } = useTranslation()
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -28,6 +30,13 @@ export function Navbar() {
     clearToken()
     navigate('/login')
   }
+
+  function toggleLanguage() {
+    const next = i18n.language === 'en' ? 'pt-BR' : 'en'
+    void i18n.changeLanguage(next)
+  }
+
+  const langFlag = i18n.language === 'en' ? '🇺🇸' : '🇧🇷'
 
   // Close desktop dropdown when clicking outside
   useEffect(() => {
@@ -53,20 +62,20 @@ export function Navbar() {
           {/* Desktop nav links — hidden on mobile */}
           <div className="hidden md:flex items-center gap-6">
             <Link to="/combos" className="text-sm text-gray-600 hover:text-gray-900">
-              Combos
+              {t('nav.combos')}
             </Link>
             <Link to="/tricks" className="text-sm text-gray-600 hover:text-gray-900">
-              Tricks
+              {t('nav.tricks')}
             </Link>
             {authed && (
               <>
                 <Link to="/preferences" className="text-sm text-gray-600 hover:text-gray-900">
-                  Preferences
+                  {t('nav.preferences')}
                 </Link>
                 {admin && (
                   <>
                     <Link to="/admin/approvals" className="flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800">
-                      Approvals
+                      {t('nav.approvals')}
                       {pendingCount > 0 && (
                         <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-xs font-semibold text-white">
                           {pendingCount}
@@ -74,7 +83,7 @@ export function Navbar() {
                       )}
                     </Link>
                     <Link to="/admin/users" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
-                      Users
+                      {t('nav.users')}
                     </Link>
                   </>
                 )}
@@ -84,13 +93,23 @@ export function Navbar() {
 
           {/* Desktop account / auth — hidden on mobile */}
           <div className="hidden md:flex items-center gap-3">
+            {/* Language toggle */}
+            <button
+              type="button"
+              onClick={toggleLanguage}
+              className="rounded-md px-2 py-1 text-base hover:bg-gray-100 border border-gray-200"
+              title="Switch language"
+            >
+              {langFlag}
+            </button>
+
             {authed ? (
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setMenuOpen((o) => !o)}
                   className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
                 >
-                  <span>{userName ?? 'Account'}</span>
+                  <span>{userName ?? t('nav.myAccount')}</span>
                   <svg className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
@@ -102,14 +121,14 @@ export function Navbar() {
                       onClick={() => setMenuOpen(false)}
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     >
-                      My Account
+                      {t('nav.myAccount')}
                     </Link>
                     <div className="my-1 border-t border-gray-100" />
                     <button
                       onClick={() => { setMenuOpen(false); handleLogout() }}
                       className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
                     >
-                      Logout
+                      {t('nav.logout')}
                     </button>
                   </div>
                 )}
@@ -117,10 +136,10 @@ export function Navbar() {
             ) : (
               <>
                 <Button variant="ghost" size="sm" asChild>
-                  <Link to="/login">Login</Link>
+                  <Link to="/login">{t('nav.login')}</Link>
                 </Button>
                 <Button size="sm" asChild>
-                  <Link to="/register">Register</Link>
+                  <Link to="/register">{t('nav.register')}</Link>
                 </Button>
               </>
             )}
@@ -131,7 +150,7 @@ export function Navbar() {
             type="button"
             className="md:hidden inline-flex h-11 w-11 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100"
             onClick={() => setMobileOpen((o) => !o)}
-            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+            aria-label={mobileOpen ? t('nav.closeMenu') : t('nav.openMenu')}
           >
             {mobileOpen ? (
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -154,14 +173,14 @@ export function Navbar() {
             onClick={() => setMobileOpen(false)}
             className="block rounded-md px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
-            Combos
+            {t('nav.combos')}
           </Link>
           <Link
             to="/tricks"
             onClick={() => setMobileOpen(false)}
             className="block rounded-md px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
-            Tricks
+            {t('nav.tricks')}
           </Link>
           {authed && (
             <>
@@ -170,7 +189,7 @@ export function Navbar() {
                 onClick={() => setMobileOpen(false)}
                 className="block rounded-md px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
-                Preferences
+                {t('nav.preferences')}
               </Link>
               {admin && (
                 <>
@@ -179,7 +198,7 @@ export function Navbar() {
                     onClick={() => setMobileOpen(false)}
                     className="flex items-center gap-2 rounded-md px-3 py-3 text-sm font-medium text-indigo-600 hover:bg-indigo-50"
                   >
-                    Approvals
+                    {t('nav.approvals')}
                     {pendingCount > 0 && (
                       <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-xs font-semibold text-white">
                         {pendingCount}
@@ -191,7 +210,7 @@ export function Navbar() {
                     onClick={() => setMobileOpen(false)}
                     className="block rounded-md px-3 py-3 text-sm font-medium text-indigo-600 hover:bg-indigo-50"
                   >
-                    Users
+                    {t('nav.users')}
                   </Link>
                 </>
               )}
@@ -206,14 +225,14 @@ export function Navbar() {
                   onClick={() => setMobileOpen(false)}
                   className="block rounded-md px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
-                  My Account ({userName})
+                  {t('nav.myAccountWithName', { name: userName })}
                 </Link>
                 <button
                   type="button"
                   onClick={() => { setMobileOpen(false); handleLogout() }}
                   className="block w-full rounded-md px-3 py-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
-                  Logout
+                  {t('nav.logout')}
                 </button>
               </>
             ) : (
@@ -223,17 +242,25 @@ export function Navbar() {
                   onClick={() => setMobileOpen(false)}
                   className="block rounded-md px-3 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
-                  Login
+                  {t('nav.login')}
                 </Link>
                 <Link
                   to="/register"
                   onClick={() => setMobileOpen(false)}
                   className="block rounded-md px-3 py-3 text-sm font-medium text-indigo-600 hover:bg-indigo-50"
                 >
-                  Register
+                  {t('nav.register')}
                 </Link>
               </>
             )}
+            {/* Language toggle for mobile */}
+            <button
+              type="button"
+              onClick={toggleLanguage}
+              className="block w-full rounded-md px-3 py-3 text-left text-sm font-medium text-gray-500 hover:bg-gray-50"
+            >
+              {langFlag}
+            </button>
           </div>
         </div>
       )}

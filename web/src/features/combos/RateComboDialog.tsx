@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { ratingsApi } from '@/lib/api'
 import {
   Dialog,
@@ -19,6 +20,7 @@ interface Props {
 export function RateComboDialog({ comboId, open, onOpenChange }: Props) {
   const [score, setScore] = useState(0)
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
 
   const { mutate, isPending, error } = useMutation({
     mutationFn: () => ratingsApi.rate(comboId, score),
@@ -29,15 +31,15 @@ export function RateComboDialog({ comboId, open, onOpenChange }: Props) {
   })
 
   const errorMessage = error
-    ? (error as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Rating failed'
+    ? (error as { response?: { data?: { message?: string } } }).response?.data?.message ?? t('combos.ratingFailed')
     : null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Rate this combo</DialogTitle>
-          <DialogDescription>Select a score from 1 to 5</DialogDescription>
+          <DialogTitle>{t('combos.rateComboTitle')}</DialogTitle>
+          <DialogDescription>{t('combos.rateComboDesc')}</DialogDescription>
         </DialogHeader>
         <div className="flex justify-center gap-2">
           {[1, 2, 3, 4, 5].map((s) => (
@@ -54,7 +56,7 @@ export function RateComboDialog({ comboId, open, onOpenChange }: Props) {
         </div>
         {errorMessage && <p className="text-sm text-red-600 text-center">{errorMessage}</p>}
         <Button onClick={() => mutate()} disabled={isPending || score === 0} className="w-full">
-          {isPending ? 'Submitting…' : 'Submit rating'}
+          {isPending ? t('combos.submittingRating') : t('combos.submitRating')}
         </Button>
       </DialogContent>
     </Dialog>

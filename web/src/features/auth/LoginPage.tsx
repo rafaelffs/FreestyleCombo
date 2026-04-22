@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { authApi, combosApi, extractError } from '@/lib/api'
 import { setToken, getPendingCombo, clearPendingCombo } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,7 @@ import { SEO } from '@/components/SEO'
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [credential, setCredential] = useState('')
   const [password, setPassword] = useState('')
 
@@ -37,7 +39,7 @@ export function LoginPage() {
     mutate()
   }
 
-  const errorMessage = error ? extractError(error, 'Login failed') : null
+  const errorMessage = error ? extractError(error, t('auth.loginFailed')) : null
 
   return (
     <div className="flex min-h-[70vh] items-center justify-center">
@@ -48,13 +50,13 @@ export function LoginPage() {
       />
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Sign in</CardTitle>
-          <CardDescription>Enter your credentials to continue</CardDescription>
+          <CardTitle>{t('auth.signIn')}</CardTitle>
+          <CardDescription>{t('auth.signInDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
-              <Label htmlFor="credential">Email or Username</Label>
+              <Label htmlFor="credential">{t('auth.emailOrUsername')}</Label>
               <Input
                 id="credential"
                 type="text"
@@ -65,7 +67,7 @@ export function LoginPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('auth.password')}</Label>
               <Input
                 id="password"
                 type="password"
@@ -79,12 +81,12 @@ export function LoginPage() {
               <p className="text-sm text-red-600">{errorMessage}</p>
             )}
             <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? 'Signing in…' : 'Sign in'}
+              {isPending ? t('auth.signingIn') : t('auth.signIn')}
             </Button>
             <p className="text-center text-sm text-gray-500">
-              No account?{' '}
+              {t('auth.noAccount')}{' '}
               <Link to="/register" className="text-indigo-600 hover:underline">
-                Register
+                {t('nav.register')}
               </Link>
             </p>
           </form>

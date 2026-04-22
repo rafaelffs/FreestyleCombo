@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { accountApi, extractError } from '@/lib/api'
 import { setUserName } from '@/lib/auth'
 import { SEO } from '@/components/SEO'
 
 export function AccountPage() {
   const qc = useQueryClient()
+  const { t } = useTranslation()
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['account-profile'],
@@ -25,7 +27,7 @@ export function AccountPage() {
         email: editEmail || undefined,
       }),
     onSuccess: (res) => {
-      setProfileSuccess('Profile updated.')
+      setProfileSuccess(t('account.profileUpdated'))
       setProfileError('')
       setEditUserName('')
       setEditEmail('')
@@ -33,7 +35,7 @@ export function AccountPage() {
       qc.invalidateQueries({ queryKey: ['account-profile'] })
     },
     onError: (err) => {
-      setProfileError(extractError(err, 'Failed to update profile.'))
+      setProfileError(extractError(err, t('account.failedUpdateProfile')))
       setProfileSuccess('')
     },
   })
@@ -49,14 +51,14 @@ export function AccountPage() {
     mutationFn: () =>
       accountApi.changePassword({ currentPassword: currentPw, newPassword: newPw }),
     onSuccess: () => {
-      setPwSuccess('Password changed.')
+      setPwSuccess(t('account.passwordChanged'))
       setPwError('')
       setCurrentPw('')
       setNewPw('')
       setConfirmPw('')
     },
     onError: (err) => {
-      setPwError(extractError(err, 'Failed to change password.'))
+      setPwError(extractError(err, t('account.failedChangePassword')))
       setPwSuccess('')
     },
   })
@@ -64,25 +66,25 @@ export function AccountPage() {
   function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (newPw !== confirmPw) {
-      setPwError('New passwords do not match.')
+      setPwError(t('account.passwordMismatch'))
       return
     }
     changePassword.mutate()
   }
 
-  if (isLoading) return <p className="p-6 text-sm text-gray-500">Loading…</p>
+  if (isLoading) return <p className="p-6 text-sm text-gray-500">{t('common.loading')}</p>
 
   return (
     <div className="mx-auto max-w-xl space-y-8 p-6">
       <SEO title="My Account — FreestyleCombo" description="Manage your FreestyleCombo account settings." noIndex />
-      <h1 className="text-2xl font-bold text-gray-900">My Account</h1>
+      <h1 className="text-2xl font-bold text-gray-900">{t('account.pageTitle')}</h1>
 
       {/* Current info */}
       <div className="rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="mb-4 text-lg font-semibold text-gray-800">Profile</h2>
+        <h2 className="mb-4 text-lg font-semibold text-gray-800">{t('account.profileSection')}</h2>
         <div className="mb-4 space-y-1 text-sm text-gray-600">
-          <p><span className="font-medium text-gray-700">Username:</span> {profile?.userName}</p>
-          <p><span className="font-medium text-gray-700">Email:</span> {profile?.email}</p>
+          <p><span className="font-medium text-gray-700">{t('account.usernameLabel')}</span> {profile?.userName}</p>
+          <p><span className="font-medium text-gray-700">{t('account.emailLabel')}</span> {profile?.email}</p>
         </div>
 
         <form
@@ -90,7 +92,7 @@ export function AccountPage() {
           className="space-y-3"
         >
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">New username</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t('account.newUsernameLabel')}</label>
             <input
               type="text"
               value={editUserName}
@@ -100,7 +102,7 @@ export function AccountPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">New email</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t('account.newEmailLabel')}</label>
             <input
               type="email"
               value={editEmail}
@@ -116,17 +118,17 @@ export function AccountPage() {
             disabled={updateProfile.isPending || (!editUserName && !editEmail)}
             className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
           >
-            {updateProfile.isPending ? 'Saving…' : 'Save changes'}
+            {updateProfile.isPending ? t('account.saving') : t('account.saveChanges')}
           </button>
         </form>
       </div>
 
       {/* Change Password */}
       <div className="rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="mb-4 text-lg font-semibold text-gray-800">Change Password</h2>
+        <h2 className="mb-4 text-lg font-semibold text-gray-800">{t('account.changePasswordSection')}</h2>
         <form onSubmit={handlePasswordSubmit} className="space-y-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Current password</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t('account.currentPassword')}</label>
             <input
               type="password"
               value={currentPw}
@@ -136,7 +138,7 @@ export function AccountPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">New password</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t('account.newPassword')}</label>
             <input
               type="password"
               value={newPw}
@@ -147,7 +149,7 @@ export function AccountPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Confirm new password</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{t('account.confirmNewPassword')}</label>
             <input
               type="password"
               value={confirmPw}
@@ -163,7 +165,7 @@ export function AccountPage() {
             disabled={changePassword.isPending}
             className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
           >
-            {changePassword.isPending ? 'Changing…' : 'Change password'}
+            {changePassword.isPending ? t('account.changingPassword') : t('account.changePassword')}
           </button>
         </form>
       </div>

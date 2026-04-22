@@ -1,5 +1,6 @@
 import { useMemo, useRef, useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { tricksApi, trickSubmissionsApi, extractError, type TrickDto, type SubmitTrickRequest } from '@/lib/api'
 import { isAdmin, isAuthenticated } from '@/lib/auth'
 import { SEO } from '@/components/SEO'
@@ -75,6 +76,7 @@ export function TricksPage() {
   const queryClient = useQueryClient()
   const admin = isAdmin()
   const authed = isAuthenticated()
+  const { t } = useTranslation()
 
   // Filters
   const [search, setSearch] = useState('')
@@ -138,7 +140,7 @@ export function TricksPage() {
       setEditTrick(null)
       setEditError(null)
     },
-    onError: (err) => setEditError(extractError(err, 'Update failed')),
+    onError: (err) => setEditError(extractError(err, t('tricks.updateFailed'))),
   })
 
   const deleteMutation = useMutation({
@@ -147,7 +149,7 @@ export function TricksPage() {
       void queryClient.invalidateQueries({ queryKey: ['tricks'] })
       setDeleteError(null)
     },
-    onError: (err) => setDeleteError(extractError(err, 'Delete failed')),
+    onError: (err) => setDeleteError(extractError(err, t('tricks.deleteFailed'))),
   })
 
   function openEdit(trick: TrickDto) {
@@ -178,20 +180,20 @@ export function TricksPage() {
   }
 
   const revOptions = useMemo(
-    () => [...new Set(tricks.map((t) => t.revolution))].sort((a, b) => a - b),
+    () => [...new Set(tricks.map((tr) => tr.revolution))].sort((a, b) => a - b),
     [tricks],
   )
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
     let list = tricks.filter(
-      (t) =>
-        (q === '' || t.name.toLowerCase().includes(q) || t.abbreviation.toLowerCase().includes(q)) &&
-        (minDiff === undefined || t.difficulty >= minDiff) &&
-        (maxDiff === undefined || t.difficulty <= maxDiff) &&
-        (filterRevs.length === 0 || filterRevs.includes(t.revolution)) &&
-        (!filterCrossOver || t.crossOver) &&
-        (!filterKnee || t.knee),
+      (tr) =>
+        (q === '' || tr.name.toLowerCase().includes(q) || tr.abbreviation.toLowerCase().includes(q)) &&
+        (minDiff === undefined || tr.difficulty >= minDiff) &&
+        (maxDiff === undefined || tr.difficulty <= maxDiff) &&
+        (filterRevs.length === 0 || filterRevs.includes(tr.revolution)) &&
+        (!filterCrossOver || tr.crossOver) &&
+        (!filterKnee || tr.knee),
     )
 
     list = [...list].sort((a, b) => {
@@ -214,6 +216,12 @@ export function TricksPage() {
     return list
   }, [tricks, search, minDiff, maxDiff, filterRevs, filterCrossOver, filterKnee, sortKey, sortDir])
 
+  const revDropdownLabel = filterRevs.length === 0
+    ? t('tricks.filterAny')
+    : filterRevs.length === 1
+      ? t('tricks.filterRevSingular', { count: filterRevs[0] })
+      : t('tricks.filterRevCount', { count: filterRevs.length })
+
   return (
     <div className="space-y-6">
       <SEO
@@ -222,8 +230,8 @@ export function TricksPage() {
         path="/tricks"
       />
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Tricks</h1>
-        <p className="mt-1 text-sm text-gray-500">Browse all freestyle football tricks.</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('tricks.pageTitle')}</h1>
+        <p className="mt-1 text-sm text-gray-500">{t('tricks.pageSubtitle')}</p>
       </div>
 
       {/* FAB */}
@@ -234,16 +242,16 @@ export function TricksPage() {
           className="fixed bottom-6 right-6 z-40 inline-flex h-14 cursor-pointer items-center gap-2 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-indigo-700 active:bg-indigo-800"
         >
           <span className="text-lg leading-none">{showSubmit ? '✕' : '+'}</span>
-          {showSubmit ? 'Cancel' : 'Submit'}
+          {showSubmit ? t('tricks.fabCancel') : t('tricks.fabSubmit')}
         </button>
       )}
 
-      {submitted && <p className="text-sm text-green-600">Trick submitted! It will be reviewed by an admin.</p>}
+      {submitted && <p className="text-sm text-green-600">{t('tricks.submitted')}</p>}
 
       {/* Inline submit form */}
       {showSubmit && (
         <Card>
-          <CardHeader><CardTitle>Submit a Trick</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t('tricks.submitTitle')}</CardTitle></CardHeader>
           <CardContent>
             <form
               onSubmit={(e) => { e.preventDefault(); submitMutation.mutate() }}
@@ -251,41 +259,41 @@ export function TricksPage() {
             >
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
                 <div className="space-y-1">
-                  <Label>Abbreviation</Label>
+                  <Label>{t('tricks.fieldAbbreviation')}</Label>
                   <Input value={submitForm.abbreviation} onChange={(e) => updateSubmit('abbreviation', e.target.value)} placeholder="e.g. CO" required />
                 </div>
                 <div className="space-y-1">
-                  <Label>Name</Label>
+                  <Label>{t('tricks.fieldName')}</Label>
                   <Input value={submitForm.name} onChange={(e) => updateSubmit('name', e.target.value)} placeholder="e.g. Crossover" required />
                 </div>
                 <div className="space-y-1">
-                  <Label>Revolution (revs)</Label>
+                  <Label>{t('tricks.fieldRevolution')}</Label>
                   <Input type="number" min={0.5} max={4} step={0.5} value={submitForm.revolution} onChange={(e) => updateSubmit('revolution', Number(e.target.value))} />
                 </div>
                 <div className="space-y-1">
-                  <Label>Difficulty (1–10)</Label>
+                  <Label>{t('tricks.fieldDifficulty')}</Label>
                   <Input type="number" min={1} max={10} value={submitForm.difficulty} onChange={(e) => updateSubmit('difficulty', Number(e.target.value))} />
                 </div>
                 <div className="space-y-1">
-                  <Label>Common Level (1–10)</Label>
+                  <Label>{t('tricks.fieldCommonLevel')}</Label>
                   <Input type="number" min={1} max={10} value={submitForm.commonLevel} onChange={(e) => updateSubmit('commonLevel', Number(e.target.value))} />
                 </div>
               </div>
               <div className="flex flex-wrap gap-4">
                 <div className="flex items-center gap-2">
                   <input id="sub-crossover" type="checkbox" checked={submitForm.crossOver} onChange={(e) => updateSubmit('crossOver', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600" />
-                  <Label htmlFor="sub-crossover">CrossOver</Label>
+                  <Label htmlFor="sub-crossover">{t('tricks.fieldCrossOver')}</Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <input id="sub-knee" type="checkbox" checked={submitForm.knee} onChange={(e) => updateSubmit('knee', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600" />
-                  <Label htmlFor="sub-knee">Knee</Label>
+                  <Label htmlFor="sub-knee">{t('tricks.fieldKnee')}</Label>
                 </div>
               </div>
               {submitMutation.error && (
-                <p className="text-sm text-red-600">{extractError(submitMutation.error, 'Submission failed.')}</p>
+                <p className="text-sm text-red-600">{extractError(submitMutation.error, t('tricks.submissionFailed'))}</p>
               )}
               <Button type="submit" disabled={submitMutation.isPending}>
-                {submitMutation.isPending ? 'Submitting…' : 'Submit Trick'}
+                {submitMutation.isPending ? t('tricks.submitting') : t('tricks.submitTrick')}
               </Button>
             </form>
           </CardContent>
@@ -295,13 +303,12 @@ export function TricksPage() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-4">
-          {/* All filters: 2-col grid on mobile (search spans full width), single flex row on sm+ */}
           <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end">
             {/* Search — full width on mobile */}
             <div className="col-span-2 space-y-1 sm:flex-1 sm:min-w-[160px]">
-              <Label>Search</Label>
+              <Label>{t('tricks.filterSearch')}</Label>
               <Input
-                placeholder="Name or abbreviation"
+                placeholder={t('tricks.filterSearchPlaceholder')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -309,7 +316,7 @@ export function TricksPage() {
 
             {/* Min / Max Difficulty */}
             <div className="space-y-1">
-              <Label>Min Diff</Label>
+              <Label>{t('tricks.filterMinDiff')}</Label>
               <Input
                 type="number"
                 min={1}
@@ -321,7 +328,7 @@ export function TricksPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label>Max Diff</Label>
+              <Label>{t('tricks.filterMaxDiff')}</Label>
               <Input
                 type="number"
                 min={1}
@@ -335,20 +342,14 @@ export function TricksPage() {
 
             {/* Revolutions dropdown */}
             <div className="space-y-1" ref={revDropdownRef}>
-              <Label>Revolutions</Label>
+              <Label>{t('tricks.filterRevolutions')}</Label>
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setRevDropdownOpen((o) => !o)}
                   className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-3 text-sm hover:border-gray-400 sm:w-auto sm:min-w-[110px]"
                 >
-                  <span className="text-gray-700">
-                    {filterRevs.length === 0
-                      ? 'Any'
-                      : filterRevs.length === 1
-                        ? `${filterRevs[0]} rev`
-                        : `${filterRevs.length} selected`}
-                  </span>
+                  <span className="text-gray-700">{revDropdownLabel}</span>
                   <svg className="h-4 w-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
@@ -362,7 +363,7 @@ export function TricksPage() {
                           onClick={() => setFilterRevs([])}
                           className="block w-full px-3 py-1.5 text-left text-xs text-indigo-600 hover:bg-gray-50"
                         >
-                          Clear selection
+                          {t('tricks.filterClearSelection')}
                         </button>
                         <div className="border-t border-gray-100" />
                       </>
@@ -379,7 +380,9 @@ export function TricksPage() {
                             onChange={() => toggleRev(rev)}
                             className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600"
                           />
-                          <span className="text-sm text-gray-700">{rev} rev{rev !== 1 ? 's' : ''}</span>
+                          <span className="text-sm text-gray-700">
+                            {rev !== 1 ? t('tricks.filterRevOptionPlural', { rev }) : t('tricks.filterRevOption', { rev })}
+                          </span>
                         </label>
                       ))}
                     </div>
@@ -397,7 +400,7 @@ export function TricksPage() {
                   onChange={(e) => setFilterCrossOver(e.target.checked)}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600"
                 />
-                CO only
+                {t('tricks.filterCOOnly')}
               </label>
               <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                 <input
@@ -406,10 +409,10 @@ export function TricksPage() {
                   onChange={(e) => setFilterKnee(e.target.checked)}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600"
                 />
-                Knee only
+                {t('tricks.filterKneeOnly')}
               </label>
             </div>
-          </div>{/* end filters grid */}
+          </div>
         </CardContent>
       </Card>
 
@@ -417,19 +420,19 @@ export function TricksPage() {
 
       {/* Table */}
       {isLoading ? (
-        <p className="text-gray-500">Loading…</p>
+        <p className="text-gray-500">{t('common.loading')}</p>
       ) : (
         <div className="overflow-x-auto -mx-4 sm:mx-0 rounded-lg border border-gray-200">
           <table className="w-full min-w-[480px] text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <SortHeader label="Abbrev" col="abbreviation" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortHeader label="Name" col="name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortHeader label="Revs" col="revolution" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} center />
-                <SortHeader label="Diff" col="difficulty" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} center />
-                <SortHeader label="CO" col="crossOver" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} center />
-                <SortHeader label="Knee" col="knee" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} center />
-                {admin && <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Actions</th>}
+                <SortHeader label={t('tricks.colAbbrev')} col="abbreviation" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label={t('tricks.colName')} col="name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortHeader label={t('tricks.colRevs')} col="revolution" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} center />
+                <SortHeader label={t('tricks.colDiff')} col="difficulty" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} center />
+                <SortHeader label={t('tricks.colCO')} col="crossOver" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} center />
+                <SortHeader label={t('tricks.colKnee')} col="knee" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} center />
+                {admin && <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('tricks.colActions')}</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -453,7 +456,7 @@ export function TricksPage() {
                     <td className="px-4 py-2 text-right">
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" size="sm" onClick={() => openEdit(trick)}>
-                          Edit
+                          {t('tricks.actionEdit')}
                         </Button>
                         <Button
                           variant="outline"
@@ -461,10 +464,10 @@ export function TricksPage() {
                           className="text-red-600 hover:text-red-700"
                           disabled={deleteMutation.isPending}
                           onClick={() => {
-                            if (confirm(`Delete "${trick.name}"?`)) deleteMutation.mutate(trick.id)
+                            if (confirm(t('tricks.deleteConfirm', { name: trick.name }))) deleteMutation.mutate(trick.id)
                           }}
                         >
-                          Delete
+                          {t('tricks.actionDelete')}
                         </Button>
                       </div>
                     </td>
@@ -474,7 +477,7 @@ export function TricksPage() {
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={admin ? 7 : 6} className="px-4 py-6 text-center text-gray-400">
-                    No tricks found.
+                    {t('tricks.noTricksFound')}
                   </td>
                 </tr>
               )}
@@ -487,12 +490,12 @@ export function TricksPage() {
       <Dialog open={editTrick !== null} onOpenChange={(open) => !open && setEditTrick(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Trick</DialogTitle>
+            <DialogTitle>{t('tricks.editTrickTitle')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1">
-                <Label>Abbreviation</Label>
+                <Label>{t('tricks.fieldAbbreviation')}</Label>
                 <Input
                   value={editForm.abbreviation}
                   onChange={(e) => setEditForm((f) => ({ ...f, abbreviation: e.target.value }))}
@@ -501,7 +504,7 @@ export function TricksPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label>Name</Label>
+                <Label>{t('tricks.fieldName')}</Label>
                 <Input
                   value={editForm.name}
                   onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
@@ -510,7 +513,7 @@ export function TricksPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label>Revolution (revs)</Label>
+                <Label>{t('tricks.fieldRevolution')}</Label>
                 <Input
                   type="number"
                   min={0.5}
@@ -522,7 +525,7 @@ export function TricksPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label>Difficulty (1-10)</Label>
+                <Label>{t('tricks.fieldDifficulty110')}</Label>
                 <Input
                   type="number"
                   min={1}
@@ -533,7 +536,7 @@ export function TricksPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label>Common Level (1-10)</Label>
+                <Label>{t('tricks.fieldCommonLevel110')}</Label>
                 <Input
                   type="number"
                   min={1}
@@ -552,7 +555,7 @@ export function TricksPage() {
                   onChange={(e) => setEditForm((f) => ({ ...f, crossOver: e.target.checked }))}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600"
                 />
-                CrossOver
+                {t('tricks.fieldCrossOver')}
               </label>
               <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <input
@@ -561,16 +564,16 @@ export function TricksPage() {
                   onChange={(e) => setEditForm((f) => ({ ...f, knee: e.target.checked }))}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600"
                 />
-                Knee
+                {t('tricks.fieldKnee')}
               </label>
             </div>
             {editError && <p className="text-sm text-red-600">{editError}</p>}
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setEditTrick(null)}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? 'Saving…' : 'Save'}
+                {updateMutation.isPending ? t('common.saving') : t('common.save')}
               </Button>
             </div>
           </form>

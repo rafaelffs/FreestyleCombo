@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { combosApi, tricksApi, extractError, type BuildComboTrickItem } from '@/lib/api'
 import { getUserId, isAdmin } from '@/lib/auth'
 import { SEO } from '@/components/SEO'
@@ -28,6 +29,7 @@ export function ComboDetailPage() {
   const currentUserId = getUserId()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
   const [ratingOpen, setRatingOpen] = useState(false)
   const [editing, setEditing] = useState(false)
 
@@ -62,7 +64,7 @@ export function ComboDetailPage() {
       setEditing(false)
       setEditError(null)
     },
-    onError: (err) => setEditError(extractError(err, 'Update failed')),
+    onError: (err) => setEditError(extractError(err, t('comboDetail.updateFailed'))),
   })
 
   const deleteMutation = useMutation({
@@ -71,11 +73,11 @@ export function ComboDetailPage() {
       void queryClient.invalidateQueries({ queryKey: ['combos'] })
       navigate('/combos')
     },
-    onError: (err) => setDeleteError(extractError(err, 'Delete failed')),
+    onError: (err) => setDeleteError(extractError(err, t('comboDetail.deleteFailed'))),
   })
 
-  if (isLoading) return <p className="text-gray-500">Loading…</p>
-  if (error || !combo) return <p className="text-red-600">Combo not found.</p>
+  if (isLoading) return <p className="text-gray-500">{t('comboDetail.loading')}</p>
+  if (error || !combo) return <p className="text-red-600">{t('comboDetail.notFound')}</p>
 
   const isOwner = combo.ownerId === currentUserId
   const canDelete = isOwner || isAdmin()
@@ -83,14 +85,14 @@ export function ComboDetailPage() {
   function startEdit() {
     setEditName(combo!.name ?? '')
     setEditSlots(
-      (combo!.tricks ?? []).map((t) => ({
-        trickId: t.trickId,
-        position: t.position,
-        strongFoot: t.strongFoot,
-        noTouch: t.noTouch,
-        trickName: t.name ?? '',
-        abbreviation: t.abbreviation,
-        crossOver: false, // will be re-populated when tricks load
+      (combo!.tricks ?? []).map((t_) => ({
+        trickId: t_.trickId,
+        position: t_.position,
+        strongFoot: t_.strongFoot,
+        noTouch: t_.noTouch,
+        trickName: t_.name ?? '',
+        abbreviation: t_.abbreviation,
+        crossOver: false,
       })),
     )
     setTrickSearch('')
@@ -121,7 +123,7 @@ export function ComboDetailPage() {
   }
 
   const filteredTricks = tricks.filter(
-    (t) => t.name.toLowerCase().includes(trickSearch.toLowerCase()) || t.abbreviation.toLowerCase().includes(trickSearch.toLowerCase()),
+    (t_) => t_.name.toLowerCase().includes(trickSearch.toLowerCase()) || t_.abbreviation.toLowerCase().includes(trickSearch.toLowerCase()),
   )
 
   return (
@@ -133,7 +135,7 @@ export function ComboDetailPage() {
       />
       <div className="flex items-center gap-3">
         <Link to="/combos" className="text-sm text-gray-500 hover:text-gray-700">
-          ← Back
+          {t('comboDetail.back')}
         </Link>
       </div>
 
@@ -144,13 +146,13 @@ export function ComboDetailPage() {
               {combo.name && <p className="text-sm font-semibold text-gray-900 mb-1">{combo.name}</p>}
               <CardTitle className="font-mono text-xl">{combo.displayText}</CardTitle>
               {combo.ownerUserName && (
-                <p className="text-sm text-gray-500 mt-0.5">by {combo.ownerUserName}</p>
+                <p className="text-sm text-gray-500 mt-0.5">{t('combos.by')} {combo.ownerUserName}</p>
               )}
             </div>
             <div className="flex flex-wrap gap-1">
               {combo.averageRating != null && combo.averageRating > 0 && (
                 <Badge variant="secondary">
-                  ★ {combo.averageRating.toFixed(1)} ({combo.totalRatings ?? combo.ratingCount ?? 0} ratings)
+                  ★ {combo.averageRating.toFixed(1)} ({t('comboDetail.ratings', { count: combo.totalRatings ?? combo.ratingCount ?? 0 })})
                 </Badge>
               )}
             </div>
@@ -164,28 +166,28 @@ export function ComboDetailPage() {
           )}
 
           <div>
-            <h3 className="mb-2 text-sm font-medium text-gray-700">Tricks</h3>
+            <h3 className="mb-2 text-sm font-medium text-gray-700">{t('comboDetail.tricksHeader')}</h3>
             <div className="overflow-x-auto -mx-4 sm:mx-0">
               <table className="w-full min-w-[400px] text-sm">
                 <thead>
                   <tr className="border-b text-left text-gray-500">
-                    <th className="pb-1 pr-4">#</th>
-                    <th className="pb-1 pr-4">Name</th>
-                    <th className="pb-1 pr-4">Abbr.</th>
-                    <th className="pb-1 pr-4">Difficulty</th>
-                    <th className="pb-1 pr-4">Foot</th>
-                    <th className="pb-1">No-Touch</th>
+                    <th className="pb-1 pr-4">{t('comboDetail.colPosition')}</th>
+                    <th className="pb-1 pr-4">{t('comboDetail.colName')}</th>
+                    <th className="pb-1 pr-4">{t('comboDetail.colAbbr')}</th>
+                    <th className="pb-1 pr-4">{t('comboDetail.colDifficulty')}</th>
+                    <th className="pb-1 pr-4">{t('comboDetail.colFoot')}</th>
+                    <th className="pb-1">{t('comboDetail.colNoTouch')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(combo.tricks ?? []).map((t) => (
-                    <tr key={t.position} className="border-b last:border-0">
-                      <td className="py-1.5 pr-4 text-gray-500">{t.position}</td>
-                      <td className="py-1.5 pr-4 font-medium">{t.name}</td>
-                      <td className="py-1.5 pr-4 font-mono text-xs">{t.abbreviation}</td>
-                      <td className="py-1.5 pr-4">{t.difficulty}</td>
-                      <td className="py-1.5 pr-4">{t.strongFoot ? 'Strong' : 'Weak'}</td>
-                      <td className="py-1.5">{t.noTouch ? '✓' : '—'}</td>
+                  {(combo.tricks ?? []).map((trick) => (
+                    <tr key={trick.position} className="border-b last:border-0">
+                      <td className="py-1.5 pr-4 text-gray-500">{trick.position}</td>
+                      <td className="py-1.5 pr-4 font-medium">{trick.name}</td>
+                      <td className="py-1.5 pr-4 font-mono text-xs">{trick.abbreviation}</td>
+                      <td className="py-1.5 pr-4">{trick.difficulty}</td>
+                      <td className="py-1.5 pr-4">{trick.strongFoot ? t('comboDetail.footStrong') : t('comboDetail.footWeak')}</td>
+                      <td className="py-1.5">{trick.noTouch ? '✓' : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -194,19 +196,19 @@ export function ComboDetailPage() {
           </div>
 
           <div className="flex gap-2 pt-1">
-            <Badge variant="secondary">Avg difficulty: {combo.averageDifficulty?.toFixed(1) ?? '—'}</Badge>
-            <Badge variant="secondary">{combo.trickCount} tricks</Badge>
+            <Badge variant="secondary">{t('comboDetail.avgDifficulty', { value: combo.averageDifficulty?.toFixed(1) ?? '—' })}</Badge>
+            <Badge variant="secondary">{t('comboDetail.trickCount', { count: combo.trickCount })}</Badge>
           </div>
 
           <div className="flex gap-2 flex-wrap">
             {!isOwner && currentUserId && (
               <Button variant="outline" onClick={() => setRatingOpen(true)}>
-                Rate this combo
+                {t('comboDetail.rateCombo')}
               </Button>
             )}
             {isOwner && !editing && (
               <Button variant="outline" onClick={startEdit}>
-                Edit combo
+                {t('comboDetail.editCombo')}
               </Button>
             )}
             {canDelete && (
@@ -214,13 +216,13 @@ export function ComboDetailPage() {
                 variant="outline"
                 className="text-red-600 hover:text-red-700"
                 onClick={() => {
-                  if (confirm('Delete this combo? This action cannot be undone.')) {
+                  if (confirm(t('comboDetail.deleteConfirm'))) {
                     deleteMutation.mutate()
                   }
                 }}
                 disabled={deleteMutation.isPending}
               >
-                Delete combo
+                {t('comboDetail.deleteCombo')}
               </Button>
             )}
           </div>
@@ -232,19 +234,19 @@ export function ComboDetailPage() {
       {editing && (
         <Card>
           <CardHeader>
-            <CardTitle>Edit Combo</CardTitle>
+            <CardTitle>{t('comboDetail.editTitle')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1">
-              <Label htmlFor="edit-name">Combo name</Label>
-              <Input id="edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="e.g. My signature combo" maxLength={100} />
+              <Label htmlFor="edit-name">{t('comboDetail.comboNameLabel')}</Label>
+              <Input id="edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder={t('comboDetail.comboNamePlaceholder')} maxLength={100} />
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2">
               {/* Trick picker */}
               <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-700">Add tricks</p>
-                <Input placeholder="Search…" value={trickSearch} onChange={(e) => setTrickSearch(e.target.value)} />
+                <p className="text-sm font-medium text-gray-700">{t('comboDetail.addTricks')}</p>
+                <Input placeholder={t('comboDetail.searchPlaceholder')} value={trickSearch} onChange={(e) => setTrickSearch(e.target.value)} />
                 <div className="max-h-[40vh] overflow-y-auto divide-y divide-gray-100 rounded border lg:max-h-60">
                   {filteredTricks.map((trick) => (
                     <button key={trick.id} type="button" onClick={() => addTrick(trick)} className="flex w-full items-center justify-between px-2 py-1.5 text-left hover:bg-indigo-50 transition-colors">
@@ -257,9 +259,9 @@ export function ComboDetailPage() {
 
               {/* Slot list */}
               <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-700">Combo ({editSlots.length} tricks)</p>
+                <p className="text-sm font-medium text-gray-700">{t('comboDetail.comboSlotCount', { count: editSlots.length })}</p>
                 <div className="space-y-1 max-h-[40vh] overflow-y-auto lg:max-h-60">
-                  {editSlots.length === 0 && <p className="text-sm text-gray-400 py-2">No tricks added.</p>}
+                  {editSlots.length === 0 && <p className="text-sm text-gray-400 py-2">{t('comboDetail.noTricksAdded')}</p>}
                   {editSlots.map((slot, i) => (
                     <div key={i} className="flex items-center gap-2 rounded border border-gray-200 px-2 py-1.5">
                       <span className="w-4 shrink-0 text-xs font-bold text-gray-400">{slot.position}</span>
@@ -281,9 +283,9 @@ export function ComboDetailPage() {
 
             <div className="flex gap-2">
               <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending || editSlots.length === 0}>
-                {updateMutation.isPending ? 'Saving…' : 'Save changes'}
+                {updateMutation.isPending ? t('common.saving') : t('comboDetail.saveChanges')}
               </Button>
-              <Button variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setEditing(false)}>{t('common.cancel')}</Button>
             </div>
           </CardContent>
         </Card>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { combosApi, extractError, type ComboDto } from '@/lib/api'
 import { getUserId, isAuthenticated, isAdmin as getIsAdmin } from '@/lib/auth'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -77,9 +78,9 @@ function HalfStarIcon() {
 }
 
 interface VisibilityModalConfig {
-  title: string
-  description: string
-  confirmLabel: string
+  titleKey: string
+  descriptionKey: string
+  confirmLabelKey: string
   setPublic: boolean
 }
 
@@ -89,6 +90,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
   const isOwner = combo.ownerId === currentUserId
   const adminUser = getIsAdmin()
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
   const [ratingOpen, setRatingOpen] = useState(false)
   const [favoured, setFavoured] = useState(combo.isFavourited ?? false)
   const [favError, setFavError] = useState<string | null>(null)
@@ -116,7 +118,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
       setFavError(null)
       void queryClient.invalidateQueries({ queryKey: ['combos'] })
     },
-    onError: (err) => setFavError(extractError(err, 'Could not update favourite')),
+    onError: (err) => setFavError(extractError(err, t('combos.cannotUpdateFavourite'))),
   })
 
   const completeMutation = useMutation({
@@ -137,29 +139,33 @@ export function ComboCard({ combo, showActions = false }: Props) {
   function openVisibilityModal() {
     if (visibilityState === 'private') {
       setVisibilityModal({
-        title: adminUser ? 'Set combo public?' : 'Submit for review?',
-        description: adminUser
-          ? 'This combo will be visible to everyone and moved to the Public tab.'
-          : 'This combo will be sent for admin approval. Once approved it will appear in the Public tab and be removed from your Mine list.',
-        confirmLabel: adminUser ? 'Set public' : 'Submit',
+        titleKey: adminUser ? 'combos.modalSetPublicTitle' : 'combos.modalSubmitTitle',
+        descriptionKey: adminUser ? 'combos.modalSetPublicDesc' : 'combos.modalSubmitDesc',
+        confirmLabelKey: adminUser ? 'combos.visibilitySetPublic' : 'common.confirm',
         setPublic: true,
       })
     } else if (visibilityState === 'pending' && isOwner) {
       setVisibilityModal({
-        title: 'Cancel review request?',
-        description: 'The combo will return to private and reappear in your Mine list.',
-        confirmLabel: 'Cancel request',
+        titleKey: 'combos.modalCancelTitle',
+        descriptionKey: 'combos.modalCancelDesc',
+        confirmLabelKey: 'combos.modalCancelRequest',
         setPublic: false,
       })
     } else if (visibilityState === 'public' && adminUser) {
       setVisibilityModal({
-        title: 'Make combo private?',
-        description: 'This combo will be hidden from the public list.',
-        confirmLabel: 'Make private',
+        titleKey: 'combos.modalMakePrivateTitle',
+        descriptionKey: 'combos.modalMakePrivateDesc',
+        confirmLabelKey: 'combos.visibilityMakePrivate',
         setPublic: false,
       })
     }
   }
+
+  const visibilityButtonTitle = visibilityState === 'pending'
+    ? (isOwner ? t('combos.visibilityCancelRequest') : t('combos.visibilityPendingApproval'))
+    : visibilityState === 'public'
+      ? (adminUser ? t('combos.visibilityMakePrivate') : t('combos.visibilityPublic'))
+      : (adminUser ? t('combos.visibilitySetPublic') : t('combos.visibilitySubmitForReview'))
 
   return (
     <>
@@ -176,7 +182,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
                 className={`inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border bg-white transition-colors disabled:cursor-not-allowed ${
                   favoured ? 'border-pink-200 text-pink-600 hover:border-red-300' : 'border-gray-200 text-gray-500 hover:border-red-300 hover:text-pink-400'
                 }`}
-                title={favoured ? 'Unfavourite' : 'Favourite'}
+                title={favoured ? t('combos.favouriteRemove') : t('combos.favouriteAdd')}
               >
                 {favoured ? <HeartIconFilled /> : <HeartIconOutline />}
               </button>
@@ -191,7 +197,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
                     ? 'border-green-200 text-green-600 hover:border-green-300'
                     : 'border-gray-200 text-gray-400 hover:border-green-300 hover:text-green-500'
                 }`}
-                title={completed ? 'Mark as not done' : 'Mark as done'}
+                title={completed ? t('combos.markNotDone') : t('combos.markDone')}
               >
                 {completed ? <CheckCircleIconFilled /> : <CheckCircleIconOutline />}
                 {completionCount > 0 && (
@@ -204,12 +210,6 @@ export function ComboCard({ combo, showActions = false }: Props) {
                 (isOwner && visibilityState === 'private') ||
                 (isOwner && visibilityState === 'pending') ||
                 (adminUser && visibilityState === 'public')
-              const title =
-                visibilityState === 'pending'
-                  ? isOwner ? 'Cancel review request' : 'Pending approval'
-                  : visibilityState === 'public'
-                    ? adminUser ? 'Make private' : 'Public'
-                    : adminUser ? 'Set public' : 'Submit for review'
               return (
                 <button
                   type="button"
@@ -225,7 +225,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
                     visibilityState === 'private' ? 'border-gray-200 text-gray-400' : '',
                     visibilityState === 'private' && canAct ? 'hover:border-blue-300 hover:text-gray-500' : '',
                   ].filter(Boolean).join(' ')}
-                  title={title}
+                  title={visibilityButtonTitle}
                 >
                   <GlobeIcon />
                 </button>
@@ -236,7 +236,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
                 type="button"
                 onClick={() => setRatingOpen(true)}
                 className="inline-flex h-11 cursor-pointer items-center justify-center gap-1 rounded-md border border-gray-200 bg-white px-2 transition-colors hover:border-yellow-300"
-                title="Rate this combo"
+                title={t('combos.rateComboTitle')}
               >
                 <HalfStarIcon />
                 {combo.averageRating != null && combo.averageRating > 0 && (
@@ -256,7 +256,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
               )}
               {combo.ownerUserName && (
                 <p className="mt-0.5 text-xs text-gray-500">
-                  by{' '}
+                  {t('combos.by')}{' '}
                   {combo.ownerId ? (
                     <Link
                       to={`/users/${combo.ownerId}`}
@@ -282,14 +282,14 @@ export function ComboCard({ combo, showActions = false }: Props) {
         <CardContent className="flex flex-col flex-1 gap-2 pt-0">
           {tricks.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
-              {visibleTricks.map((t) => (
+              {visibleTricks.map((t_) => (
                 <span
-                  key={t.position}
+                  key={t_.position}
                   className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"
                 >
-                  {t.position}. {t.abbreviation}
-                  {t.noTouch && <span className="text-indigo-500">(nt)</span>}
-                  {!t.strongFoot && <span className="text-orange-500">(wf)</span>}
+                  {t_.position}. {t_.abbreviation}
+                  {t_.noTouch && <span className="text-indigo-500">(nt)</span>}
+                  {!t_.strongFoot && <span className="text-orange-500">(wf)</span>}
                 </span>
               ))}
               {hasMore && (
@@ -298,7 +298,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
                   onClick={() => setExpanded((e) => !e)}
                   className="inline-flex cursor-pointer items-center rounded bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-300 transition-colors"
                 >
-                  {expanded ? 'Show less' : `+${tricks.length - TRICKS_LIMIT} more`}
+                  {expanded ? t('combos.showLess') : t('combos.moreCount', { count: tricks.length - TRICKS_LIMIT })}
                 </button>
               )}
             </div>
@@ -308,7 +308,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
           {showActions && (
             <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
               <Button variant="outline" size="sm" asChild>
-                <Link to={`/combos/${combo.id}`}>View details</Link>
+                <Link to={`/combos/${combo.id}`}>{t('combos.viewDetails')}</Link>
               </Button>
               {favError && <p className="text-xs text-red-600">{favError}</p>}
             </div>
@@ -325,18 +325,18 @@ export function ComboCard({ combo, showActions = false }: Props) {
       <Dialog open={visibilityModal !== null} onOpenChange={(open) => { if (!open) setVisibilityModal(null) }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{visibilityModal?.title}</DialogTitle>
-            <DialogDescription>{visibilityModal?.description}</DialogDescription>
+            <DialogTitle>{visibilityModal && t(visibilityModal.titleKey)}</DialogTitle>
+            <DialogDescription>{visibilityModal && t(visibilityModal.descriptionKey)}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2 pt-2">
             <Button
               onClick={() => visibilityMutation.mutate(visibilityModal!.setPublic)}
               disabled={visibilityMutation.isPending}
             >
-              {visibilityMutation.isPending ? 'Saving…' : visibilityModal?.confirmLabel}
+              {visibilityMutation.isPending ? t('common.saving') : visibilityModal && t(visibilityModal.confirmLabelKey)}
             </Button>
             <Button variant="outline" onClick={() => setVisibilityModal(null)} disabled={visibilityMutation.isPending}>
-              Cancel
+              {t('common.cancel')}
             </Button>
           </div>
         </DialogContent>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { authApi, combosApi, extractError } from '@/lib/api'
 import { setToken, getPendingCombo, clearPendingCombo } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,7 @@ import { SEO } from '@/components/SEO'
 
 export function RegisterPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [userName, setUserName] = useState('')
   const [password, setPassword] = useState('')
@@ -38,7 +40,7 @@ export function RegisterPage() {
     mutate()
   }
 
-  const errorMessage = error ? extractError(error, 'Registration failed') : null
+  const errorMessage = error ? extractError(error, t('auth.registrationFailed')) : null
 
   return (
     <div className="flex min-h-[70vh] items-center justify-center">
@@ -49,13 +51,13 @@ export function RegisterPage() {
       />
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Create account</CardTitle>
-          <CardDescription>Start generating freestyle combos</CardDescription>
+          <CardTitle>{t('auth.createAccount')}</CardTitle>
+          <CardDescription>{t('auth.createAccountDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('auth.email')}</Label>
               <Input
                 id="email"
                 type="email"
@@ -66,7 +68,7 @@ export function RegisterPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="userName">Username</Label>
+              <Label htmlFor="userName">{t('auth.username')}</Label>
               <Input
                 id="userName"
                 type="text"
@@ -79,7 +81,7 @@ export function RegisterPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('auth.password')}</Label>
               <Input
                 id="password"
                 type="password"
@@ -94,12 +96,12 @@ export function RegisterPage() {
               <p className="text-sm text-red-600">{errorMessage}</p>
             )}
             <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? 'Creating account…' : 'Create account'}
+              {isPending ? t('auth.creatingAccount') : t('auth.createAccount')}
             </Button>
             <p className="text-center text-sm text-gray-500">
-              Already have an account?{' '}
+              {t('auth.alreadyHaveAccount')}{' '}
               <Link to="/login" className="text-indigo-600 hover:underline">
-                Sign in
+                {t('auth.signIn')}
               </Link>
             </p>
           </form>

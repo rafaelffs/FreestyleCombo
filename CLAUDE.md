@@ -188,7 +188,17 @@ dotnet ef database update --project FreestyleCombo.Infrastructure --startup-proj
 ## Web — Key Details
 
 ### Tech stack
-- **React 19 + Vite + TypeScript** · **Tailwind CSS v4** (`@tailwindcss/vite`) · **TanStack Query v5** · **React Router v7** · **axios** · **shadcn-style components** (Radix UI + CVA + clsx + tailwind-merge)
+- **React 19 + Vite + TypeScript** · **Tailwind CSS v4** (`@tailwindcss/vite`) · **TanStack Query v5** · **React Router v7** · **axios** · **shadcn-style components** (Radix UI + CVA + clsx + tailwind-merge) · **i18next + react-i18next + i18next-browser-languagedetector**
+
+### Internationalization (i18n)
+- Library: `react-i18next` with `i18next-browser-languagedetector`
+- Supported languages: `en` (English), `pt-BR` (Portuguese Brazil) — `pt` also maps to pt-BR
+- Auto-detection order: `localStorage` → browser `navigator` locale
+- Manual override: language toggle button in Navbar (desktop + mobile drawer)
+- Persistence: `localStorage` key `fc_lang` stores the user's manual choice
+- Translation files: `web/src/locales/en.json`, `web/src/locales/pt-BR.json`
+- Config: `web/src/lib/i18n.ts` (imported as side-effect in `main.tsx`)
+- All user-facing strings use `useTranslation()` hook — do not add hardcoded English strings to components
 
 ### Directory structure
 ```

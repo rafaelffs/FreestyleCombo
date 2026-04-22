@@ -1,10 +1,12 @@
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { accountApi } from '@/lib/api'
 import { SEO } from '@/components/SEO'
 
 export function UserProfilePage() {
   const { id } = useParams<{ id: string }>()
+  const { t } = useTranslation()
 
   const { data: profile, isLoading, isError } = useQuery({
     queryKey: ['user-profile', id],
@@ -12,9 +14,9 @@ export function UserProfilePage() {
     enabled: !!id,
   })
 
-  if (isLoading) return <p className="p-6 text-sm text-gray-500">Loading…</p>
+  if (isLoading) return <p className="p-6 text-sm text-gray-500">{t('common.loading')}</p>
   if (isError || !profile) {
-    return <p className="p-6 text-sm text-red-500">User not found.</p>
+    return <p className="p-6 text-sm text-red-500">{t('userProfile.notFound')}</p>
   }
 
   return (

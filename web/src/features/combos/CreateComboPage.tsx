@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { combosApi, tricksApi, preferencesApi, extractError, type GenerateComboOverrides, type TrickDto, type BuildComboTrickItem } from '@/lib/api'
 import { isAuthenticated, setPendingCombo } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
@@ -34,6 +35,7 @@ interface SlotItem extends BuildComboTrickItem {
 export function CreateComboPage() {
   const navigate = useNavigate()
   const authed = isAuthenticated()
+  const { t } = useTranslation()
   const [mode, setMode] = useState<'choose' | 'generate' | 'build'>('choose')
   const [mobileBuildTab, setMobileBuildTab] = useState<'tricks' | 'combo'>('tricks')
 
@@ -63,7 +65,6 @@ export function CreateComboPage() {
     enabled: mode === 'generate' && authed,
   })
 
-  // When a preference is selected, find its values for the read-only display
   const selectedPref = selectedPrefId ? savedPrefs.find((p) => p.id === selectedPrefId) ?? null : null
 
   const previewMutation = useMutation({
@@ -71,14 +72,14 @@ export function CreateComboPage() {
     onSuccess: ({ data }) => {
       setPreviewWarnings(data.warnings)
       setSlots(
-        data.tricks.map((t) => ({
-          trickId: t.trickId,
-          position: t.position,
-          strongFoot: t.strongFoot,
-          noTouch: t.noTouch,
-          trickName: t.trickName,
-          abbreviation: t.abbreviation,
-          crossOver: t.crossOver,
+        data.tricks.map((t_) => ({
+          trickId: t_.trickId,
+          position: t_.position,
+          strongFoot: t_.strongFoot,
+          noTouch: t_.noTouch,
+          trickName: t_.trickName,
+          abbreviation: t_.abbreviation,
+          crossOver: t_.crossOver,
         })),
       )
       setMobileBuildTab('combo')
@@ -107,7 +108,7 @@ export function CreateComboPage() {
         name || undefined,
       ),
     onSuccess: ({ data }) => { navigate(`/combos/${data.id}`) },
-    onError: (err) => setBuildError(extractError(err, 'Build failed')),
+    onError: (err) => setBuildError(extractError(err, t('create.buildFailed'))),
   })
 
   function updateOverride<K extends keyof GenerateComboOverrides>(key: K, value: GenerateComboOverrides[K]) {
@@ -138,21 +139,21 @@ export function CreateComboPage() {
   }
 
   const filteredTricks = tricks.filter(
-    (t) => t.name.toLowerCase().includes(search.toLowerCase()) || t.abbreviation.toLowerCase().includes(search.toLowerCase()),
+    (tr) => tr.name.toLowerCase().includes(search.toLowerCase()) || tr.abbreviation.toLowerCase().includes(search.toLowerCase()),
   )
 
   const avgDiff = slots.length > 0
-    ? slots.reduce((sum, s) => { const t = tricks.find((t) => t.id === s.trickId); return sum + (t?.difficulty ?? 0) }, 0) / slots.length
+    ? slots.reduce((sum, s) => { const tr = tricks.find((tr) => tr.id === s.trickId); return sum + (tr?.difficulty ?? 0) }, 0) / slots.length
     : 0
 
-  const previewError = previewMutation.error ? extractError(previewMutation.error, 'Preview failed') : null
+  const previewError = previewMutation.error ? extractError(previewMutation.error, t('create.previewFailed')) : null
 
   const guestBanner = !authed && (
     <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-      Create a free account to save your combos.{' '}
-      <a href="/register" className="font-medium underline hover:text-blue-900">Sign up</a>
-      {' '}or{' '}
-      <a href="/login" className="font-medium underline hover:text-blue-900">log in</a>.
+      {t('create.guestBanner')}{' '}
+      <a href="/register" className="font-medium underline hover:text-blue-900">{t('create.guestSignUp')}</a>
+      {' '}{t('auth.alreadyHaveAccount').includes('?') ? 'or' : t('common.cancel').toLowerCase()}{' '}
+      <a href="/login" className="font-medium underline hover:text-blue-900">{t('create.guestLogIn')}</a>.
     </div>
   )
 
@@ -162,8 +163,8 @@ export function CreateComboPage() {
       <div className="space-y-6">
         {guestBanner}
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Create Combo</h1>
-          <p className="mt-1 text-sm text-gray-500">How would you like to create your combo?</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('create.title')}</h1>
+          <p className="mt-1 text-sm text-gray-500">{t('create.subtitle')}</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <button
@@ -173,8 +174,8 @@ export function CreateComboPage() {
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-100 text-xl">✨</div>
             <div>
-              <p className="font-semibold text-gray-900">Auto-generate</p>
-              <p className="mt-1 text-sm text-gray-500">Let the app build a combo based on your settings.</p>
+              <p className="font-semibold text-gray-900">{t('create.autoGenerate')}</p>
+              <p className="mt-1 text-sm text-gray-500">{t('create.autoGenerateDesc')}</p>
             </div>
           </button>
           <button
@@ -184,8 +185,8 @@ export function CreateComboPage() {
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-100 text-xl">🔧</div>
             <div>
-              <p className="font-semibold text-gray-900">Build manually</p>
-              <p className="mt-1 text-sm text-gray-500">Pick tricks one by one and configure each slot.</p>
+              <p className="font-semibold text-gray-900">{t('create.buildManually')}</p>
+              <p className="mt-1 text-sm text-gray-500">{t('create.buildManuallyDesc')}</p>
             </div>
           </button>
         </div>
@@ -200,34 +201,34 @@ export function CreateComboPage() {
         {guestBanner}
         <div className="flex items-start gap-3">
           <Button variant="ghost" size="sm" onClick={() => setMode('choose')} className="mt-1 shrink-0">
-            ← Back
+            {t('create.back')}
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Auto-generate Combo</h1>
-            <p className="mt-1 text-sm text-gray-500">Configure settings and generate — you'll be able to edit before saving.</p>
+            <h1 className="text-2xl font-bold text-gray-900">{t('create.autoGenerateTitle')}</h1>
+            <p className="mt-1 text-sm text-gray-500">{t('create.autoGenerateSubtitle')}</p>
           </div>
         </div>
 
         {/* Name field at the top */}
         <div className="space-y-1">
-          <Label htmlFor="combo-name">Combo name (optional)</Label>
-          <Input id="combo-name" placeholder="e.g. My signature combo" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
+          <Label htmlFor="combo-name">{t('create.comboNameLabel')}</Label>
+          <Input id="combo-name" placeholder={t('create.comboNamePlaceholder')} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
         </div>
 
         <Card>
-          <CardHeader><CardTitle>Options</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t('create.optionsTitle')}</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             {/* Preference selector — only for authenticated users */}
             {authed && (
               <div className="space-y-1">
-                <Label htmlFor="gen-pref">Preference</Label>
+                <Label htmlFor="gen-pref">{t('create.preference')}</Label>
                 <select
                   id="gen-pref"
                   value={selectedPrefId ?? ''}
                   onChange={(e) => setSelectedPrefId(e.target.value || null)}
                   className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 >
-                  <option value="">Custom</option>
+                  <option value="">{t('create.custom')}</option>
                   {savedPrefs.map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
@@ -238,7 +239,7 @@ export function CreateComboPage() {
             {/* Fields — editable when Custom, read-only when preference selected */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
               <div className="space-y-1">
-                <Label>Combo Length</Label>
+                <Label>{t('create.comboLength')}</Label>
                 <Input
                   type="number" min={1} max={100}
                   value={selectedPref ? selectedPref.comboLength : overrides.comboLength}
@@ -249,7 +250,7 @@ export function CreateComboPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label>Max Difficulty</Label>
+                <Label>{t('create.maxDifficulty')}</Label>
                 <Input
                   type="number" min={1} max={10}
                   value={selectedPref ? selectedPref.maxDifficulty : overrides.maxDifficulty}
@@ -260,7 +261,7 @@ export function CreateComboPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label>Strong Foot %</Label>
+                <Label>{t('create.strongFootPct')}</Label>
                 <Input
                   type="number" min={0} max={100}
                   value={selectedPref ? selectedPref.strongFootPercentage : overrides.strongFootPercentage}
@@ -271,7 +272,7 @@ export function CreateComboPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label>No-Touch %</Label>
+                <Label>{t('create.noTouchPct')}</Label>
                 <Input
                   type="number" min={0} max={100}
                   value={selectedPref ? selectedPref.noTouchPercentage : overrides.noTouchPercentage}
@@ -282,7 +283,7 @@ export function CreateComboPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label>Max Consecutive NT</Label>
+                <Label>{t('create.maxConsecutiveNT')}</Label>
                 <Input
                   type="number" min={0} max={30}
                   value={selectedPref ? selectedPref.maxConsecutiveNoTouch : overrides.maxConsecutiveNoTouch}
@@ -301,7 +302,7 @@ export function CreateComboPage() {
                     onChange={(e) => updateOverride('includeCrossOver', e.target.checked)}
                     className="h-4 w-4 rounded border-gray-300 text-indigo-600 disabled:opacity-50"
                   />
-                  <Label htmlFor="gen-crossover" className={selectedPref ? 'text-gray-400' : ''}>Include Crossover</Label>
+                  <Label htmlFor="gen-crossover" className={selectedPref ? 'text-gray-400' : ''}>{t('create.includeCrossover')}</Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
@@ -311,21 +312,21 @@ export function CreateComboPage() {
                     onChange={(e) => updateOverride('includeKnee', e.target.checked)}
                     className="h-4 w-4 rounded border-gray-300 text-indigo-600 disabled:opacity-50"
                   />
-                  <Label htmlFor="gen-knee" className={selectedPref ? 'text-gray-400' : ''}>Include Knee</Label>
+                  <Label htmlFor="gen-knee" className={selectedPref ? 'text-gray-400' : ''}>{t('create.includeKnee')}</Label>
                 </div>
               </div>
             </div>
 
             {selectedPref && (
               <p className="text-xs text-gray-400">
-                Fields are locked to the "{selectedPref.name}" preference. Select "Custom" to edit.
+                {t('create.lockedPref', { name: selectedPref.name })}
               </p>
             )}
 
             {previewError && <p className="text-sm text-red-600">{previewError}</p>}
 
             <Button onClick={() => previewMutation.mutate()} disabled={previewMutation.isPending} className="w-full sm:w-auto">
-              {previewMutation.isPending ? 'Generating…' : 'Generate Combo'}
+              {previewMutation.isPending ? t('create.generating') : t('create.generateCombo')}
             </Button>
           </CardContent>
         </Card>
@@ -339,18 +340,18 @@ export function CreateComboPage() {
       {guestBanner}
       <div className="flex items-start gap-3">
         <Button variant="ghost" size="sm" onClick={() => { setMode('choose'); setSlots([]); setPreviewWarnings([]) }} className="mt-1 shrink-0">
-          ← Back
+          {t('create.back')}
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Build Combo</h1>
-          <p className="mt-1 text-sm text-gray-500">Pick tricks one by one and configure each slot manually.</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('create.buildTitle')}</h1>
+          <p className="mt-1 text-sm text-gray-500">{t('create.buildSubtitle')}</p>
         </div>
       </div>
 
       {/* Name field at the top */}
       <div className="space-y-1">
-        <Label htmlFor="combo-name">Combo name (optional)</Label>
-        <Input id="combo-name" placeholder="e.g. My signature combo" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
+        <Label htmlFor="combo-name">{t('create.comboNameLabel')}</Label>
+        <Input id="combo-name" placeholder={t('create.comboNamePlaceholder')} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
       </div>
 
       {previewWarnings.length > 0 && (
@@ -368,25 +369,25 @@ export function CreateComboPage() {
           onClick={() => setMobileBuildTab('tricks')}
           className={`flex-1 py-3 text-sm font-medium transition-colors ${mobileBuildTab === 'tricks' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
         >
-          Tricks {filteredTricks.length > 0 && `(${filteredTricks.length})`}
+          {t('create.tabTricks')} {filteredTricks.length > 0 && `(${filteredTricks.length})`}
         </button>
         <button
           type="button"
           onClick={() => setMobileBuildTab('combo')}
           className={`flex-1 py-3 text-sm font-medium transition-colors ${mobileBuildTab === 'combo' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
         >
-          My Combo {slots.length > 0 && `(${slots.length})`}
+          {t('create.tabCombo')} {slots.length > 0 && `(${slots.length})`}
         </button>
       </div>
 
       <div className="lg:grid lg:gap-6 lg:grid-cols-2">
         {/* Left — trick picker */}
         <Card className={mobileBuildTab === 'tricks' ? 'block' : 'hidden lg:block'}>
-          <CardHeader><CardTitle>Available Tricks</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t('create.availableTricks')}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            <Input placeholder="Search by name or abbreviation…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input placeholder={t('create.searchTricks')} value={search} onChange={(e) => setSearch(e.target.value)} />
             {tricksLoading ? (
-              <p className="text-sm text-gray-500">Loading…</p>
+              <p className="text-sm text-gray-500">{t('common.loading')}</p>
             ) : (
               <div className="max-h-[60vh] overflow-y-auto divide-y divide-gray-100 lg:max-h-[480px]">
                 {filteredTricks.map((trick) => (
@@ -402,7 +403,7 @@ export function CreateComboPage() {
                     </div>
                   </button>
                 ))}
-                {filteredTricks.length === 0 && <p className="py-4 text-center text-sm text-gray-400">No tricks match.</p>}
+                {filteredTricks.length === 0 && <p className="py-4 text-center text-sm text-gray-400">{t('create.noTricksMatch')}</p>}
               </div>
             )}
           </CardContent>
@@ -412,17 +413,17 @@ export function CreateComboPage() {
         <Card className={mobileBuildTab === 'combo' ? 'block' : 'hidden lg:block'}>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>My Combo</CardTitle>
-              {slots.length > 0 && <span className="text-sm text-gray-500">{slots.length} tricks · avg diff {avgDiff.toFixed(1)}</span>}
+              <CardTitle>{t('create.myComboTitle')}</CardTitle>
+              {slots.length > 0 && <span className="text-sm text-gray-500">{t('create.tricksSummary', { count: slots.length, avgDiff: avgDiff.toFixed(1) })}</span>}
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
             {slots.length === 0 && (
               <p className="py-4 text-center text-sm text-gray-400 lg:hidden">
-                Tap the <span className="font-medium text-indigo-600">Tricks</span> tab above to browse and add tricks.
+                {t('create.tapTricksHint')}
               </p>
             )}
-            {slots.length === 0 && <p className="py-4 text-center text-sm text-gray-400 hidden lg:block">Click tricks on the left to add them.</p>}
+            {slots.length === 0 && <p className="py-4 text-center text-sm text-gray-400 hidden lg:block">{t('create.clickTricksHint')}</p>}
             <div className="space-y-2">
               {slots.map((slot, i) => (
                 <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2">
@@ -448,18 +449,17 @@ export function CreateComboPage() {
               <div className="space-y-3 border-t border-gray-100 pt-3">
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600" />
-                  Submit for public review
+                  {t('create.submitForReview')}
                 </label>
                 {buildError && <p className="text-sm text-red-600">{buildError}</p>}
                 <Button onClick={handleSave} disabled={buildMutation.isPending || slots.length === 0} className="w-full">
-                  {buildMutation.isPending ? 'Saving…' : authed ? 'Save Combo' : 'Sign up to save'}
+                  {buildMutation.isPending ? t('create.savingCombo') : authed ? t('create.saveCombo') : t('create.signUpToSave')}
                 </Button>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
-
     </div>
   )
 }

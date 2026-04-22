@@ -1,22 +1,25 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil, KeyRound, ShieldCheck, ShieldOff, Trash2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { adminApi, extractError, type AdminUserDto } from '@/lib/api'
 import { getUserId } from '@/lib/auth'
 
 function RoleBadge({ isAdmin }: { isAdmin: boolean }) {
+  const { t } = useTranslation()
   return isAdmin ? (
     <span className="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
-      Admin
+      {t('adminUsers.roleAdmin')}
     </span>
   ) : (
-    <span className="text-gray-400 text-xs">User</span>
+    <span className="text-gray-400 text-xs">{t('adminUsers.roleUser')}</span>
   )
 }
 
 export function AdminUsersPage() {
   const qc = useQueryClient()
   const currentUserId = getUserId()
+  const { t } = useTranslation()
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin-users'],
@@ -49,7 +52,7 @@ export function AdminUsersPage() {
       setEditingId(null)
       qc.invalidateQueries({ queryKey: ['admin-users'] })
     },
-    onError: (err) => setEditError(extractError(err, 'Failed to update user.')),
+    onError: (err) => setEditError(extractError(err, t('adminUsers.failedUpdate'))),
   })
 
   const resetPassword = useMutation({
@@ -59,7 +62,7 @@ export function AdminUsersPage() {
       setResetPw('')
       setResetError('')
     },
-    onError: (err) => setResetError(extractError(err, 'Failed to reset password.')),
+    onError: (err) => setResetError(extractError(err, t('adminUsers.failedResetPw'))),
   })
 
   const toggleRole = useMutation({
@@ -75,24 +78,24 @@ export function AdminUsersPage() {
       setDeleteError('')
       qc.invalidateQueries({ queryKey: ['admin-users'] })
     },
-    onError: (err) => setDeleteError(extractError(err, 'Failed to delete user.')),
+    onError: (err) => setDeleteError(extractError(err, t('adminUsers.failedDelete'))),
   })
 
-  if (isLoading) return <p className="text-sm text-gray-500">Loading…</p>
+  if (isLoading) return <p className="text-sm text-gray-500">{t('common.loading')}</p>
 
   function ActionButtons({ user }: { user: AdminUserDto }) {
     return (
       <>
         <button
           onClick={() => startEdit(user)}
-          title="Edit user"
+          title={t('adminUsers.editUserTitle')}
           className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border border-indigo-200 bg-white text-indigo-600 transition-colors hover:border-indigo-300 hover:bg-indigo-50"
         >
           <Pencil className="h-4 w-4" />
         </button>
         <button
           onClick={() => { setResetId(user.id); setResetPw(''); setResetError('') }}
-          title="Reset password"
+          title={t('adminUsers.resetPasswordTitle')}
           className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border border-yellow-200 bg-white text-yellow-600 transition-colors hover:border-yellow-300 hover:bg-yellow-50"
         >
           <KeyRound className="h-4 w-4" />
@@ -100,7 +103,7 @@ export function AdminUsersPage() {
         <button
           onClick={() => toggleRole.mutate({ id: user.id, isAdmin: !user.isAdmin })}
           disabled={toggleRole.isPending}
-          title={user.isAdmin ? 'Revoke admin' : 'Make admin'}
+          title={user.isAdmin ? t('adminUsers.revokeAdmin') : t('adminUsers.makeAdmin')}
           className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {user.isAdmin ? <ShieldOff className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
@@ -108,7 +111,7 @@ export function AdminUsersPage() {
         {user.id !== currentUserId && (
           <button
             onClick={() => { setDeleteId(user.id); setDeleteError('') }}
-            title="Delete user"
+            title={t('adminUsers.deleteUserTitle')}
             className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border border-red-200 bg-white text-red-600 transition-colors hover:border-red-300 hover:bg-red-50"
           >
             <Trash2 className="h-4 w-4" />
@@ -120,18 +123,18 @@ export function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Users</h1>
+      <h1 className="text-2xl font-bold text-gray-900">{t('adminUsers.pageTitle')}</h1>
 
       {/* Desktop table — hidden on mobile */}
       <div className="hidden sm:block overflow-hidden rounded-lg border border-gray-200 bg-white">
         <table className="w-full text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-left">
             <tr>
-              <th className="px-4 py-3 font-medium text-gray-600">Username</th>
-              <th className="px-4 py-3 font-medium text-gray-600">Email</th>
-              <th className="px-4 py-3 font-medium text-gray-600">Role</th>
-              <th className="px-4 py-3 font-medium text-gray-600">Combos</th>
-              <th className="px-4 py-3 font-medium text-gray-600">Actions</th>
+              <th className="px-4 py-3 font-medium text-gray-600">{t('adminUsers.colUsername')}</th>
+              <th className="px-4 py-3 font-medium text-gray-600">{t('adminUsers.colEmail')}</th>
+              <th className="px-4 py-3 font-medium text-gray-600">{t('adminUsers.colRole')}</th>
+              <th className="px-4 py-3 font-medium text-gray-600">{t('adminUsers.colCombos')}</th>
+              <th className="px-4 py-3 font-medium text-gray-600">{t('adminUsers.colActions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -140,7 +143,7 @@ export function AdminUsersPage() {
                 <td className="px-4 py-3 font-medium text-gray-900">
                   {user.userName}
                   {user.id === currentUserId && (
-                    <span className="ml-2 text-xs text-gray-400">(you)</span>
+                    <span className="ml-2 text-xs text-gray-400">{t('adminUsers.you')}</span>
                   )}
                 </td>
                 <td className="px-4 py-3 text-gray-600">{user.email}</td>
@@ -168,11 +171,11 @@ export function AdminUsersPage() {
                 <p className="font-semibold text-gray-900 truncate">
                   {user.userName}
                   {user.id === currentUserId && (
-                    <span className="ml-2 text-xs text-gray-400">(you)</span>
+                    <span className="ml-2 text-xs text-gray-400">{t('adminUsers.you')}</span>
                   )}
                 </p>
                 <p className="text-sm text-gray-500 truncate">{user.email}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{user.comboCount} combos</p>
+                <p className="text-xs text-gray-400 mt-0.5">{t('adminUsers.comboCount', { count: user.comboCount })}</p>
               </div>
               <RoleBadge isAdmin={user.isAdmin} />
             </div>
@@ -187,10 +190,10 @@ export function AdminUsersPage() {
       {editingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
-            <h2 className="mb-4 text-lg font-semibold">Edit User</h2>
+            <h2 className="mb-4 text-lg font-semibold">{t('adminUsers.editModalTitle')}</h2>
             <div className="space-y-3">
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Username</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">{t('adminUsers.fieldUsername')}</label>
                 <input
                   type="text"
                   value={editUserName}
@@ -199,7 +202,7 @@ export function AdminUsersPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">{t('adminUsers.fieldEmail')}</label>
                 <input
                   type="email"
                   value={editEmail}
@@ -214,14 +217,14 @@ export function AdminUsersPage() {
                 onClick={() => setEditingId(null)}
                 className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={() => updateUser.mutate(editingId)}
                 disabled={updateUser.isPending}
                 className="rounded-md bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
               >
-                {updateUser.isPending ? 'Saving…' : 'Save'}
+                {updateUser.isPending ? t('common.saving') : t('common.save')}
               </button>
             </div>
           </div>
@@ -232,10 +235,10 @@ export function AdminUsersPage() {
       {resetId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
-            <h2 className="mb-4 text-lg font-semibold">Reset Password</h2>
+            <h2 className="mb-4 text-lg font-semibold">{t('adminUsers.resetModalTitle')}</h2>
             <div className="space-y-3">
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">New password</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">{t('adminUsers.fieldNewPassword')}</label>
                 <input
                   type="password"
                   value={resetPw}
@@ -251,14 +254,14 @@ export function AdminUsersPage() {
                 onClick={() => setResetId(null)}
                 className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={() => resetPassword.mutate(resetId)}
                 disabled={resetPassword.isPending || resetPw.length < 6}
                 className="rounded-md bg-yellow-500 px-4 py-2 text-sm text-white hover:bg-yellow-600 disabled:opacity-50"
               >
-                {resetPassword.isPending ? 'Resetting…' : 'Reset'}
+                {resetPassword.isPending ? t('adminUsers.resetting') : t('adminUsers.reset')}
               </button>
             </div>
           </div>
@@ -269,9 +272,9 @@ export function AdminUsersPage() {
       {deleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
-            <h2 className="mb-2 text-lg font-semibold">Delete User</h2>
+            <h2 className="mb-2 text-lg font-semibold">{t('adminUsers.deleteModalTitle')}</h2>
             <p className="mb-4 text-sm text-gray-600">
-              This will permanently delete the user and all their data. This cannot be undone.
+              {t('adminUsers.deleteWarning')}
             </p>
             {deleteError && <p className="mb-2 text-sm text-red-600">{deleteError}</p>}
             <div className="flex justify-end gap-2">
@@ -279,14 +282,14 @@ export function AdminUsersPage() {
                 onClick={() => setDeleteId(null)}
                 className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={() => deleteUser.mutate(deleteId)}
                 disabled={deleteUser.isPending}
                 className="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-50"
               >
-                {deleteUser.isPending ? 'Deleting…' : 'Delete'}
+                {deleteUser.isPending ? t('common.deleting') : t('common.delete')}
               </button>
             </div>
           </div>
