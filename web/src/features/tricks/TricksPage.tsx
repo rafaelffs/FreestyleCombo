@@ -43,6 +43,7 @@ const EMPTY_FORM: Omit<TrickDto, 'id'> = {
   revolution: 1,
   difficulty: 1,
   commonLevel: 1,
+  isTransition: false,
 }
 
 interface SortHeaderProps {
