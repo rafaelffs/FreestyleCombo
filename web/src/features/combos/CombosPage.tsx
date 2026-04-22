@@ -56,15 +56,13 @@ export function CombosPage() {
       </div>
 
       {/* FAB */}
-      {authed && (
-        <Link
-          to="/combos/create"
-          className="fixed bottom-6 right-6 z-40 inline-flex h-14 items-center gap-2 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-indigo-700 active:bg-indigo-800"
-        >
-          <span className="text-lg leading-none">+</span>
-          {t('combos.createFab')}
-        </Link>
-      )}
+      <Link
+        to="/combos/create"
+        className="fixed bottom-6 right-6 z-40 inline-flex h-14 items-center gap-2 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-indigo-700 active:bg-indigo-800"
+      >
+        <span className="text-lg leading-none">+</span>
+        {t('combos.createFab')}
+      </Link>
 
       {/* Tab bar */}
       <div className="flex gap-1 border-b border-gray-200">

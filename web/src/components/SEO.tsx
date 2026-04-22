@@ -2,7 +2,7 @@ import { Helmet } from 'react-helmet-async'
 
 const SITE_URL = import.meta.env.VITE_SITE_URL ?? 'https://fscombo.com'
 const SITE_NAME = 'FreestyleCombo'
-const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.svg`
+const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`
 
 interface SEOProps {
   title: string

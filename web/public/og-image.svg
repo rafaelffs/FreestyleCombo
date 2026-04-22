@@ -4,65 +4,63 @@
       <stop offset="0%" stop-color="#7C6EF0"/>
       <stop offset="100%" stop-color="#5B4AD4"/>
     </linearGradient>
+    <radialGradient id="glow" cx="30%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#EEEAFF" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#F8F9FF" stop-opacity="0"/>
+    </radialGradient>
     <clipPath id="ball-clip">
-      <circle cx="248" cy="315" r="108"/>
+      <circle cx="97.20" cy="97.20" r="89.42"/>
     </clipPath>
   </defs>
 
-  <!-- Page background -->
+  <!-- Background -->
   <rect width="1200" height="630" fill="#F8F9FF"/>
-  <!-- Subtle gradient accent -->
-  <ellipse cx="200" cy="315" rx="500" ry="400" fill="#EEF0FF" opacity="0.6"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
 
-  <!-- App Icon (size ~235px, centred vertically at 315) -->
-  <rect x="130" y="197" width="235" height="235" rx="61" fill="url(#icon-bg)"/>
+  <!-- App Icon (rounded rect + ball) -->
+  <rect x="90" y="180" width="270" height="270"
+        rx="70.2"
+        fill="url(#icon-bg)"
+        filter="drop-shadow(0 6px 20px #5B4AD455)"/>
 
-  <!-- White ball -->
-  <circle cx="248" cy="315" r="108" fill="white"/>
-
-  <!-- Pentagon patches — Telstar pattern, tilt=15°, scaled to r=108 -->
-  <g clip-path="url(#ball-clip)" fill="#5B4AD4">
-    <!-- cx=248 cy=315, r=108 → inner r*0.34=36.7, outer r*0.75=81, patch r*0.23=24.8 -->
-    <!-- Center pentagon -->
-    <polygon points="257.6,276.1 278.5,315.0 257.3,354.2 220.7,342.5 219.2,287.4"/>
-    <!-- Outer pentagon 0 (top-right) -->
-    <polygon points="307.5,234.0 325.7,258.0 308.7,282.7 282.3,275.3 280.4,248.9"/>
-    <!-- Outer pentagon 1 (right) -->
-    <polygon points="330.4,359.7 313.6,385.2 285.6,376.6 284.0,349.6 310.3,338.6"/>
-    <!-- Outer pentagon 2 (bottom) -->
-    <polygon points="254.1,408.1 228.1,400.5 226.5,373.5 251.3,362.5 269.7,384.4"/>
-    <!-- Outer pentagon 3 (left) -->
-    <polygon points="200.4,357.5 198.8,330.5 224.5,321.0 242.2,342.5 226.2,366.0"/>
-    <!-- Outer pentagon 4 (top-left) -->
-    <polygon points="215.8,264.2 241.6,254.7 260.8,276.1 245.3,299.1 219.3,292.4"/>
+  <!-- Football inside icon -->
+  <g transform="translate(127.80, 217.80)">
+    <circle cx="97.20" cy="97.20" r="89.42" fill="white"/>
+    <g clip-path="url(#ball-clip)">
+      <polygon points="154.64,35.13 169.86,53.92 156.69,74.19 133.34,67.94 132.07,43.79" fill="#5B4AD4"/>
+      <polygon points="173.99,132.65 160.82,152.93 137.46,146.67 136.20,122.53 158.77,113.86" fill="#5B4AD4"/>
+      <polygon points="87.21,181.18 63.86,174.93 62.59,150.78 85.16,142.12 100.38,160.91" fill="#5B4AD4"/>
+      <polygon points="14.24,113.65 12.97,89.51 35.55,80.84 50.76,99.63 37.59,119.91" fill="#5B4AD4"/>
+      <polygon points="55.92,23.38 78.49,14.72 93.70,33.51 80.54,53.79 57.18,47.53" fill="#5B4AD4"/>
+      <polygon points="105.07,67.83 127.56,95.61 108.10,125.58 73.57,116.33 71.70,80.64" fill="#5B4AD4"/>
+      <g fill="none">
+        <path d="M105.07,67.83 Q132.94,54.56 149.32,54.99" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
+      <path d="M105.07,67.83 Q87.57,42.40 73.16,34.59" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
+      <path d="M127.56,95.61 Q148.80,118.01 153.45,133.73" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
+      <path d="M127.56,95.61 Q146.34,71.11 149.32,54.99" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
+      <path d="M108.10,125.58 Q93.35,152.70 79.84,161.98" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
+      <path d="M108.10,125.58 Q137.20,135.87 153.45,133.73" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
+      <path d="M73.57,116.33 Q43.22,110.69 30.22,100.71" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
+      <path d="M73.57,116.33 Q72.78,147.19 79.84,161.98" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
+      <path d="M71.70,80.64 Q67.69,50.03 73.16,34.59" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
+      <path d="M71.70,80.64 Q42.11,89.43 30.22,100.71" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
+      </g>
+    </g>
+    <circle cx="97.20" cy="97.20" r="89.42"
+            fill="none" stroke="#5B4AD4" stroke-width="3.04" opacity="0.2"/>
   </g>
 
-  <!-- Seam lines -->
-  <g clip-path="url(#ball-clip)" fill="none" stroke="#5B4AD4" stroke-width="7.3" stroke-linecap="round">
-    <path d="M257.6,276.1 Q294.1,261.9 307.5,261.1"/>
-    <path d="M257.6,276.1 Q243.3,251.4 232.1,241.4"/>
-    <path d="M278.5,315.0 Q314.4,330.9 320.8,345.7"/>
-    <path d="M278.5,315.0 Q314.3,295.4 316.7,274.2"/>
-    <path d="M257.3,354.2 Q246.6,387.0 240.6,396.8"/>
-    <path d="M257.3,354.2 Q291.5,364.6 304.9,372.5"/>
-    <path d="M220.7,342.5 Q193.3,338.3 185.1,329.0"/>
-    <path d="M220.7,342.5 Q220.1,379.0 232.1,392.8"/>
-    <path d="M219.2,287.4 Q217.6,253.5 232.1,241.4"/>
-    <path d="M219.2,287.4 Q186.6,298.4 175.7,308.4"/>
-  </g>
+  <!-- FREESTYLE -->
+  <text x="412" y="262.6"
+        font-family="'Helvetica Neue', Arial, sans-serif"
+        font-size="44" font-weight="600"
+        fill="#5B4AD4" letter-spacing="9.7"
+        text-anchor="start">FREESTYLE</text>
 
-  <!-- Ball outline -->
-  <circle cx="248" cy="315" r="108" fill="none" stroke="#5B4AD4" stroke-width="3.7" opacity="0.2"/>
-
-  <!-- Wordmark -->
-  <!-- FREESTYLE label -->
-  <text x="415" y="288" font-family="'Helvetica Neue', Arial, sans-serif" font-size="36" font-weight="600"
-        fill="#5B4AD4" letter-spacing="10">FREESTYLE</text>
   <!-- Combo -->
-  <text x="410" y="380" font-family="'Helvetica Neue', Arial, sans-serif" font-size="110" font-weight="800"
-        fill="#1C1B2E" letter-spacing="-2">Combo</text>
-
-  <!-- Tagline -->
-  <text x="415" y="430" font-family="'Helvetica Neue', Arial, sans-serif" font-size="28" font-weight="400"
-        fill="#6B7280">Generate, build and share freestyle football combos.</text>
+  <text x="408.0" y="386.8"
+        font-family="'Helvetica Neue', Arial, sans-serif"
+        font-size="138" font-weight="800"
+        fill="#1C1B2E" letter-spacing="-2"
+        text-anchor="start">Combo</text>
 </svg>
