@@ -52,6 +52,7 @@ export interface TrickDto {
   revolution: number
   difficulty: number
   commonLevel: number
+  isTransition: boolean
 }
 
 export interface ComboTrickDto {
@@ -62,6 +63,8 @@ export interface ComboTrickDto {
   strongFoot: boolean
   noTouch: boolean
   difficulty: number
+  crossOver: boolean
+  isTransition: boolean
 }
 
 export interface PagedResult<T> {
@@ -178,6 +181,7 @@ export interface PreviewTrickItem {
   difficulty: number
   crossOver: boolean
   revolution: number
+  isTransition: boolean
 }
 
 export interface PreviewComboResponse {

@@ -92,7 +92,7 @@ public class PreviewComboHandler : IRequestHandler<PreviewComboCommand, PreviewC
         // Step 4 — Sequence (constraint-aware ordering + transition trick insertion)
         slots = ComboSequencer.Sequence(slots, rng, transitionTrick);
 
-        // Step 5 — Annotate NoTouch
+        // Step 5 — Annotate NoTouch (any trick after a CrossOver trick can be no-touch)
         var result = new List<PreviewTrickItem>();
         int consecutiveNoTouch = 0;
 
@@ -101,12 +101,10 @@ public class PreviewComboHandler : IRequestHandler<PreviewComboCommand, PreviewC
             var (trick, strongFoot) = slots[i];
             bool noTouch = false;
 
-            if (i > 0 && trick.CrossOver && consecutiveNoTouch < maxConsecutiveNoTouch)
+            if (i > 0 && slots[i - 1].Trick.CrossOver && !slots[i - 1].Trick.IsTransition && consecutiveNoTouch < maxConsecutiveNoTouch)
             {
-                var prevWasCross = slots[i - 1].Trick.CrossOver;
-                var effectivePct = prevWasCross ? Math.Max(noTouchPct, 70) : noTouchPct;
                 var roll = rng.Next(1, 101);
-                noTouch = roll <= effectivePct;
+                noTouch = roll <= noTouchPct;
             }
 
             consecutiveNoTouch = noTouch ? consecutiveNoTouch + 1 : 0;
@@ -121,7 +119,8 @@ public class PreviewComboHandler : IRequestHandler<PreviewComboCommand, PreviewC
                 NoTouch = noTouch,
                 Difficulty = trick.Difficulty,
                 CrossOver = trick.CrossOver,
-                Revolution = trick.Revolution
+                Revolution = trick.Revolution,
+                IsTransition = trick.IsTransition
             });
         }
 

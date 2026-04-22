@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { GripVertical } from 'lucide-react'
 import { combosApi, tricksApi, preferencesApi, extractError, type GenerateComboOverrides, type TrickDto, type BuildComboTrickItem } from '@/lib/api'
 import { isAuthenticated, setPendingCombo } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
@@ -30,6 +31,14 @@ interface SlotItem extends BuildComboTrickItem {
   trickName: string
   abbreviation: string
   crossOver: boolean
+  isTransition: boolean
+}
+
+function applyNoTouchRules(slots: SlotItem[]): SlotItem[] {
+  return slots.map((slot, i) => {
+    const afterTransition = i === 0 || slots[i - 1].isTransition
+    return slot.crossOver && !afterTransition ? slot : { ...slot, noTouch: false }
+  })
 }
 
 export function CreateComboPage() {
@@ -52,6 +61,8 @@ export function CreateComboPage() {
   const [slots, setSlots] = useState<SlotItem[]>([])
   const [isPublic, setIsPublic] = useState(false)
   const [buildError, setBuildError] = useState<string | null>(null)
+  const dragIndex = useRef<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   const { data: tricks = [], isLoading: tricksLoading } = useQuery({
     queryKey: ['tricks'],
@@ -72,15 +83,18 @@ export function CreateComboPage() {
     onSuccess: ({ data }) => {
       setPreviewWarnings(data.warnings)
       setSlots(
-        data.tricks.map((t_) => ({
-          trickId: t_.trickId,
-          position: t_.position,
-          strongFoot: t_.strongFoot,
-          noTouch: t_.noTouch,
-          trickName: t_.trickName,
-          abbreviation: t_.abbreviation,
-          crossOver: t_.crossOver,
-        })),
+        applyNoTouchRules(
+          data.tricks.map((t_) => ({
+            trickId: t_.trickId,
+            position: t_.position,
+            strongFoot: t_.strongFoot,
+            noTouch: t_.noTouch,
+            trickName: t_.trickName,
+            abbreviation: t_.abbreviation,
+            crossOver: t_.crossOver,
+            isTransition: t_.isTransition,
+          })),
+        ),
       )
       setMobileBuildTab('combo')
       setMode('build')
@@ -116,15 +130,24 @@ export function CreateComboPage() {
   }
 
   function addTrick(trick: TrickDto) {
-    setSlots((prev) => [
-      ...prev,
-      { trickId: trick.id, position: prev.length + 1, strongFoot: true, noTouch: false, trickName: trick.name, abbreviation: trick.abbreviation, crossOver: trick.crossOver },
-    ])
+    setSlots((prev) => {
+      const next = [...prev, { trickId: trick.id, position: prev.length + 1, strongFoot: true, noTouch: false, trickName: trick.name, abbreviation: trick.abbreviation, crossOver: trick.crossOver, isTransition: trick.isTransition }]
+      return applyNoTouchRules(next)
+    })
     if (window.innerWidth < 1024) setMobileBuildTab('combo')
   }
 
   function removeSlot(index: number) {
     setSlots((prev) => prev.filter((_, i) => i !== index).map((s, i) => ({ ...s, position: i + 1 })))
+  }
+
+  function reorderSlots(from: number, to: number) {
+    setSlots((prev) => {
+      const next = [...prev]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
+      return applyNoTouchRules(next.map((s, i) => ({ ...s, position: i + 1 })))
+    })
   }
 
   function toggleStrongFoot(index: number) {
@@ -133,7 +156,9 @@ export function CreateComboPage() {
 
   function toggleNoTouch(index: number) {
     setSlots((prev) => prev.map((s, i) => {
-      if (i !== index || !s.crossOver) return s
+      if (i !== index) return s
+      const afterTransition = index === 0 || prev[index - 1].isTransition
+      if (!s.crossOver || afterTransition) return s
       return { ...s, noTouch: !s.noTouch }
     }))
   }
@@ -426,7 +451,21 @@ export function CreateComboPage() {
             {slots.length === 0 && <p className="py-4 text-center text-sm text-gray-400 hidden lg:block">{t('create.clickTricksHint')}</p>}
             <div className="space-y-2">
               {slots.map((slot, i) => (
-                <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2">
+                <div
+                  key={i}
+                  draggable
+                  onDragStart={() => { dragIndex.current = i }}
+                  onDragOver={(e) => { e.preventDefault(); setDragOverIndex(i) }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    if (dragIndex.current !== null && dragIndex.current !== i) reorderSlots(dragIndex.current, i)
+                    dragIndex.current = null
+                    setDragOverIndex(null)
+                  }}
+                  onDragEnd={() => { dragIndex.current = null; setDragOverIndex(null) }}
+                  className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors ${dragOverIndex === i ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200'}`}
+                >
+                  <GripVertical className="w-4 h-4 shrink-0 text-gray-300 cursor-grab active:cursor-grabbing" />
                   <span className="w-5 shrink-0 text-xs font-bold text-gray-400">{slot.position}</span>
                   <div className="flex-1 min-w-0">
                     <span className="font-mono text-xs font-semibold text-gray-900">{slot.abbreviation}</span>
@@ -436,10 +475,15 @@ export function CreateComboPage() {
                     <input type="checkbox" checked={slot.strongFoot} onChange={() => toggleStrongFoot(i)} className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600" />
                     SF
                   </label>
-                  <label className={`flex items-center gap-1 text-xs cursor-pointer ${slot.crossOver ? 'text-gray-600' : 'text-gray-300 cursor-not-allowed'}`}>
-                    <input type="checkbox" checked={slot.noTouch} onChange={() => toggleNoTouch(i)} disabled={!slot.crossOver} className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 disabled:opacity-40" />
-                    NT
-                  </label>
+                  {(() => {
+                    const ntDisabled = !slot.crossOver || i === 0 || slots[i - 1].isTransition
+                    return (
+                      <label className={`flex items-center gap-1 text-xs cursor-pointer ${ntDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}`}>
+                        <input type="checkbox" checked={slot.noTouch} onChange={() => toggleNoTouch(i)} disabled={ntDisabled} className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 disabled:opacity-40" />
+                        NT
+                      </label>
+                    )
+                  })()}
                   <button type="button" onClick={() => removeSlot(i)} className="text-gray-400 hover:text-red-500 text-lg leading-none" title="Remove">×</button>
                 </div>
               ))}

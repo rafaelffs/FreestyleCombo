@@ -139,7 +139,9 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
                     StrongFoot = ct.StrongFoot,
                     NoTouch = ct.NoTouch,
                     Difficulty = trick.Difficulty,
-                    Revolution = trick.Revolution
+                    Revolution = trick.Revolution,
+                    CrossOver = trick.CrossOver,
+                    IsTransition = trick.IsTransition
                 };
             }).ToList()
         };

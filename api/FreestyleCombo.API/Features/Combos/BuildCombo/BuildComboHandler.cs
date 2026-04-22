@@ -105,7 +105,9 @@ public class BuildComboHandler : IRequestHandler<BuildComboCommand, GenerateComb
                     StrongFoot = t.StrongFoot,
                     NoTouch = t.NoTouch,
                     Difficulty = trick.Difficulty,
-                    Revolution = trick.Revolution
+                    Revolution = trick.Revolution,
+                    CrossOver = trick.CrossOver,
+                    IsTransition = trick.IsTransition
                 };
             }).ToList()
         };

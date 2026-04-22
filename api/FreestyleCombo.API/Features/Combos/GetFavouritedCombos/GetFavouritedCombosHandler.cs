@@ -44,7 +44,9 @@ public class GetFavouritedCombosHandler : IRequestHandler<GetFavouritedCombosQue
                 StrongFoot = ct.StrongFoot,
                 NoTouch = ct.NoTouch,
                 Difficulty = ct.Trick.Difficulty,
-                Revolution = ct.Trick.Revolution
+                Revolution = ct.Trick.Revolution,
+                CrossOver = ct.Trick.CrossOver,
+                IsTransition = ct.Trick.IsTransition
             }).ToList(),
             AverageRating = c.Ratings.Any() ? Math.Round(c.Ratings.Average(r => r.Score), 2) : 0,
             TotalRatings = c.Ratings.Count,

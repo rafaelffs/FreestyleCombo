@@ -37,7 +37,9 @@ public class GetPendingComboReviewsHandler : IRequestHandler<GetPendingComboRevi
                 StrongFoot = ct.StrongFoot,
                 NoTouch = ct.NoTouch,
                 Difficulty = ct.Trick.Difficulty,
-                Revolution = ct.Trick.Revolution
+                Revolution = ct.Trick.Revolution,
+                CrossOver = ct.Trick.CrossOver,
+                IsTransition = ct.Trick.IsTransition
             }).ToList(),
             AverageRating = 0,
             TotalRatings = 0,

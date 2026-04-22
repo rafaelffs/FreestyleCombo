@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { GripVertical } from 'lucide-react'
 import { combosApi, tricksApi, extractError, type BuildComboTrickItem } from '@/lib/api'
 import { getUserId, isAdmin } from '@/lib/auth'
 import { SEO } from '@/components/SEO'
@@ -16,6 +17,14 @@ interface SlotItem extends BuildComboTrickItem {
   trickName: string
   abbreviation: string
   crossOver: boolean
+  isTransition: boolean
+}
+
+function applyNoTouchRules(slots: SlotItem[]): SlotItem[] {
+  return slots.map((slot, i) => {
+    const afterTransition = i === 0 || slots[i - 1].isTransition
+    return slot.crossOver && !afterTransition ? slot : { ...slot, noTouch: false }
+  })
 }
 
 function diffColor(d: number): string {
@@ -39,6 +48,8 @@ export function ComboDetailPage() {
   const [editSlots, setEditSlots] = useState<SlotItem[]>([])
   const [trickSearch, setTrickSearch] = useState('')
   const [editError, setEditError] = useState<string | null>(null)
+  const editDragIndex = useRef<number | null>(null)
+  const [editDragOverIndex, setEditDragOverIndex] = useState<number | null>(null)
 
   const { data: combo, isLoading, error } = useQuery({
     queryKey: ['combos', id],
@@ -85,30 +96,42 @@ export function ComboDetailPage() {
   function startEdit() {
     setEditName(combo!.name ?? '')
     setEditSlots(
-      (combo!.tricks ?? []).map((t_) => ({
-        trickId: t_.trickId,
-        position: t_.position,
-        strongFoot: t_.strongFoot,
-        noTouch: t_.noTouch,
-        trickName: t_.name ?? '',
-        abbreviation: t_.abbreviation,
-        crossOver: false,
-      })),
+      applyNoTouchRules(
+        (combo!.tricks ?? []).map((t_) => ({
+          trickId: t_.trickId,
+          position: t_.position,
+          strongFoot: t_.strongFoot,
+          noTouch: t_.noTouch,
+          trickName: t_.name ?? '',
+          abbreviation: t_.abbreviation,
+          crossOver: t_.crossOver,
+          isTransition: t_.isTransition,
+        })),
+      ),
     )
     setTrickSearch('')
     setEditError(null)
     setEditing(true)
   }
 
-  function addTrick(trick: { id: string; name: string; abbreviation: string; crossOver: boolean }) {
-    setEditSlots((prev) => [
-      ...prev,
-      { trickId: trick.id, position: prev.length + 1, strongFoot: true, noTouch: false, trickName: trick.name, abbreviation: trick.abbreviation, crossOver: trick.crossOver },
-    ])
+  function addTrick(trick: { id: string; name: string; abbreviation: string; crossOver: boolean; isTransition: boolean }) {
+    setEditSlots((prev) => {
+      const next = [...prev, { trickId: trick.id, position: prev.length + 1, strongFoot: true, noTouch: false, trickName: trick.name, abbreviation: trick.abbreviation, crossOver: trick.crossOver, isTransition: trick.isTransition }]
+      return applyNoTouchRules(next)
+    })
   }
 
   function removeSlot(index: number) {
     setEditSlots((prev) => prev.filter((_, i) => i !== index).map((s, i) => ({ ...s, position: i + 1 })))
+  }
+
+  function reorderEditSlots(from: number, to: number) {
+    setEditSlots((prev) => {
+      const next = [...prev]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
+      return applyNoTouchRules(next.map((s, i) => ({ ...s, position: i + 1 })))
+    })
   }
 
   function toggleSF(index: number) {
@@ -117,7 +140,9 @@ export function ComboDetailPage() {
 
   function toggleNT(index: number) {
     setEditSlots((prev) => prev.map((s, i) => {
-      if (i !== index || !s.crossOver) return s
+      if (i !== index) return s
+      const afterTransition = index === 0 || prev[index - 1].isTransition
+      if (!s.crossOver || afterTransition) return s
       return { ...s, noTouch: !s.noTouch }
     }))
   }
@@ -263,15 +288,34 @@ export function ComboDetailPage() {
                 <div className="space-y-1 max-h-[40vh] overflow-y-auto lg:max-h-60">
                   {editSlots.length === 0 && <p className="text-sm text-gray-400 py-2">{t('comboDetail.noTricksAdded')}</p>}
                   {editSlots.map((slot, i) => (
-                    <div key={i} className="flex items-center gap-2 rounded border border-gray-200 px-2 py-1.5">
+                    <div
+                      key={i}
+                      draggable
+                      onDragStart={() => { editDragIndex.current = i }}
+                      onDragOver={(e) => { e.preventDefault(); setEditDragOverIndex(i) }}
+                      onDrop={(e) => {
+                        e.preventDefault()
+                        if (editDragIndex.current !== null && editDragIndex.current !== i) reorderEditSlots(editDragIndex.current, i)
+                        editDragIndex.current = null
+                        setEditDragOverIndex(null)
+                      }}
+                      onDragEnd={() => { editDragIndex.current = null; setEditDragOverIndex(null) }}
+                      className={`flex items-center gap-2 rounded border px-2 py-1.5 transition-colors ${editDragOverIndex === i ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200'}`}
+                    >
+                      <GripVertical className="w-3.5 h-3.5 shrink-0 text-gray-300 cursor-grab active:cursor-grabbing" />
                       <span className="w-4 shrink-0 text-xs font-bold text-gray-400">{slot.position}</span>
                       <span className="flex-1 text-sm">{slot.trickName} <span className="font-mono text-xs text-gray-400">{slot.abbreviation}</span></span>
                       <label className="flex items-center gap-0.5 text-xs text-gray-600 cursor-pointer">
                         <input type="checkbox" checked={slot.strongFoot} onChange={() => toggleSF(i)} className="h-3 w-3" /> SF
                       </label>
-                      <label className={`flex items-center gap-0.5 text-xs cursor-pointer ${slot.crossOver ? 'text-gray-600' : 'text-gray-300 cursor-not-allowed'}`}>
-                        <input type="checkbox" checked={slot.noTouch} onChange={() => toggleNT(i)} disabled={!slot.crossOver} className="h-3 w-3" /> NT
-                      </label>
+                      {(() => {
+                        const ntDisabled = !slot.crossOver || i === 0 || editSlots[i - 1].isTransition
+                        return (
+                          <label className={`flex items-center gap-0.5 text-xs cursor-pointer ${ntDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}`}>
+                            <input type="checkbox" checked={slot.noTouch} onChange={() => toggleNT(i)} disabled={ntDisabled} className="h-3 w-3" /> NT
+                          </label>
+                        )
+                      })()}
                       <button type="button" onClick={() => removeSlot(i)} className="text-gray-400 hover:text-red-500 text-base leading-none">×</button>
                     </div>
                   ))}

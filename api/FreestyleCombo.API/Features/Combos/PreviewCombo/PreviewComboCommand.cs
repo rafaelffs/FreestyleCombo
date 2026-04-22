@@ -25,4 +25,5 @@ public class PreviewTrickItem
     public int Difficulty { get; set; }
     public bool CrossOver { get; set; }
     public decimal Revolution { get; set; }
+    public bool IsTransition { get; set; }
 }

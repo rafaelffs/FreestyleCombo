@@ -102,7 +102,7 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
         // Step 4 — Sequence (constraint-aware ordering + transition trick insertion)
         slots = ComboSequencer.Sequence(slots, rng, transitionTrick);
 
-        // Step 5 — Annotate NoTouch (only CrossOver tricks can be no-touch)
+        // Step 5 — Annotate NoTouch (any trick after a CrossOver trick can be no-touch)
         var comboTricks = new List<(Trick Trick, bool StrongFoot, bool NoTouch, int Position)>();
         int consecutiveNoTouch = 0;
 
@@ -111,12 +111,10 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
             var (trick, strongFoot) = slots[i];
             bool noTouch = false;
 
-            if (i > 0 && trick.CrossOver && consecutiveNoTouch < maxConsecutiveNoTouch)
+            if (i > 0 && slots[i - 1].Trick.CrossOver && !slots[i - 1].Trick.IsTransition && consecutiveNoTouch < maxConsecutiveNoTouch)
             {
-                var prevWasCross = slots[i - 1].Trick.CrossOver;
-                var effectivePct = prevWasCross ? Math.Max(noTouchPct, 70) : noTouchPct;
                 var roll = rng.Next(1, 101);
-                noTouch = roll <= effectivePct;
+                noTouch = roll <= noTouchPct;
             }
 
             consecutiveNoTouch = noTouch ? consecutiveNoTouch + 1 : 0;
@@ -192,7 +190,9 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
                 StrongFoot = ct2.StrongFoot,
                 NoTouch = ct2.NoTouch,
                 Difficulty = ct2.Trick.Difficulty,
-                Revolution = ct2.Trick.Revolution
+                Revolution = ct2.Trick.Revolution,
+                CrossOver = ct2.Trick.CrossOver,
+                IsTransition = ct2.Trick.IsTransition
             }).ToList()
         };
     }

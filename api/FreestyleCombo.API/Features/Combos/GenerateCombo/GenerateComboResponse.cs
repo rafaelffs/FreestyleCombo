@@ -27,4 +27,6 @@ public class ComboTrickDto
     public bool NoTouch { get; set; }
     public int Difficulty { get; set; }
     public decimal Revolution { get; set; }
+    public bool CrossOver { get; set; }
+    public bool IsTransition { get; set; }
 }

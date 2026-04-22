@@ -85,9 +85,9 @@ public class GenerateComboHandlerTests
     }
 
     [Fact]
-    public async Task Handle_NoTouchOnlyAppliedToCrossoverTricks()
+    public async Task Handle_NoTouchNotApplied_WhenNoPreviousTrickIsCrossOver()
     {
-        // Use only non-crossover tricks — no NoTouch should appear
+        // No trick is CrossOver, so no previous trick can trigger NT eligibility
         var tricks = TrickFaker.CreateMany(6, crossOver: false);
         _trickRepo.Setup(r => r.GetAllAsync(It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(tricks);
