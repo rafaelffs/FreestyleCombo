@@ -40,7 +40,6 @@ public class CombosController : ControllerBase
     }
 
     [HttpPost("preview")]
-    [Authorize]
     [ProducesResponseType(typeof(PreviewComboResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Preview([FromBody] PreviewComboCommand command, CancellationToken ct)
     {

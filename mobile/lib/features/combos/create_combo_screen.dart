@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/api/api_client.dart';
+import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
 import '../../core/models/user_preference.dart';
 import '../../widgets/combo_card.dart';
@@ -78,6 +79,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   // ── Generate actions ────────────────────────────────────────────────────────
 
   Future<void> _loadPreferences() async {
+    if (!AuthService.instance.isAuthenticated) return;
     try {
       final prefs = await ApiClient.instance.getPreferences();
       if (mounted) setState(() => _savedPrefs = prefs);
@@ -166,6 +168,28 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
 
   Future<void> _save() async {
     if (_slots.isEmpty) return;
+
+    if (!AuthService.instance.isAuthenticated) {
+      final name = _nameCtrl.text.trim();
+      await AuthService.instance.setPendingCombo({
+        'tricks': _slots.map((s) => {
+          'trickId': s.trickId,
+          'position': s.position,
+          'strongFoot': s.strongFoot,
+          'noTouch': s.noTouch,
+        }).toList(),
+        'name': name.isEmpty ? null : name,
+        'isPublic': _isPublic,
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sign up to save your combo!')),
+        );
+        context.push('/register');
+      }
+      return;
+    }
+
     setState(() { _saving = true; _buildError = null; });
     try {
       final items = _slots
@@ -195,6 +219,44 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
       return sum + trick.difficulty;
     });
     return total / _slots.length;
+  }
+
+  Widget _buildGuestBanner() {
+    if (AuthService.instance.isAuthenticated) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                style: TextStyle(fontSize: 13, color: Colors.blue.shade800),
+                children: const [
+                  TextSpan(text: 'Create a free account to save your combos. '),
+                ],
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => context.push('/register'),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text('Sign up', style: TextStyle(fontSize: 13, color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   // ── Mode switching ────────────────────────────────────────────────────────────
@@ -243,11 +305,16 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   // ── Choose view ────────────────────────────────────────────────────────────────
 
   Widget _buildChooseView() {
-    return Padding(
-      padding: const EdgeInsets.all(24),
+    return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _buildGuestBanner(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
           Text('How would you like to create your combo?',
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 24),
@@ -267,6 +334,9 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
             description: 'Pick tricks one by one and configure each slot.',
             onTap: _switchToBuild,
           ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -275,11 +345,17 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   // ── Generate view ────────────────────────────────────────────────────────────
 
   Widget _buildGenerateView() {
+    final authed = AuthService.instance.isAuthenticated;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _buildGuestBanner(),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
           // Name field at the top
           TextField(
             controller: _nameCtrl,
@@ -298,35 +374,36 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                 children: [
                   Text('Options', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 12),
-                  // Preference selector
-                  DropdownButtonFormField<String?>(
-                    value: _selectedPrefId,
-                    decoration: const InputDecoration(
-                      labelText: 'Preference',
-                      border: OutlineInputBorder(),
-                      isDense: true,
+                  // Preference selector — only for authenticated users
+                  if (authed) ...[
+                    DropdownButtonFormField<String?>(
+                      value: _selectedPrefId,
+                      decoration: const InputDecoration(
+                        labelText: 'Preference',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      items: [
+                        const DropdownMenuItem<String?>(value: null, child: Text('Custom')),
+                        ..._savedPrefs.map((p) => DropdownMenuItem<String?>(value: p.id, child: Text(p.name))),
+                      ],
+                      onChanged: (v) {
+                        setState(() {
+                          _selectedPrefId = v;
+                          final pref = v != null ? _savedPrefs.firstWhere((p) => p.id == v) : null;
+                          if (pref != null) {
+                            _comboLength = pref.comboLength;
+                            _maxDifficulty = pref.maxDifficulty;
+                            _strongFootPct = pref.strongFootPercentage;
+                            _noTouchPct = pref.noTouchPercentage;
+                            _maxConsecNoTouch = pref.maxConsecutiveNoTouch;
+                            _includeCrossOver = pref.includeCrossOver;
+                            _includeKnee = pref.includeKnee;
+                          }
+                        });
+                      },
                     ),
-                    items: [
-                      const DropdownMenuItem<String?>(value: null, child: Text('Custom')),
-                      ..._savedPrefs.map((p) => DropdownMenuItem<String?>(value: p.id, child: Text(p.name))),
-                    ],
-                    onChanged: (v) {
-                      setState(() {
-                        _selectedPrefId = v;
-                        // When a preference is selected, copy its values for display
-                        final pref = v != null ? _savedPrefs.firstWhere((p) => p.id == v) : null;
-                        if (pref != null) {
-                          _comboLength = pref.comboLength;
-                          _maxDifficulty = pref.maxDifficulty;
-                          _strongFootPct = pref.strongFootPercentage;
-                          _noTouchPct = pref.noTouchPercentage;
-                          _maxConsecNoTouch = pref.maxConsecutiveNoTouch;
-                          _includeCrossOver = pref.includeCrossOver;
-                          _includeKnee = pref.includeKnee;
-                        }
-                      });
-                    },
-                  ),
+                  ],
                   const Divider(),
                   _SliderRow(label: 'Combo length: $_comboLength', value: _comboLength.toDouble(), min: 1, max: 100, divisions: 99, onChanged: _selectedPrefId == null ? (v) => setState(() => _comboLength = v.round()) : null),
                   _SliderRow(label: 'Max difficulty: $_maxDifficulty', value: _maxDifficulty.toDouble(), min: 1, max: 10, divisions: 9, onChanged: _selectedPrefId == null ? (v) => setState(() => _maxDifficulty = v.round()) : null),
@@ -355,6 +432,9 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                 ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.auto_awesome),
             label: Text(_genLoading ? 'Generating…' : 'Generate Combo'),
+          ),
+              ],
+            ),
           ),
         ],
       ),
@@ -393,6 +473,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
 
     return Column(
       children: [
+        _buildGuestBanner(),
         // Name field at the top
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
@@ -560,7 +641,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                   onPressed: _saving ? null : _save,
                   child: _saving
                       ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Save Combo'),
+                      : Text(AuthService.instance.isAuthenticated ? 'Save Combo' : 'Sign up to save'),
                 ),
               ],
             ),

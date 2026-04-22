@@ -24,52 +24,51 @@ export function LandingPage() {
       </div>
 
       {/* Action cards */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         {/* Create Combo */}
         {authed ? (
           <Link
             to="/combos/create"
-            className="flex flex-col items-start gap-4 rounded-xl border-2 border-gray-200 p-6 text-left hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
+            className="flex flex-col items-center gap-3 rounded-xl border-2 border-gray-200 p-4 text-center sm:items-start sm:p-6 sm:text-left hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-2xl">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-xl sm:h-12 sm:w-12 sm:text-2xl">
               ✨
             </div>
             <div>
-              <p className="text-lg font-semibold text-gray-900">Create a Combo</p>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="text-sm font-semibold text-gray-900 sm:text-lg">Create a Combo</p>
+              <p className="mt-1 hidden text-sm text-gray-500 sm:block">
                 Auto-generate or manually build a combo from your trick library.
               </p>
             </div>
           </Link>
         ) : (
           <Link
-            to="/login"
-            className="flex flex-col items-start gap-4 rounded-xl border-2 border-gray-200 p-6 text-left hover:border-indigo-400 hover:bg-indigo-50 transition-colors opacity-75"
+            to="/combos/create"
+            className="flex flex-col items-center gap-3 rounded-xl border-2 border-gray-200 p-4 text-center sm:items-start sm:p-6 sm:text-left hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-2xl">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-xl sm:h-12 sm:w-12 sm:text-2xl">
               ✨
             </div>
             <div>
-              <p className="text-lg font-semibold text-gray-900">Create a Combo</p>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="text-sm font-semibold text-gray-900 sm:text-lg">Create a Combo</p>
+              <p className="mt-1 hidden text-sm text-gray-500 sm:block">
                 Auto-generate or manually build a combo from your trick library.
               </p>
-              <p className="mt-2 text-xs font-medium text-indigo-600">Login to get started →</p>
             </div>
           </Link>
         )}
 
-        {/* Submit a Trick */}
+        {/* Trick Library */}
         <Link
           to="/tricks"
-          className="flex flex-col items-start gap-4 rounded-xl border-2 border-gray-200 p-6 text-left hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
+          className="flex flex-col items-center gap-3 rounded-xl border-2 border-gray-200 p-4 text-center sm:items-start sm:p-6 sm:text-left hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
         >
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-2xl">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-xl sm:h-12 sm:w-12 sm:text-2xl">
             🎯
           </div>
           <div>
-            <p className="text-lg font-semibold text-gray-900">Trick Library</p>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="text-sm font-semibold text-gray-900 sm:text-lg">Trick Library</p>
+            <p className="mt-1 hidden text-sm text-gray-500 sm:block">
               Browse all tricks. Know one that's missing? Login to submit it for review.
             </p>
           </div>

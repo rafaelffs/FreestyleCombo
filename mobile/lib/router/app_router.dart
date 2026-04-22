@@ -17,7 +17,7 @@ final appRouter = GoRouter(
   initialLocation: '/combos',
   redirect: (context, state) {
     final authed = AuthService.instance.isAuthenticated;
-    final protectedRoutes = ['/combos/create', '/preferences', '/admin', '/account'];
+    final protectedRoutes = ['/preferences', '/admin', '/account'];
     final authRoutes = ['/login', '/register'];
 
     if (!authed && protectedRoutes.any((r) => state.matchedLocation.startsWith(r))) {

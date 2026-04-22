@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { combosApi, tricksApi, preferencesApi, extractError, type GenerateComboOverrides, type TrickDto, type BuildComboTrickItem } from '@/lib/api'
+import { isAuthenticated, setPendingCombo } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -32,6 +33,7 @@ interface SlotItem extends BuildComboTrickItem {
 
 export function CreateComboPage() {
   const navigate = useNavigate()
+  const authed = isAuthenticated()
   const [mode, setMode] = useState<'choose' | 'generate' | 'build'>('choose')
   const [mobileBuildTab, setMobileBuildTab] = useState<'tricks' | 'combo'>('tricks')
 
@@ -58,7 +60,7 @@ export function CreateComboPage() {
   const { data: savedPrefs = [] } = useQuery({
     queryKey: ['preferences'],
     queryFn: () => preferencesApi.getAll().then((r) => r.data),
-    enabled: mode === 'generate',
+    enabled: mode === 'generate' && authed,
   })
 
   // When a preference is selected, find its values for the read-only display
@@ -79,9 +81,23 @@ export function CreateComboPage() {
           crossOver: t.crossOver,
         })),
       )
+      setMobileBuildTab('combo')
       setMode('build')
     },
   })
+
+  function handleSave() {
+    if (!authed) {
+      setPendingCombo({
+        tricks: slots.map(({ trickId, position, strongFoot, noTouch }) => ({ trickId, position, strongFoot, noTouch })),
+        name: name || undefined,
+        isPublic,
+      })
+      navigate('/register')
+      return
+    }
+    buildMutation.mutate()
+  }
 
   const buildMutation = useMutation({
     mutationFn: () =>
@@ -131,10 +147,20 @@ export function CreateComboPage() {
 
   const previewError = previewMutation.error ? extractError(previewMutation.error, 'Preview failed') : null
 
+  const guestBanner = !authed && (
+    <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+      Create a free account to save your combos.{' '}
+      <a href="/register" className="font-medium underline hover:text-blue-900">Sign up</a>
+      {' '}or{' '}
+      <a href="/login" className="font-medium underline hover:text-blue-900">log in</a>.
+    </div>
+  )
+
   // ── Choose mode ───────────────────────────────────────────────────────────
   if (mode === 'choose') {
     return (
       <div className="space-y-6">
+        {guestBanner}
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Create Combo</h1>
           <p className="mt-1 text-sm text-gray-500">How would you like to create your combo?</p>
@@ -171,6 +197,7 @@ export function CreateComboPage() {
   if (mode === 'generate') {
     return (
       <div className="space-y-6">
+        {guestBanner}
         <div className="flex items-start gap-3">
           <Button variant="ghost" size="sm" onClick={() => setMode('choose')} className="mt-1 shrink-0">
             ← Back
@@ -190,21 +217,23 @@ export function CreateComboPage() {
         <Card>
           <CardHeader><CardTitle>Options</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            {/* Preference selector */}
-            <div className="space-y-1">
-              <Label htmlFor="gen-pref">Preference</Label>
-              <select
-                id="gen-pref"
-                value={selectedPrefId ?? ''}
-                onChange={(e) => setSelectedPrefId(e.target.value || null)}
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              >
-                <option value="">Custom</option>
-                {savedPrefs.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
+            {/* Preference selector — only for authenticated users */}
+            {authed && (
+              <div className="space-y-1">
+                <Label htmlFor="gen-pref">Preference</Label>
+                <select
+                  id="gen-pref"
+                  value={selectedPrefId ?? ''}
+                  onChange={(e) => setSelectedPrefId(e.target.value || null)}
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                  <option value="">Custom</option>
+                  {savedPrefs.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Fields — editable when Custom, read-only when preference selected */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
@@ -307,6 +336,7 @@ export function CreateComboPage() {
   // ── Build mode ────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
+      {guestBanner}
       <div className="flex items-start gap-3">
         <Button variant="ghost" size="sm" onClick={() => { setMode('choose'); setSlots([]); setPreviewWarnings([]) }} className="mt-1 shrink-0">
           ← Back
@@ -387,7 +417,12 @@ export function CreateComboPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            {slots.length === 0 && <p className="py-4 text-center text-sm text-gray-400">Click tricks on the left to add them.</p>}
+            {slots.length === 0 && (
+              <p className="py-4 text-center text-sm text-gray-400 lg:hidden">
+                Tap the <span className="font-medium text-indigo-600">Tricks</span> tab above to browse and add tricks.
+              </p>
+            )}
+            {slots.length === 0 && <p className="py-4 text-center text-sm text-gray-400 hidden lg:block">Click tricks on the left to add them.</p>}
             <div className="space-y-2">
               {slots.map((slot, i) => (
                 <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2">
@@ -416,8 +451,8 @@ export function CreateComboPage() {
                   Submit for public review
                 </label>
                 {buildError && <p className="text-sm text-red-600">{buildError}</p>}
-                <Button onClick={() => buildMutation.mutate()} disabled={buildMutation.isPending || slots.length === 0} className="w-full">
-                  {buildMutation.isPending ? 'Saving…' : 'Save Combo'}
+                <Button onClick={handleSave} disabled={buildMutation.isPending || slots.length === 0} className="w-full">
+                  {buildMutation.isPending ? 'Saving…' : authed ? 'Save Combo' : 'Sign up to save'}
                 </Button>
               </div>
             )}

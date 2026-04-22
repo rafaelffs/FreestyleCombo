@@ -27,10 +27,10 @@ export default function App() {
           <Route path="/combos/:id" element={<ComboDetailPage />} />
           <Route path="/tricks" element={<TricksPage />} />
           <Route path="/users/:id" element={<UserProfilePage />} />
+          <Route path="/combos/create" element={<CreateComboPage />} />
 
           {/* Protected */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/combos/create" element={<CreateComboPage />} />
             <Route path="/preferences" element={<PreferencesPage />} />
             <Route path="/account" element={<AccountPage />} />
           </Route>

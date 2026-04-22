@@ -46,6 +46,31 @@ export function isAuthenticated(): boolean {
   return getToken() !== null
 }
 
+const PENDING_COMBO_KEY = 'fc_pending_combo'
+
+export interface PendingCombo {
+  tricks: { trickId: string; position: number; strongFoot: boolean; noTouch: boolean }[]
+  name?: string
+  isPublic: boolean
+}
+
+export function getPendingCombo(): PendingCombo | null {
+  try {
+    const raw = localStorage.getItem(PENDING_COMBO_KEY)
+    return raw ? (JSON.parse(raw) as PendingCombo) : null
+  } catch {
+    return null
+  }
+}
+
+export function setPendingCombo(combo: PendingCombo): void {
+  localStorage.setItem(PENDING_COMBO_KEY, JSON.stringify(combo))
+}
+
+export function clearPendingCombo(): void {
+  localStorage.removeItem(PENDING_COMBO_KEY)
+}
+
 export function isAdmin(): boolean {
   const token = getToken()
   if (!token) return false

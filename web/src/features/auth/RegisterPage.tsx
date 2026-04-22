@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { authApi, extractError } from '@/lib/api'
-import { setToken } from '@/lib/auth'
+import { authApi, combosApi, extractError } from '@/lib/api'
+import { setToken, getPendingCombo, clearPendingCombo } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,9 +17,19 @@ export function RegisterPage() {
 
   const { mutate, isPending, error } = useMutation({
     mutationFn: () => authApi.register(email, userName, password),
-    onSuccess: ({ data }) => {
+    onSuccess: async ({ data }) => {
       setToken(data.token, data.userId)
-      navigate('/generate')
+      const pending = getPendingCombo()
+      if (pending) {
+        try {
+          await combosApi.build(pending.tricks, pending.isPublic, pending.name)
+        } finally {
+          clearPendingCombo()
+        }
+        navigate('/combos')
+      } else {
+        navigate('/combos/create')
+      }
     },
   })
 

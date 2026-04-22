@@ -5,6 +5,7 @@ const _tokenKey = 'fc_token';
 const _userIdKey = 'fc_user_id';
 const _isAdminKey = 'fc_is_admin';
 const _userNameKey = 'fc_user_name';
+const _pendingComboKey = 'fc_pending_combo';
 
 class AuthService {
   static AuthService? _instance;
@@ -45,6 +46,28 @@ class AuthService {
     await prefs.remove(_userIdKey);
     await prefs.remove(_isAdminKey);
     await prefs.remove(_userNameKey);
+  }
+
+  Map<String, dynamic>? getPendingCombo() {
+    final raw = _prefs?.getString(_pendingComboKey);
+    if (raw == null) return null;
+    try {
+      return jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> setPendingCombo(Map<String, dynamic> combo) async {
+    final prefs = _prefs ?? await SharedPreferences.getInstance();
+    await prefs.setString(_pendingComboKey, jsonEncode(combo));
+    _prefs = prefs;
+  }
+
+  Future<void> clearPendingCombo() async {
+    final prefs = _prefs ?? await SharedPreferences.getInstance();
+    await prefs.remove(_pendingComboKey);
+    _prefs = prefs;
   }
 
   String? _extractUserName(String token) {

@@ -25,13 +25,17 @@ public class PreviewComboHandler : IRequestHandler<PreviewComboCommand, PreviewC
 
     public async Task<PreviewComboResponse> Handle(PreviewComboCommand request, CancellationToken cancellationToken)
     {
-        var userId = Guid.Parse(_httpContextAccessor.HttpContext!.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userIdClaim = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        Guid? userId = Guid.TryParse(userIdClaim, out var parsed) ? parsed : null;
+
+        if (request.PreferenceId.HasValue && userId == null)
+            throw new InvalidOperationException("You must be logged in to use a saved preference.");
 
         UserPreference? savedPref = null;
         if (request.PreferenceId.HasValue)
         {
             savedPref = await _prefRepo.GetByIdAsync(request.PreferenceId.Value, cancellationToken);
-            if (savedPref == null || savedPref.UserId != userId)
+            if (savedPref == null || savedPref.UserId != userId!.Value)
                 throw new KeyNotFoundException("Preference not found.");
         }
 

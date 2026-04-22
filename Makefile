@@ -4,12 +4,13 @@
 # dev — start API + web in parallel, Flutter in a new Terminal window
 # ---------------------------------------------------------------
 dev:
-	@echo "Starting API, Web, and Mobile..."
+	@echo "Rebuilding and restarting API (Docker)..."
+	docker-compose up -d --build api
+	@echo "Starting Web and Mobile..."
 	@osascript -e 'tell application "Terminal" to do script "cd $(CURDIR)/mobile && flutter run -d chrome"'
 	@trap 'kill 0' SIGINT; \
-	  (cd api/FreestyleCombo.API && dotnet watch run) & \
 	  (cd web && npm run dev) & \
-	  (sleep 6 && open http://localhost:5050/swagger && open http://localhost:5173) & \
+	  (sleep 3 && open http://localhost:5050/swagger && open http://localhost:5173) & \
 	  wait
 
 # ---------------------------------------------------------------

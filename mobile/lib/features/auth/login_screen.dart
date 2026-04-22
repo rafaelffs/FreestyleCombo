@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_service.dart';
+import '../../core/models/combo.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -34,6 +35,20 @@ class _LoginScreenState extends State<LoginScreen> {
       final result = await ApiClient.instance
           .login(_credentialCtrl.text.trim(), _passwordCtrl.text);
       await AuthService.instance.setCredentials(result.token, result.userId);
+      final pending = AuthService.instance.getPendingCombo();
+      if (pending != null) {
+        try {
+          final tricks = (pending['tricks'] as List).map((t) => BuildComboTrickItem(
+            trickId: t['trickId'] as String,
+            position: t['position'] as int,
+            strongFoot: t['strongFoot'] as bool,
+            noTouch: t['noTouch'] as bool,
+          )).toList();
+          await ApiClient.instance.buildCombo(tricks, pending['isPublic'] as bool, name: pending['name'] as String?);
+        } finally {
+          await AuthService.instance.clearPendingCombo();
+        }
+      }
       if (mounted) context.go('/combos');
     } catch (e) {
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
