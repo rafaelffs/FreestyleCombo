@@ -31,12 +31,15 @@ export function Navbar() {
     navigate('/login')
   }
 
+  const currentLanguage = i18n.resolvedLanguage ?? i18n.language
+  const isPortuguese = currentLanguage.toLowerCase().startsWith('pt')
+
   function toggleLanguage() {
-    const next = i18n.language === 'en' ? 'pt-BR' : 'en'
+    const next = isPortuguese ? 'en' : 'pt-BR'
     void i18n.changeLanguage(next)
   }
 
-  const langFlag = i18n.language === 'en' ? '🇺🇸' : '🇧🇷'
+  const langFlag = isPortuguese ? '🇧🇷' : '🇺🇸'
 
   // Close desktop dropdown when clicking outside
   useEffect(() => {
