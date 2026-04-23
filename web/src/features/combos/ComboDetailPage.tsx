@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -51,6 +51,23 @@ export function ComboDetailPage() {
   const editDragIndex = useRef<number | null>(null)
   const [editDragOverIndex, setEditDragOverIndex] = useState<number | null>(null)
   const editTouchDragOverIndex = useRef<number | null>(null)
+  const [editTouchHeldIndex, setEditTouchHeldIndex] = useState<number | null>(null)
+  const editSlotsContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = editSlotsContainerRef.current
+    if (!el) return
+    const onTouchStart = (e: TouchEvent) => {
+      if ((e.target as HTMLElement).closest('[data-drag-handle]')) e.preventDefault()
+    }
+    const onTouchMove = (e: TouchEvent) => { if (editDragIndex.current !== null) e.preventDefault() }
+    el.addEventListener('touchstart', onTouchStart, { passive: false })
+    el.addEventListener('touchmove', onTouchMove, { passive: false })
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+    }
+  }, [])
 
   const { data: combo, isLoading, error } = useQuery({
     queryKey: ['combos', id],
@@ -286,7 +303,7 @@ export function ComboDetailPage() {
               {/* Slot list */}
               <div className="space-y-2">
                 <p className="text-sm font-medium text-gray-700">{t('comboDetail.comboSlotCount', { count: editSlots.length })}</p>
-                <div className="space-y-1 max-h-[40vh] overflow-y-auto lg:max-h-60">
+                <div className="space-y-1 max-h-[40vh] overflow-y-auto lg:max-h-60" ref={editSlotsContainerRef}>
                   {editSlots.length === 0 && <p className="text-sm text-gray-400 py-2">{t('comboDetail.noTricksAdded')}</p>}
                   {editSlots.map((slot, i) => (
                     <div
@@ -302,9 +319,8 @@ export function ComboDetailPage() {
                         setEditDragOverIndex(null)
                       }}
                       onDragEnd={() => { editDragIndex.current = null; setEditDragOverIndex(null) }}
-                      onTouchStart={(e) => { e.preventDefault(); editDragIndex.current = i }}
+                      onTouchStart={(e) => { if ((e.target as HTMLElement).closest('[data-drag-handle]')) { editDragIndex.current = i; setEditTouchHeldIndex(i) } }}
                       onTouchMove={(e) => {
-                        e.preventDefault()
                         const touch = e.touches[0]
                         const el = document.elementFromPoint(touch.clientX, touch.clientY)
                         const slotEl = el?.closest('[data-drag-index]')
@@ -319,10 +335,13 @@ export function ComboDetailPage() {
                         editDragIndex.current = null
                         editTouchDragOverIndex.current = null
                         setEditDragOverIndex(null)
+                        setEditTouchHeldIndex(null)
                       }}
-                      className={`flex items-center gap-2 rounded border px-2 py-1.5 transition-colors select-none ${editDragOverIndex === i ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200'}`}
+                      className={`flex items-center gap-2 rounded border px-2 py-1.5 transition-colors select-none ${editDragOverIndex === i ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200'} ${editTouchHeldIndex === i ? 'drag-shaking' : ''}`}
                     >
-                      <GripVertical className="w-3.5 h-3.5 shrink-0 text-gray-300 cursor-grab active:cursor-grabbing" />
+                      <span data-drag-handle style={{ touchAction: 'none' }} className="shrink-0 cursor-grab active:cursor-grabbing">
+                        <GripVertical className="w-3.5 h-3.5 text-gray-300 pointer-events-none" />
+                      </span>
                       <span className="w-4 shrink-0 text-xs font-bold text-gray-400">{slot.position}</span>
                       <span className="flex-1 text-sm">{slot.trickName} <span className="font-mono text-xs text-gray-400">{slot.abbreviation}</span></span>
                       <label className="flex items-center gap-0.5 text-xs text-gray-600 cursor-pointer">

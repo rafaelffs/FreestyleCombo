@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -64,6 +64,23 @@ export function CreateComboPage() {
   const dragIndex = useRef<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const touchDragOverIndex = useRef<number | null>(null)
+  const [touchHeldIndex, setTouchHeldIndex] = useState<number | null>(null)
+  const slotsContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = slotsContainerRef.current
+    if (!el) return
+    const onTouchStart = (e: TouchEvent) => {
+      if ((e.target as HTMLElement).closest('[data-drag-handle]')) e.preventDefault()
+    }
+    const onTouchMove = (e: TouchEvent) => { if (dragIndex.current !== null) e.preventDefault() }
+    el.addEventListener('touchstart', onTouchStart, { passive: false })
+    el.addEventListener('touchmove', onTouchMove, { passive: false })
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+    }
+  }, [])
 
   const { data: tricks = [], isLoading: tricksLoading } = useQuery({
     queryKey: ['tricks'],
@@ -450,7 +467,7 @@ export function CreateComboPage() {
               </p>
             )}
             {slots.length === 0 && <p className="py-4 text-center text-sm text-gray-400 hidden lg:block">{t('create.clickTricksHint')}</p>}
-            <div className="space-y-2">
+            <div className="space-y-2" ref={slotsContainerRef}>
               {slots.map((slot, i) => (
                 <div
                   key={i}
@@ -465,9 +482,8 @@ export function CreateComboPage() {
                     setDragOverIndex(null)
                   }}
                   onDragEnd={() => { dragIndex.current = null; setDragOverIndex(null) }}
-                  onTouchStart={(e) => { e.preventDefault(); dragIndex.current = i }}
+                  onTouchStart={(e) => { if ((e.target as HTMLElement).closest('[data-drag-handle]')) { dragIndex.current = i; setTouchHeldIndex(i) } }}
                   onTouchMove={(e) => {
-                    e.preventDefault()
                     const touch = e.touches[0]
                     const el = document.elementFromPoint(touch.clientX, touch.clientY)
                     const slotEl = el?.closest('[data-drag-index]')
@@ -482,10 +498,13 @@ export function CreateComboPage() {
                     dragIndex.current = null
                     touchDragOverIndex.current = null
                     setDragOverIndex(null)
+                    setTouchHeldIndex(null)
                   }}
-                  className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors select-none ${dragOverIndex === i ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200'}`}
+                  className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors select-none ${dragOverIndex === i ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200'} ${touchHeldIndex === i ? 'drag-shaking' : ''}`}
                 >
-                  <GripVertical className="w-4 h-4 shrink-0 text-gray-300 cursor-grab active:cursor-grabbing" />
+                  <span data-drag-handle style={{ touchAction: 'none' }} className="shrink-0 cursor-grab active:cursor-grabbing">
+                    <GripVertical className="w-4 h-4 text-gray-300 pointer-events-none" />
+                  </span>
                   <span className="w-5 shrink-0 text-xs font-bold text-gray-400">{slot.position}</span>
                   <div className="flex-1 min-w-0">
                     <span className="font-mono text-xs font-semibold text-gray-900">{slot.abbreviation}</span>
