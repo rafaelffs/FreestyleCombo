@@ -21,6 +21,9 @@ public class UpdateTrickHandler : IRequestHandler<UpdateTrickCommand>
         trick.Revolution = request.Revolution;
         trick.Difficulty = request.Difficulty;
         trick.CommonLevel = request.CommonLevel;
+        trick.CreatedBy = request.CreatedBy;
+        trick.DateCreated = request.DateCreated;
+        trick.Notes = request.Notes;
 
         await _repo.UpdateAsync(trick, cancellationToken);
     }

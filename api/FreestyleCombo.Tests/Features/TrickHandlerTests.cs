@@ -19,7 +19,7 @@ public class TrickHandlerTests
         _repo.Setup(r => r.AddAsync(It.IsAny<Trick>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         var result = await new CreateTrickHandler(_repo.Object)
-            .Handle(new CreateTrickCommand("Around the World", "ATW", false, false, 1.0m, 2, 3), CancellationToken.None);
+            .Handle(new CreateTrickCommand("Around the World", "ATW", false, false, 1.0m, 2, 3, null, null, null), CancellationToken.None);
 
         result.Should().NotBeEmpty();
         _repo.Verify(r => r.AddAsync(It.IsAny<Trick>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -33,7 +33,7 @@ public class TrickHandlerTests
         _repo.Setup(r => r.UpdateAsync(trick, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         await new UpdateTrickHandler(_repo.Object)
-            .Handle(new UpdateTrickCommand(trick.Id, "New Name", "NN", true, false, 2.0m, 5, 4), CancellationToken.None);
+            .Handle(new UpdateTrickCommand(trick.Id, "New Name", "NN", true, false, 2.0m, 5, 4, null, null, null), CancellationToken.None);
 
         trick.Name.Should().Be("New Name");
         trick.Abbreviation.Should().Be("NN");
@@ -51,7 +51,7 @@ public class TrickHandlerTests
         _repo.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync((Trick?)null);
 
         Func<Task> act = () => new UpdateTrickHandler(_repo.Object)
-            .Handle(new UpdateTrickCommand(id, "X", "X", false, false, 1.0m, 1, 1), CancellationToken.None);
+            .Handle(new UpdateTrickCommand(id, "X", "X", false, false, 1.0m, 1, 1, null, null, null), CancellationToken.None);
 
         await act.Should().ThrowAsync<KeyNotFoundException>();
     }

@@ -15,5 +15,7 @@ public class TrickConfiguration : IEntityTypeConfiguration<Trick>
         builder.Property(t => t.Revolution).HasPrecision(3, 1);
         builder.Property(t => t.Difficulty).IsRequired();
         builder.Property(t => t.CommonLevel).IsRequired();
+        builder.Property(t => t.CreatedBy).HasMaxLength(100);
+        builder.Property(t => t.Notes).HasMaxLength(500);
     }
 }

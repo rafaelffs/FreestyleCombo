@@ -10,5 +10,8 @@ public record UpdateTrickCommand(
     bool Knee,
     decimal Revolution,
     int Difficulty,
-    int CommonLevel
+    int CommonLevel,
+    string? CreatedBy,
+    DateOnly? DateCreated,
+    string? Notes
 ) : IRequest;

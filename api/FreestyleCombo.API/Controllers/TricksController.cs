@@ -50,7 +50,10 @@ public class TricksController : ControllerBase
             request.Knee,
             request.Revolution,
             request.Difficulty,
-            request.CommonLevel), ct);
+            request.CommonLevel,
+            request.CreatedBy,
+            request.DateCreated,
+            request.Notes), ct);
         return NoContent();
     }
 
@@ -71,4 +74,7 @@ public record UpdateTrickRequest(
     bool Knee,
     decimal Revolution,
     int Difficulty,
-    int CommonLevel);
+    int CommonLevel,
+    string? CreatedBy,
+    DateOnly? DateCreated,
+    string? Notes);

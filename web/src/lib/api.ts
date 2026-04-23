@@ -53,6 +53,9 @@ export interface TrickDto {
   difficulty: number
   commonLevel: number
   isTransition: boolean
+  createdBy: string | null
+  dateCreated: string | null
+  notes: string | null
 }
 
 export interface ComboTrickDto {
@@ -241,6 +244,8 @@ export const trickSubmissionsApi = {
 export const tricksApi = {
   getAll: (params?: { crossOver?: boolean; knee?: boolean; maxDifficulty?: number }) =>
     api.get<TrickDto[]>('/tricks', { params }),
+  create: (data: Omit<TrickDto, 'id'>) =>
+    api.post<{ id: string }>('/tricks', data),
   update: (id: string, data: Omit<TrickDto, 'id'>) =>
     api.put(`/tricks/${id}`, data),
   delete: (id: string) => api.delete(`/tricks/${id}`),

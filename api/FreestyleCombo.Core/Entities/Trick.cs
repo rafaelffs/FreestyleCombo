@@ -11,6 +11,9 @@ public class Trick
     public int Difficulty { get; set; }
     public int CommonLevel { get; set; }
     public bool IsTransition { get; set; }
+    public string? CreatedBy { get; set; }
+    public DateOnly? DateCreated { get; set; }
+    public string? Notes { get; set; }
 
     public ICollection<ComboTrick> ComboTricks { get; set; } = [];
 }

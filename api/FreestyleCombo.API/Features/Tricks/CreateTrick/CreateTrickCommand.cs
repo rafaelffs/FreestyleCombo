@@ -9,5 +9,8 @@ public record CreateTrickCommand(
     bool Knee,
     decimal Revolution,
     int Difficulty,
-    int CommonLevel
+    int CommonLevel,
+    string? CreatedBy,
+    DateOnly? DateCreated,
+    string? Notes
 ) : IRequest<Guid>;

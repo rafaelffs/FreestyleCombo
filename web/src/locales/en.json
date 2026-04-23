@@ -25,6 +25,7 @@
     "logout": "Logout",
     "login": "Login",
     "register": "Register",
+    "animation": "Animation",
     "openMenu": "Open menu",
     "closeMenu": "Close menu"
   },
@@ -218,7 +219,14 @@
     "editTrickTitle": "Edit Trick",
     "fieldDifficulty110": "Difficulty (1-10)",
     "fieldCommonLevel110": "Common Level (1-10)",
-    "updateFailed": "Update failed"
+    "updateFailed": "Update failed",
+    "fieldCreatedBy": "Created By",
+    "fieldDateCreated": "Date Created",
+    "fieldNotes": "Notes",
+    "infoNotSet": "—",
+    "infoTooltip": "Details",
+    "addTrick": "Add Trick",
+    "createFailed": "Create failed"
   },
   "adminSubmissions": {
     "pageTitle": "Approvals",
@@ -316,5 +324,12 @@
   },
   "userProfile": {
     "notFound": "User not found."
+  },
+  "animation": {
+    "pageTitle": "Trick Animation",
+    "pageSubtitle": "Select a trick and press Play to see its 3D animation.",
+    "play": "Play",
+    "pause": "Pause",
+    "hint": "Drag to rotate · Scroll to zoom"
   }
 }

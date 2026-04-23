@@ -25,6 +25,7 @@
     "logout": "Sair",
     "login": "Entrar",
     "register": "Cadastrar",
+    "animation": "Animação",
     "openMenu": "Abrir menu",
     "closeMenu": "Fechar menu"
   },
@@ -218,7 +219,14 @@
     "editTrickTitle": "Editar Trick",
     "fieldDifficulty110": "Dificuldade (1-10)",
     "fieldCommonLevel110": "Nível Comum (1-10)",
-    "updateFailed": "Falha ao atualizar"
+    "updateFailed": "Falha ao atualizar",
+    "fieldCreatedBy": "Criado Por",
+    "fieldDateCreated": "Data de Criação",
+    "fieldNotes": "Notas",
+    "infoNotSet": "—",
+    "infoTooltip": "Detalhes",
+    "addTrick": "Adicionar Trick",
+    "createFailed": "Falha ao criar"
   },
   "adminSubmissions": {
     "pageTitle": "Aprovações",
@@ -316,5 +324,12 @@
   },
   "userProfile": {
     "notFound": "Usuário não encontrado."
+  },
+  "animation": {
+    "pageTitle": "Animação de Tricks",
+    "pageSubtitle": "Selecione uma trick e pressione Play para ver a animação 3D.",
+    "play": "Play",
+    "pause": "Pause",
+    "hint": "Arraste para rotacionar · Role para zoom"
   }
 }

@@ -44,6 +44,9 @@ const EMPTY_FORM: Omit<TrickDto, 'id'> = {
   difficulty: 1,
   commonLevel: 1,
   isTransition: false,
+  createdBy: null,
+  dateCreated: null,
+  notes: null,
 }
 
 interface SortHeaderProps {
@@ -93,6 +96,14 @@ export function TricksPage() {
   const [sortKey, setSortKey] = useState<SortKey>('abbreviation')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
 
+  // Info modal
+  const [infoTrick, setInfoTrick] = useState<TrickDto | null>(null)
+
+  // Create (admin)
+  const [showCreate, setShowCreate] = useState(false)
+  const [createForm, setCreateForm] = useState<Omit<TrickDto, 'id'>>(EMPTY_FORM)
+  const [createError, setCreateError] = useState<string | null>(null)
+
   // Edit / delete
   const [editTrick, setEditTrick] = useState<TrickDto | null>(null)
   const [editForm, setEditForm] = useState<Omit<TrickDto, 'id'>>(EMPTY_FORM)
@@ -132,6 +143,17 @@ export function TricksPage() {
   const { data: tricks = [], isLoading } = useQuery({
     queryKey: ['tricks'],
     queryFn: () => tricksApi.getAll().then((r) => r.data),
+  })
+
+  const createMutation = useMutation({
+    mutationFn: (data: Omit<TrickDto, 'id'>) => tricksApi.create(data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['tricks'] })
+      setShowCreate(false)
+      setCreateForm(EMPTY_FORM)
+      setCreateError(null)
+    },
+    onError: (err) => setCreateError(extractError(err, t('tricks.createFailed'))),
   })
 
   const updateMutation = useMutation({
@@ -239,7 +261,15 @@ export function TricksPage() {
       {authed && (
         <button
           type="button"
-          onClick={() => setShowSubmit((v) => !v)}
+          onClick={() => {
+            if (admin) {
+              setCreateForm(EMPTY_FORM)
+              setCreateError(null)
+              setShowCreate(true)
+            } else {
+              setShowSubmit((v) => !v)
+            }
+          }}
           className="fixed bottom-6 right-6 z-40 inline-flex h-14 cursor-pointer items-center gap-2 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-indigo-700 active:bg-indigo-800"
         >
           <span className="text-lg leading-none">{showSubmit ? '✕' : '+'}</span>
@@ -433,6 +463,7 @@ export function TricksPage() {
                 <SortHeader label={t('tricks.colDiff')} col="difficulty" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} center />
                 <SortHeader label={t('tricks.colCO')} col="crossOver" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} center />
                 <SortHeader label={t('tricks.colKnee')} col="knee" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} center />
+                <th className="w-8 px-2 py-3" />
                 {admin && <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('tricks.colActions')}</th>}
               </tr>
             </thead>
@@ -452,6 +483,16 @@ export function TricksPage() {
                   </td>
                   <td className="px-4 py-2 text-center">
                     {trick.knee ? <Badge variant="secondary">K</Badge> : '—'}
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setInfoTrick(trick)}
+                      className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-gray-300 text-[10px] font-bold text-gray-400 hover:border-indigo-400 hover:text-indigo-500"
+                      title={t('tricks.infoTooltip')}
+                    >
+                      ?
+                    </button>
                   </td>
                   {admin && (
                     <td className="px-4 py-2 text-right">
@@ -477,7 +518,7 @@ export function TricksPage() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={admin ? 7 : 6} className="px-4 py-6 text-center text-gray-400">
+                  <td colSpan={admin ? 8 : 7} className="px-4 py-6 text-center text-gray-400">
                     {t('tricks.noTricksFound')}
                   </td>
                 </tr>
@@ -486,6 +527,91 @@ export function TricksPage() {
           </table>
         </div>
       )}
+
+      {/* Create dialog (admin) */}
+      <Dialog open={showCreate} onOpenChange={(open) => !open && setShowCreate(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('tricks.addTrick')}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(createForm) }} className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>{t('tricks.fieldAbbreviation')}</Label>
+                <Input value={createForm.abbreviation} onChange={(e) => setCreateForm((f) => ({ ...f, abbreviation: e.target.value }))} maxLength={20} required />
+              </div>
+              <div className="space-y-1">
+                <Label>{t('tricks.fieldName')}</Label>
+                <Input value={createForm.name} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} maxLength={100} required />
+              </div>
+              <div className="space-y-1">
+                <Label>{t('tricks.fieldRevolution')}</Label>
+                <Input type="number" min={0.5} max={10} step={0.5} value={createForm.revolution} onChange={(e) => setCreateForm((f) => ({ ...f, revolution: Number(e.target.value) }))} required />
+              </div>
+              <div className="space-y-1">
+                <Label>{t('tricks.fieldDifficulty110')}</Label>
+                <Input type="number" min={1} max={10} value={createForm.difficulty} onChange={(e) => setCreateForm((f) => ({ ...f, difficulty: Number(e.target.value) }))} required />
+              </div>
+              <div className="space-y-1">
+                <Label>{t('tricks.fieldCommonLevel110')}</Label>
+                <Input type="number" min={1} max={10} value={createForm.commonLevel} onChange={(e) => setCreateForm((f) => ({ ...f, commonLevel: Number(e.target.value) }))} required />
+              </div>
+            </div>
+            <div className="flex gap-6">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={createForm.crossOver} onChange={(e) => setCreateForm((f) => ({ ...f, crossOver: e.target.checked }))} className="h-4 w-4 rounded border-gray-300 text-indigo-600" />
+                {t('tricks.fieldCrossOver')}
+              </label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={createForm.knee} onChange={(e) => setCreateForm((f) => ({ ...f, knee: e.target.checked }))} className="h-4 w-4 rounded border-gray-300 text-indigo-600" />
+                {t('tricks.fieldKnee')}
+              </label>
+            </div>
+            <div className="border-t pt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>{t('tricks.fieldCreatedBy')}</Label>
+                <Input value={createForm.createdBy ?? ''} onChange={(e) => setCreateForm((f) => ({ ...f, createdBy: e.target.value || null }))} maxLength={100} placeholder={t('tricks.infoNotSet')} />
+              </div>
+              <div className="space-y-1">
+                <Label>{t('tricks.fieldDateCreated')}</Label>
+                <Input type="date" value={createForm.dateCreated ?? ''} onChange={(e) => setCreateForm((f) => ({ ...f, dateCreated: e.target.value || null }))} />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label>{t('tricks.fieldNotes')}</Label>
+                <textarea value={createForm.notes ?? ''} onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value || null }))} maxLength={500} rows={3} placeholder={t('tricks.infoNotSet')} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+            </div>
+            {createError && <p className="text-sm text-red-600">{createError}</p>}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>{t('common.cancel')}</Button>
+              <Button type="submit" disabled={createMutation.isPending}>{createMutation.isPending ? t('common.saving') : t('tricks.addTrick')}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Info modal */}
+      <Dialog open={infoTrick !== null} onOpenChange={(open) => !open && setInfoTrick(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{infoTrick?.name}</DialogTitle>
+          </DialogHeader>
+          <dl className="space-y-3 text-sm">
+            <div>
+              <dt className="text-xs font-medium uppercase text-gray-500">{t('tricks.fieldCreatedBy')}</dt>
+              <dd className="mt-0.5 text-gray-800">{infoTrick?.createdBy || <span className="text-gray-400">{t('tricks.infoNotSet')}</span>}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase text-gray-500">{t('tricks.fieldDateCreated')}</dt>
+              <dd className="mt-0.5 text-gray-800">{infoTrick?.dateCreated || <span className="text-gray-400">{t('tricks.infoNotSet')}</span>}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase text-gray-500">{t('tricks.fieldNotes')}</dt>
+              <dd className="mt-0.5 whitespace-pre-wrap text-gray-800">{infoTrick?.notes || <span className="text-gray-400">{t('tricks.infoNotSet')}</span>}</dd>
+            </div>
+          </dl>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit dialog */}
       <Dialog open={editTrick !== null} onOpenChange={(open) => !open && setEditTrick(null)}>
@@ -567,6 +693,36 @@ export function TricksPage() {
                 />
                 {t('tricks.fieldKnee')}
               </label>
+            </div>
+            <div className="border-t pt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>{t('tricks.fieldCreatedBy')}</Label>
+                <Input
+                  value={editForm.createdBy ?? ''}
+                  onChange={(e) => setEditForm((f) => ({ ...f, createdBy: e.target.value || null }))}
+                  maxLength={100}
+                  placeholder={t('tricks.infoNotSet')}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>{t('tricks.fieldDateCreated')}</Label>
+                <Input
+                  type="date"
+                  value={editForm.dateCreated ?? ''}
+                  onChange={(e) => setEditForm((f) => ({ ...f, dateCreated: e.target.value || null }))}
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label>{t('tricks.fieldNotes')}</Label>
+                <textarea
+                  value={editForm.notes ?? ''}
+                  onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value || null }))}
+                  maxLength={500}
+                  rows={3}
+                  placeholder={t('tricks.infoNotSet')}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
             </div>
             {editError && <p className="text-sm text-red-600">{editError}</p>}
             <div className="flex justify-end gap-2">

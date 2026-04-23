@@ -21,7 +21,10 @@ public class CreateTrickHandler : IRequestHandler<CreateTrickCommand, Guid>
             Knee = request.Knee,
             Revolution = request.Revolution,
             Difficulty = request.Difficulty,
-            CommonLevel = request.CommonLevel
+            CommonLevel = request.CommonLevel,
+            CreatedBy = request.CreatedBy,
+            DateCreated = request.DateCreated,
+            Notes = request.Notes
         };
 
         await _repo.AddAsync(trick, cancellationToken);

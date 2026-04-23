@@ -10,6 +10,7 @@ import { CreateComboPage } from '@/features/combos/CreateComboPage'
 import { ComboDetailPage } from '@/features/combos/ComboDetailPage'
 import { PreferencesPage } from '@/features/preferences/PreferencesPage'
 import { TricksPage } from '@/features/tricks/TricksPage'
+import { AnimationPage } from '@/features/animation/AnimationPage'
 import { AdminSubmissionsPage } from '@/features/tricks/AdminSubmissionsPage'
 import { AccountPage } from '@/features/account/AccountPage'
 import { UserProfilePage } from '@/features/users/UserProfilePage'
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/combos" element={<CombosPage />} />
           <Route path="/combos/:id" element={<ComboDetailPage />} />
           <Route path="/tricks" element={<TricksPage />} />
+          <Route path="/animation" element={<AnimationPage />} />
           <Route path="/users/:id" element={<UserProfilePage />} />
           <Route path="/combos/create" element={<CreateComboPage />} />
 

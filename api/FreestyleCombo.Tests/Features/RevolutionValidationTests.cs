@@ -15,7 +15,7 @@ public class RevolutionValidationTests
     public void CreateTrickValidator_ShouldReject_RevolutionAboveFour()
     {
         var validator = new CreateTrickValidator();
-        var result = validator.Validate(new CreateTrickCommand("ATW", "ATW", false, false, 4.5m, 6, 3));
+        var result = validator.Validate(new CreateTrickCommand("ATW", "ATW", false, false, 4.5m, 6, 3, null, null, null));
 
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == "Revolution");
@@ -25,7 +25,7 @@ public class RevolutionValidationTests
     public void UpdateTrickValidator_ShouldAllow_RevolutionAtFour()
     {
         var validator = new UpdateTrickValidator();
-        var result = validator.Validate(new UpdateTrickCommand(Guid.NewGuid(), "ATW", "ATW", false, false, 4m, 6, 3));
+        var result = validator.Validate(new UpdateTrickCommand(Guid.NewGuid(), "ATW", "ATW", false, false, 4m, 6, 3, null, null, null));
 
         result.IsValid.Should().BeTrue();
     }
