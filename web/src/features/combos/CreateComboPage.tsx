@@ -465,7 +465,7 @@ export function CreateComboPage() {
                     setDragOverIndex(null)
                   }}
                   onDragEnd={() => { dragIndex.current = null; setDragOverIndex(null) }}
-                  onTouchStart={() => { dragIndex.current = i }}
+                  onTouchStart={(e) => { e.preventDefault(); dragIndex.current = i }}
                   onTouchMove={(e) => {
                     e.preventDefault()
                     const touch = e.touches[0]
@@ -483,7 +483,7 @@ export function CreateComboPage() {
                     touchDragOverIndex.current = null
                     setDragOverIndex(null)
                   }}
-                  className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors ${dragOverIndex === i ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200'}`}
+                  className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors select-none ${dragOverIndex === i ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200'}`}
                 >
                   <GripVertical className="w-4 h-4 shrink-0 text-gray-300 cursor-grab active:cursor-grabbing" />
                   <span className="w-5 shrink-0 text-xs font-bold text-gray-400">{slot.position}</span>

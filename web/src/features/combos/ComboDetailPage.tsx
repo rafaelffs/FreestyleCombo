@@ -302,7 +302,7 @@ export function ComboDetailPage() {
                         setEditDragOverIndex(null)
                       }}
                       onDragEnd={() => { editDragIndex.current = null; setEditDragOverIndex(null) }}
-                      onTouchStart={() => { editDragIndex.current = i }}
+                      onTouchStart={(e) => { e.preventDefault(); editDragIndex.current = i }}
                       onTouchMove={(e) => {
                         e.preventDefault()
                         const touch = e.touches[0]
@@ -320,7 +320,7 @@ export function ComboDetailPage() {
                         editTouchDragOverIndex.current = null
                         setEditDragOverIndex(null)
                       }}
-                      className={`flex items-center gap-2 rounded border px-2 py-1.5 transition-colors ${editDragOverIndex === i ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200'}`}
+                      className={`flex items-center gap-2 rounded border px-2 py-1.5 transition-colors select-none ${editDragOverIndex === i ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200'}`}
                     >
                       <GripVertical className="w-3.5 h-3.5 shrink-0 text-gray-300 cursor-grab active:cursor-grabbing" />
                       <span className="w-4 shrink-0 text-xs font-bold text-gray-400">{slot.position}</span>
