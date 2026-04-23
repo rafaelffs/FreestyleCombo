@@ -63,6 +63,7 @@ export function CreateComboPage() {
   const [buildError, setBuildError] = useState<string | null>(null)
   const dragIndex = useRef<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const touchDragOverIndex = useRef<number | null>(null)
 
   const { data: tricks = [], isLoading: tricksLoading } = useQuery({
     queryKey: ['tricks'],
@@ -453,6 +454,7 @@ export function CreateComboPage() {
               {slots.map((slot, i) => (
                 <div
                   key={i}
+                  data-drag-index={i}
                   draggable
                   onDragStart={() => { dragIndex.current = i }}
                   onDragOver={(e) => { e.preventDefault(); setDragOverIndex(i) }}
@@ -463,6 +465,24 @@ export function CreateComboPage() {
                     setDragOverIndex(null)
                   }}
                   onDragEnd={() => { dragIndex.current = null; setDragOverIndex(null) }}
+                  onTouchStart={() => { dragIndex.current = i }}
+                  onTouchMove={(e) => {
+                    e.preventDefault()
+                    const touch = e.touches[0]
+                    const el = document.elementFromPoint(touch.clientX, touch.clientY)
+                    const slotEl = el?.closest('[data-drag-index]')
+                    if (slotEl) {
+                      const idx = parseInt(slotEl.getAttribute('data-drag-index') ?? '-1', 10)
+                      if (idx >= 0) { touchDragOverIndex.current = idx; setDragOverIndex(idx) }
+                    }
+                  }}
+                  onTouchEnd={() => {
+                    if (dragIndex.current !== null && touchDragOverIndex.current !== null && dragIndex.current !== touchDragOverIndex.current)
+                      reorderSlots(dragIndex.current, touchDragOverIndex.current)
+                    dragIndex.current = null
+                    touchDragOverIndex.current = null
+                    setDragOverIndex(null)
+                  }}
                   className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors ${dragOverIndex === i ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200'}`}
                 >
                   <GripVertical className="w-4 h-4 shrink-0 text-gray-300 cursor-grab active:cursor-grabbing" />

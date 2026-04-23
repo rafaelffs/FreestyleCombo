@@ -50,6 +50,7 @@ export function ComboDetailPage() {
   const [editError, setEditError] = useState<string | null>(null)
   const editDragIndex = useRef<number | null>(null)
   const [editDragOverIndex, setEditDragOverIndex] = useState<number | null>(null)
+  const editTouchDragOverIndex = useRef<number | null>(null)
 
   const { data: combo, isLoading, error } = useQuery({
     queryKey: ['combos', id],
@@ -290,6 +291,7 @@ export function ComboDetailPage() {
                   {editSlots.map((slot, i) => (
                     <div
                       key={i}
+                      data-drag-index={i}
                       draggable
                       onDragStart={() => { editDragIndex.current = i }}
                       onDragOver={(e) => { e.preventDefault(); setEditDragOverIndex(i) }}
@@ -300,6 +302,24 @@ export function ComboDetailPage() {
                         setEditDragOverIndex(null)
                       }}
                       onDragEnd={() => { editDragIndex.current = null; setEditDragOverIndex(null) }}
+                      onTouchStart={() => { editDragIndex.current = i }}
+                      onTouchMove={(e) => {
+                        e.preventDefault()
+                        const touch = e.touches[0]
+                        const el = document.elementFromPoint(touch.clientX, touch.clientY)
+                        const slotEl = el?.closest('[data-drag-index]')
+                        if (slotEl) {
+                          const idx = parseInt(slotEl.getAttribute('data-drag-index') ?? '-1', 10)
+                          if (idx >= 0) { editTouchDragOverIndex.current = idx; setEditDragOverIndex(idx) }
+                        }
+                      }}
+                      onTouchEnd={() => {
+                        if (editDragIndex.current !== null && editTouchDragOverIndex.current !== null && editDragIndex.current !== editTouchDragOverIndex.current)
+                          reorderEditSlots(editDragIndex.current, editTouchDragOverIndex.current)
+                        editDragIndex.current = null
+                        editTouchDragOverIndex.current = null
+                        setEditDragOverIndex(null)
+                      }}
                       className={`flex items-center gap-2 rounded border px-2 py-1.5 transition-colors ${editDragOverIndex === i ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200'}`}
                     >
                       <GripVertical className="w-3.5 h-3.5 shrink-0 text-gray-300 cursor-grab active:cursor-grabbing" />
