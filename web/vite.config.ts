@@ -13,6 +13,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': 'http://localhost:5050',
+      '/share': 'http://localhost:5050',
     },
   },
 })

@@ -115,10 +115,11 @@ export function ComboCard({ combo, showActions = false }: Props) {
   const [copied, setCopied] = useState(false)
 
   const handleShare = useCallback(async () => {
-    const url = `${window.location.origin}/combos/${combo.id}`
+    const spaUrl = `${window.location.origin}/combos/${combo.id}`
+    const shareUrl = `${window.location.origin}/share/combos/${combo.id}`
     const shareData = {
       title: combo.name ?? combo.displayText,
-      url,
+      url: shareUrl,
     }
     if (navigator.share && navigator.canShare?.(shareData)) {
       try {
@@ -127,7 +128,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
         // user cancelled or share failed — no-op
       }
     } else {
-      await navigator.clipboard.writeText(url)
+      await navigator.clipboard.writeText(spaUrl)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
