@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FluentAssertions;
 using FreestyleCombo.API.Features.Combos.BuildCombo;
+using FreestyleCombo.API.Features.Combos.GenerateCombo;
 using FreestyleCombo.API.Features.Combos.PreviewCombo;
 using FreestyleCombo.API.Features.Combos.UpdateVisibility;
 using FreestyleCombo.Core.Entities;
@@ -200,5 +201,118 @@ public class ComboBuildAndVisibilityHandlerTests
 
         await act.Should().ThrowAsync<KeyNotFoundException>()
             .WithMessage("Preference not found.");
+    }
+
+    [Fact]
+    public async Task PreviewCombo_WithCustomOverrides_ReturnsPreview()
+    {
+        var trickRepo = new Mock<ITrickRepository>();
+        var prefRepo = new Mock<IUserPreferenceRepository>();
+        var tricks = TrickFaker.CreateMany(5, crossOver: false);
+        trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync(tricks);
+
+        var result = await new PreviewComboHandler(trickRepo.Object, prefRepo.Object, CreateHttp(_userId))
+            .Handle(new PreviewComboCommand(null, new GenerateComboOverrides { ComboLength = 3, NoTouchPercentage = 0 }), CancellationToken.None);
+
+        result.Tricks.Should().HaveCount(3);
+        result.Tricks.Select(t => t.Position).Should().Equal([1, 2, 3]);
+    }
+
+    [Fact]
+    public async Task PreviewCombo_NoTricksMatchFilter_ThrowsInvalidOperationException()
+    {
+        var trickRepo = new Mock<ITrickRepository>();
+        var prefRepo = new Mock<IUserPreferenceRepository>();
+        // All tricks have difficulty 5; filter requires difficulty <= 1
+        var tricks = TrickFaker.CreateMany(3).Select(t => { t.Difficulty = 5; return t; }).ToList();
+        trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync(tricks);
+
+        Func<Task> act = () => new PreviewComboHandler(trickRepo.Object, prefRepo.Object, CreateHttp(_userId))
+            .Handle(new PreviewComboCommand(null, new GenerateComboOverrides { MaxDifficulty = 1 }), CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("No tricks match your preferences.");
+    }
+
+    [Fact]
+    public async Task BuildCombo_NoTouchOnCrossOverTrick_IsPreserved()
+    {
+        var trickRepo = new Mock<ITrickRepository>();
+        var comboRepo = new Mock<IComboRepository>();
+        var userManager = CreateUserManagerMock();
+        var crossOverTrick = TrickFaker.Create(crossOver: true, difficulty: 3);
+        Combo? savedCombo = null;
+
+        trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([crossOverTrick]);
+        comboRepo.Setup(r => r.AddAsync(It.IsAny<Combo>(), It.IsAny<CancellationToken>()))
+            .Callback<Combo, CancellationToken>((c, _) => savedCombo = c)
+            .Returns(Task.CompletedTask);
+        userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "me" });
+
+        await new BuildComboHandler(trickRepo.Object, comboRepo.Object, CreateHttp(_userId), userManager.Object)
+            .Handle(new BuildComboCommand([new BuildComboTrickItem(crossOverTrick.Id, 1, true, true)], false), CancellationToken.None);
+
+        savedCombo!.ComboTricks.Single().NoTouch.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task BuildCombo_WhitespaceOnlyName_StoredAsNull()
+    {
+        var trickRepo = new Mock<ITrickRepository>();
+        var comboRepo = new Mock<IComboRepository>();
+        var userManager = CreateUserManagerMock();
+        var trick = TrickFaker.Create(crossOver: false);
+        Combo? savedCombo = null;
+
+        trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([trick]);
+        comboRepo.Setup(r => r.AddAsync(It.IsAny<Combo>(), It.IsAny<CancellationToken>()))
+            .Callback<Combo, CancellationToken>((c, _) => savedCombo = c)
+            .Returns(Task.CompletedTask);
+        userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "me" });
+
+        await new BuildComboHandler(trickRepo.Object, comboRepo.Object, CreateHttp(_userId), userManager.Object)
+            .Handle(new BuildComboCommand([new BuildComboTrickItem(trick.Id, 1, true, false)], false, "   "), CancellationToken.None);
+
+        savedCombo!.Name.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task UpdateVisibility_ComboNotFound_ThrowsKeyNotFoundException()
+    {
+        var repo = new Mock<IComboRepository>();
+        repo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Combo?)null);
+
+        Func<Task> act = () => new UpdateVisibilityHandler(repo.Object, CreateHttp(_userId))
+            .Handle(new UpdateVisibilityCommand(_comboId, _userId, true), CancellationToken.None);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>().WithMessage("Combo not found.");
+    }
+
+    [Fact]
+    public async Task UpdateVisibility_AdminMakingComboPublic_SetsPublicDirectly()
+    {
+        var repo = new Mock<IComboRepository>();
+        var combo = new Combo { Id = _comboId, OwnerId = Guid.NewGuid(), Visibility = ComboVisibility.PendingReview };
+        repo.Setup(r => r.GetByIdAsync(_comboId, It.IsAny<CancellationToken>())).ReturnsAsync(combo);
+        repo.Setup(r => r.UpdateAsync(combo, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        await new UpdateVisibilityHandler(repo.Object, CreateHttp(_userId, isAdmin: true))
+            .Handle(new UpdateVisibilityCommand(_comboId, _userId, true), CancellationToken.None);
+
+        combo.Visibility.Should().Be(ComboVisibility.Public);
+    }
+
+    [Fact]
+    public async Task UpdateVisibility_AdminCanMakePublicComboPrivate()
+    {
+        var repo = new Mock<IComboRepository>();
+        var combo = new Combo { Id = _comboId, OwnerId = Guid.NewGuid(), Visibility = ComboVisibility.Public };
+        repo.Setup(r => r.GetByIdAsync(_comboId, It.IsAny<CancellationToken>())).ReturnsAsync(combo);
+        repo.Setup(r => r.UpdateAsync(combo, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        await new UpdateVisibilityHandler(repo.Object, CreateHttp(_userId, isAdmin: true))
+            .Handle(new UpdateVisibilityCommand(_comboId, _userId, false), CancellationToken.None);
+
+        combo.Visibility.Should().Be(ComboVisibility.Private);
     }
 }

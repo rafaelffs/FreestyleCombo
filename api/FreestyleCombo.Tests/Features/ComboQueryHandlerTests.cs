@@ -280,4 +280,143 @@ public class ComboQueryHandlerTests
         combo.Name.Should().Be("Admin Edit");
         result.Visibility.Should().Be("Public");
     }
+
+    [Fact]
+    public async Task UpdateCombo_ComboNotFound_ThrowsKeyNotFoundException()
+    {
+        var comboRepo = new Mock<IComboRepository>();
+        var trickRepo = new Mock<ITrickRepository>();
+        var userManager = CreateUserManagerMock();
+        comboRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Combo?)null);
+
+        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId), userManager.Object);
+        Func<Task> act = () => handler.Handle(new UpdateComboCommand(Guid.NewGuid(), "name", null), CancellationToken.None);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>().WithMessage("Combo not found.");
+    }
+
+    [Fact]
+    public async Task UpdateCombo_NameOnlyUpdate_DoesNotReplaceComboTricks()
+    {
+        var comboRepo = new Mock<IComboRepository>();
+        var trickRepo = new Mock<ITrickRepository>();
+        var userManager = CreateUserManagerMock();
+        var combo = CreateCombo(Guid.NewGuid(), _userId, "me", ComboVisibility.Private, DateTime.UtcNow);
+        comboRepo.Setup(r => r.GetByIdAsync(combo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(combo);
+        comboRepo.Setup(r => r.UpdateAsync(combo, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "me" });
+
+        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId), userManager.Object);
+        await handler.Handle(new UpdateComboCommand(combo.Id, "New Name", null), CancellationToken.None);
+
+        combo.Name.Should().Be("New Name");
+        comboRepo.Verify(r => r.ReplaceComboTricksAsync(It.IsAny<Guid>(), It.IsAny<IEnumerable<ComboTrick>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateCombo_TrickNotFound_ThrowsKeyNotFoundException()
+    {
+        var comboRepo = new Mock<IComboRepository>();
+        var trickRepo = new Mock<ITrickRepository>();
+        var userManager = CreateUserManagerMock();
+        var combo = CreateCombo(Guid.NewGuid(), _userId, "me", ComboVisibility.Private, DateTime.UtcNow);
+        comboRepo.Setup(r => r.GetByIdAsync(combo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(combo);
+        trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+
+        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId), userManager.Object);
+        Func<Task> act = () => handler.Handle(
+            new UpdateComboCommand(combo.Id, null, [new BuildComboTrickItem(Guid.NewGuid(), 1, true, false)]),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
+
+    [Fact]
+    public async Task GetMyCombos_WithSearchTerm_FiltersResults()
+    {
+        var repo = new Mock<IComboRepository>();
+        var favRepo = new Mock<IUserFavouriteRepository>();
+        var completionRepo = new Mock<IUserComboCompletionRepository>();
+        var trick = TrickFaker.Create(name: "ATW");
+        var matching = new Combo
+        {
+            Id = Guid.NewGuid(), OwnerId = _userId, Name = "My ATW Combo",
+            Visibility = ComboVisibility.Private, CreatedAt = DateTime.UtcNow,
+            Owner = new AppUser { Id = _userId, UserName = "me" },
+            ComboTricks = [new ComboTrick { TrickId = trick.Id, Trick = trick, Position = 1 }],
+            Ratings = []
+        };
+        var nonMatching = new Combo
+        {
+            Id = Guid.NewGuid(), OwnerId = _userId, Name = "Different Combo",
+            Visibility = ComboVisibility.Private, CreatedAt = DateTime.UtcNow.AddMinutes(-1),
+            Owner = new AppUser { Id = _userId, UserName = "me" },
+            ComboTricks = [new ComboTrick { TrickId = trick.Id, Trick = trick, Position = 1 }],
+            Ratings = []
+        };
+
+        repo.Setup(r => r.GetAllByOwnerAsync(_userId, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([matching, nonMatching]);
+        favRepo.Setup(r => r.GetFavouriteComboIdsAsync(_userId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        completionRepo.Setup(r => r.GetCompletedComboIdsAsync(_userId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        completionRepo.Setup(r => r.GetCompletionCountsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, int>());
+
+        var result = await new GetMyCombosHandler(repo.Object, favRepo.Object, completionRepo.Object)
+            .Handle(new GetMyCombosQuery(_userId, 1, 10, null, Search: "ATW"), CancellationToken.None);
+
+        result.Items.Should().HaveCount(1);
+        result.Items[0].Id.Should().Be(matching.Id);
+        result.TotalCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetMyCombos_Page2_SkipsFirstPage()
+    {
+        var repo = new Mock<IComboRepository>();
+        var favRepo = new Mock<IUserFavouriteRepository>();
+        var completionRepo = new Mock<IUserComboCompletionRepository>();
+        var trick = TrickFaker.Create();
+        var combos = Enumerable.Range(0, 15).Select(i => new Combo
+        {
+            Id = Guid.NewGuid(), OwnerId = _userId, Visibility = ComboVisibility.Private,
+            CreatedAt = DateTime.UtcNow.AddMinutes(-i),
+            Owner = new AppUser { Id = _userId, UserName = "me" },
+            ComboTricks = [new ComboTrick { TrickId = trick.Id, Trick = trick, Position = 1 }],
+            Ratings = []
+        }).ToList();
+
+        repo.Setup(r => r.GetAllByOwnerAsync(_userId, null, It.IsAny<CancellationToken>())).ReturnsAsync(combos);
+        favRepo.Setup(r => r.GetFavouriteComboIdsAsync(_userId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        completionRepo.Setup(r => r.GetCompletedComboIdsAsync(_userId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        completionRepo.Setup(r => r.GetCompletionCountsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, int>());
+
+        var result = await new GetMyCombosHandler(repo.Object, favRepo.Object, completionRepo.Object)
+            .Handle(new GetMyCombosQuery(_userId, 2, 10, null), CancellationToken.None);
+
+        result.TotalCount.Should().Be(15);
+        result.Items.Should().HaveCount(5);
+        result.Page.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task GetPublicCombos_WithSearchTerm_PassesSearchToRepo()
+    {
+        var repo = new Mock<IComboRepository>();
+        var favRepo = new Mock<IUserFavouriteRepository>();
+        var completionRepo = new Mock<IUserComboCompletionRepository>();
+        var combo = CreateCombo(Guid.NewGuid(), _otherUserId, "owner", ComboVisibility.Public, DateTime.UtcNow);
+
+        repo.Setup(r => r.GetPublicAsync(1, 10, null, null, "atw", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new List<Combo> { combo }, 1));
+        completionRepo.Setup(r => r.GetCompletionCountsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, int>());
+
+        var result = await new GetPublicCombosHandler(repo.Object, favRepo.Object, completionRepo.Object)
+            .Handle(new GetPublicCombosQuery(1, 10, null, null, null, Search: "atw"), CancellationToken.None);
+
+        result.Items.Should().HaveCount(1);
+        repo.Verify(r => r.GetPublicAsync(1, 10, null, null, "atw", It.IsAny<CancellationToken>()), Times.Once);
+    }
 }
