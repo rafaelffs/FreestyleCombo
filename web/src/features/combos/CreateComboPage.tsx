@@ -502,7 +502,7 @@ export function CreateComboPage() {
                   }}
                   className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors select-none ${dragOverIndex === i ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200'} ${touchHeldIndex === i ? 'drag-shaking' : ''}`}
                 >
-                  <span data-drag-handle style={{ touchAction: 'none' }} className="shrink-0 cursor-grab active:cursor-grabbing">
+                  <span data-drag-handle style={{ touchAction: 'none' }} className="shrink-0 cursor-grab active:cursor-grabbing p-2 -m-2 touch-none">
                     <GripVertical className="w-4 h-4 text-gray-300 pointer-events-none" />
                   </span>
                   <span className="w-5 shrink-0 text-xs font-bold text-gray-400">{slot.position}</span>
