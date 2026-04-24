@@ -95,7 +95,9 @@
     "rateComboDesc": "Selecione uma nota de 1 a 5",
     "ratingFailed": "Falha ao avaliar",
     "submittingRating": "Enviando…",
-    "submitRating": "Enviar avaliação"
+    "submitRating": "Enviar avaliação",
+    "share": "Compartilhar combo",
+    "shareCopied": "Link copiado!"
   },
   "create": {
     "guestBanner": "Crie uma conta gratuita para salvar seus combos.",

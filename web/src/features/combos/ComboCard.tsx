@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -7,6 +7,7 @@ import { getUserId, isAuthenticated, isAdmin as getIsAdmin } from '@/lib/auth'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Toast } from '@/components/ui/toast'
 import {
   Dialog,
   DialogContent,
@@ -67,6 +68,19 @@ function CheckCircleIconOutline() {
   )
 }
 
+function ShareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {/* box */}
+      <path d="M9 12H5a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1h-4" />
+      {/* arrow shaft */}
+      <line x1="12" y1="3" x2="12" y2="15" />
+      {/* arrow head */}
+      <polyline points="9 6 12 3 15 6" />
+    </svg>
+  )
+}
+
 function HalfStarIcon() {
   const star = 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'
   return (
@@ -98,6 +112,26 @@ export function ComboCard({ combo, showActions = false }: Props) {
   const [, setCompletionCount] = useState(combo.completionCount ?? 0)
   const [visibilityModal, setVisibilityModal] = useState<VisibilityModalConfig | null>(null)
   const [expanded, setExpanded] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const handleShare = useCallback(async () => {
+    const url = `${window.location.origin}/combos/${combo.id}`
+    const shareData = {
+      title: combo.name ?? combo.displayText,
+      url,
+    }
+    if (navigator.share && navigator.canShare?.(shareData)) {
+      try {
+        await navigator.share(shareData)
+      } catch {
+        // user cancelled or share failed — no-op
+      }
+    } else {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }, [combo.id, combo.name, combo.displayText])
 
   const tricks = combo.tricks ?? []
   const hasMore = tricks.length > TRICKS_LIMIT
@@ -238,6 +272,16 @@ export function ComboCard({ combo, showActions = false }: Props) {
                 <HalfStarIcon />
               </button>
             )}
+            {combo.visibility === 'Public' && (
+              <button
+                type="button"
+                onClick={() => void handleShare()}
+                className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition-colors hover:border-indigo-300 hover:text-indigo-500"
+                title={t('combos.share')}
+              >
+                <ShareIcon />
+              </button>
+            )}
           </div>
 
           {/* Title: name only (no displayText when named), or displayText if unnamed */}
@@ -335,6 +379,8 @@ export function ComboCard({ combo, showActions = false }: Props) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Toast message={t('combos.shareCopied')} visible={copied} />
     </>
   )
 }

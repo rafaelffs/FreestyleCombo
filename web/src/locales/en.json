@@ -95,7 +95,9 @@
     "rateComboDesc": "Select a score from 1 to 5",
     "ratingFailed": "Rating failed",
     "submittingRating": "Submitting…",
-    "submitRating": "Submit rating"
+    "submitRating": "Submit rating",
+    "share": "Share combo",
+    "shareCopied": "Link copied!"
   },
   "create": {
     "guestBanner": "Create a free account to save your combos.",
