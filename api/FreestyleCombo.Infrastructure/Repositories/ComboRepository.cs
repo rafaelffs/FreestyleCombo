@@ -18,7 +18,7 @@ public class ComboRepository : IComboRepository
             .Include(c => c.Owner)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
 
-    public async Task<(List<Combo> Items, int TotalCount)> GetPublicAsync(int page, int pageSize, string? sortBy, int? maxDifficulty, CancellationToken ct = default)
+    public async Task<(List<Combo> Items, int TotalCount)> GetPublicAsync(int page, int pageSize, string? sortBy, int? maxDifficulty, string? search, CancellationToken ct = default)
     {
         var query = _db.Combos
             .Include(c => c.ComboTricks).ThenInclude(ct2 => ct2.Trick)
@@ -28,6 +28,15 @@ public class ComboRepository : IComboRepository
 
         if (maxDifficulty.HasValue)
             query = query.Where(c => c.AverageDifficulty <= maxDifficulty.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(c =>
+                (c.Name != null && c.Name.ToLower().Contains(term)) ||
+                (c.Owner != null && c.Owner.UserName != null && c.Owner.UserName.ToLower().Contains(term)) ||
+                c.ComboTricks.Any(ct2 => ct2.Trick.Abbreviation.ToLower().Contains(term)));
+        }
 
         query = sortBy switch
         {

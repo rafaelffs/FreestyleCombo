@@ -87,7 +87,7 @@ public class ComboQueryHandlerTests
         var completionRepo = new Mock<IUserComboCompletionRepository>();
         var combo = CreateCombo(Guid.NewGuid(), _otherUserId, "owner", ComboVisibility.Public, DateTime.UtcNow);
 
-        repo.Setup(r => r.GetPublicAsync(1, 10, "latest", 5, It.IsAny<CancellationToken>()))
+        repo.Setup(r => r.GetPublicAsync(1, 10, "latest", 5, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync((new List<Combo> { combo }, 1));
         favRepo.Setup(r => r.GetFavouriteComboIdsAsync(_userId, It.IsAny<CancellationToken>())).ReturnsAsync([combo.Id]);
         completionRepo.Setup(r => r.GetCompletedComboIdsAsync(_userId, It.IsAny<CancellationToken>())).ReturnsAsync([combo.Id]);
@@ -114,7 +114,7 @@ public class ComboQueryHandlerTests
         var completionRepo = new Mock<IUserComboCompletionRepository>();
         var combo = CreateCombo(Guid.NewGuid(), _otherUserId, "owner", ComboVisibility.Public, DateTime.UtcNow);
 
-        repo.Setup(r => r.GetPublicAsync(1, 10, null, null, It.IsAny<CancellationToken>()))
+        repo.Setup(r => r.GetPublicAsync(1, 10, null, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync((new List<Combo> { combo }, 1));
         completionRepo.Setup(r => r.GetCompletionCountsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, int>());

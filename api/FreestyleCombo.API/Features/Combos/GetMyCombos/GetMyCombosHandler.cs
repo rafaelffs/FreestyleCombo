@@ -24,7 +24,16 @@ public class GetMyCombosHandler : IRequestHandler<GetMyCombosQuery, PagedResult<
         var favIds = await _favRepo.GetFavouriteComboIdsAsync(request.UserId, cancellationToken);
         var completedIds = await _completionRepo.GetCompletedComboIdsAsync(request.UserId, cancellationToken);
 
-        var sorted = allCombos
+        var filtered = allCombos.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var term = request.Search.Trim().ToLower();
+            filtered = filtered.Where(c =>
+                (c.Name != null && c.Name.ToLower().Contains(term)) ||
+                c.ComboTricks.Any(ct => ct.Trick.Abbreviation.ToLower().Contains(term)));
+        }
+
+        var sorted = filtered
             .OrderByDescending(c => c.CreatedAt)
             .ToList();
 

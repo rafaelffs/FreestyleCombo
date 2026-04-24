@@ -63,12 +63,13 @@ public class CombosController : ControllerBase
         [FromQuery] int pageSize = 10,
         [FromQuery] string? sortBy = null,
         [FromQuery] int? maxDifficulty = null,
+        [FromQuery] string? search = null,
         CancellationToken ct = default)
     {
         Guid? requestingUserId = User.Identity?.IsAuthenticated == true
             ? Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!)
             : null;
-        var result = await _mediator.Send(new GetPublicCombosQuery(page, pageSize, sortBy, maxDifficulty, requestingUserId), ct);
+        var result = await _mediator.Send(new GetPublicCombosQuery(page, pageSize, sortBy, maxDifficulty, requestingUserId, search), ct);
         return Ok(result);
     }
 
@@ -79,10 +80,11 @@ public class CombosController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         [FromQuery] bool? isPublic = null,
+        [FromQuery] string? search = null,
         CancellationToken ct = default)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var result = await _mediator.Send(new GetMyCombosQuery(userId, page, pageSize, isPublic), ct);
+        var result = await _mediator.Send(new GetMyCombosQuery(userId, page, pageSize, isPublic, search), ct);
         return Ok(result);
     }
 

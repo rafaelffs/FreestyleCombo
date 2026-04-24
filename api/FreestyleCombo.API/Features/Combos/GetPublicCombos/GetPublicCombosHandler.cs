@@ -20,7 +20,7 @@ public class GetPublicCombosHandler : IRequestHandler<GetPublicCombosQuery, Page
 
     public async Task<PagedResult<PublicComboDto>> Handle(GetPublicCombosQuery request, CancellationToken cancellationToken)
     {
-        var (items, total) = await _repo.GetPublicAsync(request.Page, request.PageSize, request.SortBy, request.MaxDifficulty, cancellationToken);
+        var (items, total) = await _repo.GetPublicAsync(request.Page, request.PageSize, request.SortBy, request.MaxDifficulty, request.Search, cancellationToken);
 
         var favIds = request.RequestingUserId.HasValue
             ? await _favRepo.GetFavouriteComboIdsAsync(request.RequestingUserId.Value, cancellationToken)

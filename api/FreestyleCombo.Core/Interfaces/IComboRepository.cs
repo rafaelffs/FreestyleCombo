@@ -5,7 +5,7 @@ namespace FreestyleCombo.Core.Interfaces;
 public interface IComboRepository
 {
     Task<Combo?> GetByIdAsync(Guid id, CancellationToken ct = default);
-    Task<(List<Combo> Items, int TotalCount)> GetPublicAsync(int page, int pageSize, string? sortBy, int? maxDifficulty, CancellationToken ct = default);
+    Task<(List<Combo> Items, int TotalCount)> GetPublicAsync(int page, int pageSize, string? sortBy, int? maxDifficulty, string? search, CancellationToken ct = default);
     Task<(List<Combo> Items, int TotalCount)> GetByOwnerAsync(Guid ownerId, int page, int pageSize, bool? isPublic, CancellationToken ct = default);
     Task<List<Combo>> GetAllByOwnerAsync(Guid ownerId, bool? isPublic, CancellationToken ct = default);
     Task<List<Combo>> GetFavouritedByUserAsync(Guid userId, CancellationToken ct = default);
