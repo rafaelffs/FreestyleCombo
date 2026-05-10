@@ -39,9 +39,11 @@ public class BuildComboHandler : IRequestHandler<BuildComboCommand, GenerateComb
         if (missing.Count > 0)
             throw new KeyNotFoundException($"Trick(s) not found: {string.Join(", ", missing)}");
 
-        // Strip NoTouch from non-CrossOver tricks (silently, consistent with UpdateComboHandler)
+        // Transition tricks have no foot concept — strip NoTouch and StrongFoot from them
         var normalized = request.Tricks
-            .Select(t => t with { NoTouch = t.NoTouch && trickMap[t.TrickId].CrossOver })
+            .Select(t => trickMap[t.TrickId].IsTransition
+                ? t with { NoTouch = false, StrongFoot = false }
+                : t with { NoTouch = t.NoTouch && trickMap[t.TrickId].CrossOver })
             .ToList();
 
         // Order by position

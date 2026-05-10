@@ -111,7 +111,7 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
             var (trick, strongFoot) = slots[i];
             bool noTouch = false;
 
-            if (i > 0 && slots[i - 1].Trick.CrossOver && !slots[i - 1].Trick.IsTransition && consecutiveNoTouch < maxConsecutiveNoTouch)
+            if (!trick.IsTransition && i > 0 && slots[i - 1].Trick.CrossOver && !slots[i - 1].Trick.IsTransition && consecutiveNoTouch < maxConsecutiveNoTouch)
             {
                 var roll = rng.Next(1, 101);
                 noTouch = roll <= noTouchPct;

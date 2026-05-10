@@ -58,12 +58,9 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
                 throw new KeyNotFoundException($"Trick(s) not found: {string.Join(", ", missing)}");
 
             var normalized = request.Tricks
-                .Select(t => new BuildComboTrickItem(
-                    t.TrickId,
-                    t.Position,
-                    t.StrongFoot,
-                    t.NoTouch && trickMap[t.TrickId].CrossOver
-                ))
+                .Select(t => trickMap[t.TrickId].IsTransition
+                    ? new BuildComboTrickItem(t.TrickId, t.Position, false, false)
+                    : new BuildComboTrickItem(t.TrickId, t.Position, t.StrongFoot, t.NoTouch && trickMap[t.TrickId].CrossOver))
                 .ToList();
 
             var ordered = normalized.OrderBy(t => t.Position).ToList();

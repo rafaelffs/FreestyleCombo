@@ -37,7 +37,7 @@ interface SlotItem extends BuildComboTrickItem {
 function applyNoTouchRules(slots: SlotItem[]): SlotItem[] {
   return slots.map((slot, i) => {
     const afterTransition = i === 0 || slots[i - 1].isTransition
-    return slot.crossOver && !afterTransition ? slot : { ...slot, noTouch: false }
+    return slot.crossOver && !afterTransition && !slot.isTransition ? slot : { ...slot, noTouch: false }
   })
 }
 
@@ -510,12 +510,12 @@ export function CreateComboPage() {
                     <span className="font-mono text-xs font-semibold text-gray-900">{slot.abbreviation}</span>
                     <span className="ml-1.5 text-sm text-gray-500">{slot.trickName}</span>
                   </div>
-                  <label className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer">
-                    <input type="checkbox" checked={slot.strongFoot} onChange={() => toggleStrongFoot(i)} className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600" />
+                  <label className={`flex items-center gap-1 text-xs cursor-pointer ${slot.isTransition ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}`}>
+                    <input type="checkbox" checked={slot.strongFoot} onChange={() => toggleStrongFoot(i)} disabled={slot.isTransition} className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 disabled:opacity-40" />
                     SF
                   </label>
                   {(() => {
-                    const ntDisabled = !slot.crossOver || i === 0 || slots[i - 1].isTransition
+                    const ntDisabled = slot.isTransition || !slot.crossOver || i === 0 || slots[i - 1].isTransition
                     return (
                       <label className={`flex items-center gap-1 text-xs cursor-pointer ${ntDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}`}>
                         <input type="checkbox" checked={slot.noTouch} onChange={() => toggleNoTouch(i)} disabled={ntDisabled} className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 disabled:opacity-40" />
