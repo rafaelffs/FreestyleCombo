@@ -43,7 +43,9 @@ public class GetPendingComboReviewsHandler : IRequestHandler<GetPendingComboRevi
             }).ToList(),
             AverageRating = 0,
             TotalRatings = 0,
-            IsFavourited = false
+            IsFavourited = false,
+            IsCompleted = false,
+            CompletionCount = 0
         }).ToList();
     }
 }
