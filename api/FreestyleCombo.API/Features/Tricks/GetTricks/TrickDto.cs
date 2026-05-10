@@ -1,3 +1,25 @@
+using FreestyleCombo.API.Features.Combos.GenerateCombo;
+
 namespace FreestyleCombo.API.Features.Tricks.GetTricks;
 
 public record TrickDto(Guid Id, string Name, string Abbreviation, bool CrossOver, bool Knee, decimal Revolution, int Difficulty, int CommonLevel, bool IsTransition, string? CreatedBy, DateOnly? DateCreated, string? Notes);
+
+public class TrickListItemDto
+{
+    public string Type { get; set; } = "trick";  // "trick" | "combo"
+
+    // Populated when Type == "trick" (all existing trick fields)
+    public Guid? Id { get; set; }
+    public string? Name { get; set; }
+    public string? Abbreviation { get; set; }
+    public bool CrossOver { get; set; }
+    public bool Knee { get; set; }
+    public decimal Revolution { get; set; }
+    public int Difficulty { get; set; }
+    public bool IsTransition { get; set; }
+
+    // Populated when Type == "combo"
+    public decimal? AverageDifficulty { get; set; }
+    public int? TrickCount { get; set; }
+    public List<ComboTrickDto>? Tricks { get; set; }
+}

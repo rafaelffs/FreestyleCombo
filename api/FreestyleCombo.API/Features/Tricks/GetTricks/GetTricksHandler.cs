@@ -3,15 +3,26 @@ using MediatR;
 
 namespace FreestyleCombo.API.Features.Tricks.GetTricks;
 
-public class GetTricksHandler : IRequestHandler<GetTricksQuery, List<TrickDto>>
+public class GetTricksHandler : IRequestHandler<GetTricksQuery, List<TrickListItemDto>>
 {
     private readonly ITrickRepository _repo;
 
     public GetTricksHandler(ITrickRepository repo) => _repo = repo;
 
-    public async Task<List<TrickDto>> Handle(GetTricksQuery request, CancellationToken cancellationToken)
+    public async Task<List<TrickListItemDto>> Handle(GetTricksQuery request, CancellationToken cancellationToken)
     {
         var tricks = await _repo.GetAllAsync(request.CrossOver, request.Knee, request.MaxDifficulty, cancellationToken);
-        return tricks.Select(t => new TrickDto(t.Id, t.Name, t.Abbreviation, t.CrossOver, t.Knee, t.Revolution, t.Difficulty, t.CommonLevel, t.IsTransition, t.CreatedBy, t.DateCreated, t.Notes)).ToList();
+        return tricks.Select(t => new TrickListItemDto
+        {
+            Type = "trick",
+            Id = t.Id,
+            Name = t.Name,
+            Abbreviation = t.Abbreviation,
+            CrossOver = t.CrossOver,
+            Knee = t.Knee,
+            Revolution = t.Revolution,
+            Difficulty = t.Difficulty,
+            IsTransition = t.IsTransition
+        }).ToList();
     }
 }

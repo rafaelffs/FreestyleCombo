@@ -19,9 +19,12 @@ public class GenerateComboResponse
 
 public class ComboTrickDto
 {
-    public Guid TrickId { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Abbreviation { get; set; } = string.Empty;
+    public string Type { get; set; } = "trick";  // "trick" | "combo"
+
+    // Populated when Type == "trick"
+    public Guid? TrickId { get; set; }
+    public string? Name { get; set; }
+    public string? Abbreviation { get; set; }
     public int Position { get; set; }
     public bool StrongFoot { get; set; }
     public bool NoTouch { get; set; }
@@ -29,4 +32,9 @@ public class ComboTrickDto
     public decimal Revolution { get; set; }
     public bool CrossOver { get; set; }
     public bool IsTransition { get; set; }
+
+    // Populated when Type == "combo"
+    public Guid? SubComboId { get; set; }
+    public string? SubComboName { get; set; }
+    public List<ComboTrickDto>? SubComboTricks { get; set; }
 }

@@ -17,7 +17,7 @@ public class TricksController : ControllerBase
     public TricksController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
-    [ProducesResponseType(typeof(List<TrickDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<TrickListItemDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetTricks(
         [FromQuery] bool? crossOver,
         [FromQuery] bool? knee,
