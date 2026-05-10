@@ -11,6 +11,8 @@ public interface IComboRepository
     Task<List<Combo>> GetFavouritedByUserAsync(Guid userId, CancellationToken ct = default);
     Task<List<Combo>> GetPendingReviewAsync(CancellationToken ct = default);
     Task<int> GetPendingReviewCountAsync(CancellationToken ct = default);
+    Task<List<Combo>> GetReusableAsync(CancellationToken ct = default);
+    Task<bool> IsReferencedAsSubComboAsync(Guid comboId, CancellationToken ct = default);
     Task AddAsync(Combo combo, CancellationToken ct = default);
     Task UpdateAsync(Combo combo, CancellationToken ct = default);
     Task ReplaceComboTricksAsync(Guid comboId, IEnumerable<ComboTrick> newTricks, CancellationToken ct = default);

@@ -14,6 +14,8 @@ public class ComboRepository : IComboRepository
     public async Task<Combo?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
         await _db.Combos
             .Include(c => c.ComboTricks).ThenInclude(ct2 => ct2.Trick)
+            .Include(c => c.ComboTricks).ThenInclude(ct2 => ct2.SubCombo)
+                .ThenInclude(sc => sc!.ComboTricks).ThenInclude(sct => sct.Trick)
             .Include(c => c.Ratings)
             .Include(c => c.Owner)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
@@ -22,6 +24,8 @@ public class ComboRepository : IComboRepository
     {
         var query = _db.Combos
             .Include(c => c.ComboTricks).ThenInclude(ct2 => ct2.Trick)
+            .Include(c => c.ComboTricks).ThenInclude(ct2 => ct2.SubCombo)
+                .ThenInclude(sc => sc!.ComboTricks).ThenInclude(sct => sct.Trick)
             .Include(c => c.Ratings)
             .Include(c => c.Owner)
             .Where(c => c.Visibility == ComboVisibility.Public);
@@ -54,6 +58,8 @@ public class ComboRepository : IComboRepository
     {
         var query = _db.Combos
             .Include(c => c.ComboTricks).ThenInclude(ct2 => ct2.Trick)
+            .Include(c => c.ComboTricks).ThenInclude(ct2 => ct2.SubCombo)
+                .ThenInclude(sc => sc!.ComboTricks).ThenInclude(sct => sct.Trick)
             .Include(c => c.Ratings)
             .Include(c => c.Owner)
             .Where(c => c.OwnerId == ownerId);
@@ -74,6 +80,8 @@ public class ComboRepository : IComboRepository
     {
         var query = _db.Combos
             .Include(c => c.ComboTricks).ThenInclude(ct2 => ct2.Trick)
+            .Include(c => c.ComboTricks).ThenInclude(ct2 => ct2.SubCombo)
+                .ThenInclude(sc => sc!.ComboTricks).ThenInclude(sct => sct.Trick)
             .Include(c => c.Ratings)
             .Include(c => c.Owner)
             .Where(c => c.OwnerId == ownerId);
@@ -89,6 +97,8 @@ public class ComboRepository : IComboRepository
     public async Task<List<Combo>> GetFavouritedByUserAsync(Guid userId, CancellationToken ct = default) =>
         await _db.Combos
             .Include(c => c.ComboTricks).ThenInclude(ct2 => ct2.Trick)
+            .Include(c => c.ComboTricks).ThenInclude(ct2 => ct2.SubCombo)
+                .ThenInclude(sc => sc!.ComboTricks).ThenInclude(sct => sct.Trick)
             .Include(c => c.Ratings)
             .Include(c => c.Owner)
             .Where(c => c.FavouritedBy.Any(f => f.UserId == userId))
@@ -101,11 +111,23 @@ public class ComboRepository : IComboRepository
     public async Task<List<Combo>> GetPendingReviewAsync(CancellationToken ct = default) =>
         await _db.Combos
             .Include(c => c.ComboTricks).ThenInclude(ct2 => ct2.Trick)
+            .Include(c => c.ComboTricks).ThenInclude(ct2 => ct2.SubCombo)
+                .ThenInclude(sc => sc!.ComboTricks).ThenInclude(sct => sct.Trick)
             .Include(c => c.Ratings)
             .Include(c => c.Owner)
             .Where(c => c.Visibility == ComboVisibility.PendingReview)
             .OrderBy(c => c.CreatedAt)
             .ToListAsync(ct);
+
+    public async Task<List<Combo>> GetReusableAsync(CancellationToken ct = default) =>
+        await _db.Combos
+            .Where(c => c.IsReusable)
+            .Include(c => c.ComboTricks)
+                .ThenInclude(ct2 => ct2.Trick)
+            .ToListAsync(ct);
+
+    public async Task<bool> IsReferencedAsSubComboAsync(Guid comboId, CancellationToken ct = default) =>
+        await _db.ComboTricks.AnyAsync(ct2 => ct2.SubComboId == comboId, ct);
 
     public async Task AddAsync(Combo combo, CancellationToken ct = default)
     {
