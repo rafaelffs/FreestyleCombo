@@ -176,6 +176,7 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
             AverageDifficulty = combo.AverageDifficulty,
             TrickCount = combo.TrickCount,
             IsPublic = combo.IsPublic,
+            IsReusable = combo.IsReusable,
             Visibility = combo.Visibility.ToString(),
             CreatedAt = combo.CreatedAt,
             DisplayText = displayText,

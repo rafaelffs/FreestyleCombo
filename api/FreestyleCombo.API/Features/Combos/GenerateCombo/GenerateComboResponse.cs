@@ -9,6 +9,7 @@ public class GenerateComboResponse
     public double AverageDifficulty { get; set; }
     public int TrickCount { get; set; }
     public bool IsPublic { get; set; }
+    public bool IsReusable { get; set; }
     public string Visibility { get; set; } = "Private";
     public DateTime CreatedAt { get; set; }
     public string DisplayText { get; set; } = string.Empty;
