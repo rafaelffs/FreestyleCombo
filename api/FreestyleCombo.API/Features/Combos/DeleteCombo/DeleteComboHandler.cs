@@ -28,6 +28,10 @@ public class DeleteComboHandler : IRequestHandler<DeleteComboCommand>
         if (!isAdmin && combo.OwnerId != userId)
             throw new UnauthorizedAccessException("You do not have permission to delete this combo.");
 
+        var isReferenced = await _repo.IsReferencedAsSubComboAsync(request.ComboId, cancellationToken);
+        if (isReferenced)
+            throw new InvalidOperationException("This combo is used as a sub-combo and cannot be deleted.");
+
         await _repo.DeleteAsync(request.ComboId, cancellationToken);
     }
 }

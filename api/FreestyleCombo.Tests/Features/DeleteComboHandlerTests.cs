@@ -46,6 +46,7 @@ public class DeleteComboHandlerTests
     {
         SetupUser(_ownerId);
         _comboRepo.Setup(r => r.GetByIdAsync(_comboId, It.IsAny<CancellationToken>())).ReturnsAsync(OwnerCombo());
+        _comboRepo.Setup(r => r.IsReferencedAsSubComboAsync(_comboId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
         _comboRepo.Setup(r => r.DeleteAsync(_comboId, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         await CreateHandler().Handle(new DeleteComboCommand(_comboId), CancellationToken.None);
@@ -58,6 +59,7 @@ public class DeleteComboHandlerTests
     {
         SetupUser(_adminId, isAdmin: true);
         _comboRepo.Setup(r => r.GetByIdAsync(_comboId, It.IsAny<CancellationToken>())).ReturnsAsync(OwnerCombo());
+        _comboRepo.Setup(r => r.IsReferencedAsSubComboAsync(_comboId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
         _comboRepo.Setup(r => r.DeleteAsync(_comboId, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         await CreateHandler().Handle(new DeleteComboCommand(_comboId), CancellationToken.None);
@@ -85,5 +87,31 @@ public class DeleteComboHandlerTests
         Func<Task> act = () => CreateHandler().Handle(new DeleteComboCommand(_comboId), CancellationToken.None);
 
         await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
+
+    [Fact]
+    public async Task DeleteCombo_ThrowsWhenComboIsReferencedAsSubCombo()
+    {
+        SetupUser(_ownerId);
+        _comboRepo.Setup(r => r.GetByIdAsync(_comboId, It.IsAny<CancellationToken>())).ReturnsAsync(OwnerCombo());
+        _comboRepo.Setup(r => r.IsReferencedAsSubComboAsync(_comboId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        Func<Task> act = () => CreateHandler().Handle(new DeleteComboCommand(_comboId), CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*used as a sub-combo*");
+    }
+
+    [Fact]
+    public async Task DeleteCombo_SucceedsWhenComboIsNotReferenced()
+    {
+        SetupUser(_ownerId);
+        _comboRepo.Setup(r => r.GetByIdAsync(_comboId, It.IsAny<CancellationToken>())).ReturnsAsync(OwnerCombo());
+        _comboRepo.Setup(r => r.IsReferencedAsSubComboAsync(_comboId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        _comboRepo.Setup(r => r.DeleteAsync(_comboId, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        await CreateHandler().Handle(new DeleteComboCommand(_comboId), CancellationToken.None);
+
+        _comboRepo.Verify(r => r.DeleteAsync(_comboId, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

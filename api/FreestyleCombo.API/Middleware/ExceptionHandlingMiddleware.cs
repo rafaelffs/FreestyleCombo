@@ -36,6 +36,7 @@ public class ExceptionHandlingMiddleware
             KeyNotFoundException => (HttpStatusCode.NotFound, exception.Message),
             UnauthorizedAccessException => (HttpStatusCode.Forbidden, exception.Message),
             InvalidOperationException ioe when ioe.Message.Contains("already rated") => (HttpStatusCode.Conflict, ioe.Message),
+            InvalidOperationException ioe when ioe.Message.Contains("used as a sub-combo") => (HttpStatusCode.Conflict, ioe.Message),
             InvalidOperationException => (HttpStatusCode.BadRequest, exception.Message),
             _ => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
         };
