@@ -34,10 +34,19 @@ public class GetComboHandler : IRequestHandler<GetComboQuery, ComboDetailDto>
         var counts = await _completionRepo.GetCompletionCountsAsync([combo.Id], cancellationToken);
         var completionCount = counts.GetValueOrDefault(combo.Id, 0);
 
-        var displayText = string.Join(" ", combo.ComboTricks
-            .Where(ct => ct.TrickId.HasValue)
-            .OrderBy(ct => ct.Position)
-            .Select(ct => ct.NoTouch ? $"{ct.Trick!.Abbreviation}(nt)" : ct.Trick!.Abbreviation));
+        var displayText = string.Join(" ", combo.ComboTricks.OrderBy(ct => ct.Position).Select(ct =>
+        {
+            if (ct.TrickId.HasValue)
+                return ct.NoTouch ? $"{ct.Trick!.Abbreviation}(nt)" : ct.Trick!.Abbreviation;
+            else
+            {
+                var inner = string.Join(" ", ct.SubCombo!.ComboTricks
+                    .Where(sct => sct.TrickId.HasValue)
+                    .OrderBy(sct => sct.Position)
+                    .Select(sct => sct.Trick!.Abbreviation));
+                return $"[{ct.SubCombo.Name}: {inner}]";
+            }
+        }));
 
         var avgRating = combo.Ratings.Any() ? combo.Ratings.Average(r => r.Score) : 0;
 
@@ -59,18 +68,46 @@ public class GetComboHandler : IRequestHandler<GetComboQuery, ComboDetailDto>
             IsFavourited = isFavourited,
             IsCompleted = isCompleted,
             CompletionCount = completionCount,
-            Tricks = combo.ComboTricks.Where(ct => ct.TrickId.HasValue).OrderBy(ct => ct.Position).Select(ct => new ComboTrickDto
+            Tricks = combo.ComboTricks.OrderBy(ct => ct.Position).Select(ct =>
             {
-                TrickId = ct.TrickId!.Value,
-                Name = ct.Trick!.Name,
-                Abbreviation = ct.Trick.Abbreviation,
-                Position = ct.Position,
-                StrongFoot = ct.StrongFoot,
-                NoTouch = ct.NoTouch,
-                Difficulty = ct.Trick.Difficulty,
-                Revolution = ct.Trick.Revolution,
-                CrossOver = ct.Trick.CrossOver,
-                IsTransition = ct.Trick.IsTransition
+                if (ct.TrickId.HasValue)
+                    return new ComboTrickDto
+                    {
+                        Type = "trick",
+                        TrickId = ct.TrickId,
+                        Name = ct.Trick!.Name,
+                        Abbreviation = ct.Trick.Abbreviation,
+                        Position = ct.Position,
+                        StrongFoot = ct.StrongFoot,
+                        NoTouch = ct.NoTouch,
+                        Difficulty = ct.Trick.Difficulty,
+                        Revolution = ct.Trick.Revolution,
+                        CrossOver = ct.Trick.CrossOver,
+                        IsTransition = ct.Trick.IsTransition
+                    };
+                else
+                    return new ComboTrickDto
+                    {
+                        Type = "combo",
+                        SubComboId = ct.SubComboId,
+                        SubComboName = ct.SubCombo?.Name,
+                        Position = ct.Position,
+                        SubComboTricks = ct.SubCombo?.ComboTricks
+                            .Where(sct => sct.TrickId.HasValue)
+                            .OrderBy(sct => sct.Position)
+                            .Select(sct => new ComboTrickDto
+                            {
+                                Type = "trick",
+                                TrickId = sct.TrickId,
+                                Name = sct.Trick!.Name,
+                                Abbreviation = sct.Trick.Abbreviation,
+                                Position = sct.Position,
+                                Difficulty = sct.Trick.Difficulty,
+                                Revolution = sct.Trick.Revolution,
+                                CrossOver = sct.Trick.CrossOver,
+                                IsTransition = sct.Trick.IsTransition
+                            }).ToList()
+                    };
             }).ToList()
         };
     }
