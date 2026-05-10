@@ -176,7 +176,9 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
             // No tricks replaced — reconstruct from existing combo tricks (already normalized in DB)
             var existingTrickRows = combo.ComboTricks.Where(ct => ct.TrickId.HasValue).OrderBy(t => t.Position).ToList();
             responseTrickMap = existingTrickRows.ToDictionary(ct => ct.TrickId!.Value, ct => ct.Trick!);
-            responseSubComboMap = new Dictionary<Guid, Combo>();
+            responseSubComboMap = combo.ComboTricks
+                .Where(ct => ct.SubComboId.HasValue && ct.SubCombo != null)
+                .ToDictionary(ct => ct.SubComboId!.Value, ct => ct.SubCombo!);
             allSlotsForResponse = combo.ComboTricks.OrderBy(ct => ct.Position).Select(ct =>
                 new BuildComboTrickItem(ct.TrickId, ct.SubComboId, ct.Position, ct.StrongFoot, ct.NoTouch)
             ).ToList();
