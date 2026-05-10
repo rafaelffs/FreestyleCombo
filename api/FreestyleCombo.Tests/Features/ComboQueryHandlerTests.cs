@@ -232,8 +232,8 @@ public class ComboQueryHandlerTests
             combo.Id,
             "  Updated Combo  ",
             [
-                new BuildComboTrickItem(nonCrossOver.Id, 2, true, true),
-                new BuildComboTrickItem(crossOver.Id, 1, false, true)
+                new BuildComboTrickItem(nonCrossOver.Id, null, 2, true, true),
+                new BuildComboTrickItem(crossOver.Id, null, 1, false, true)
             ]), CancellationToken.None);
 
         combo.Name.Should().Be("Updated Combo");
@@ -325,7 +325,7 @@ public class ComboQueryHandlerTests
 
         var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId), userManager.Object);
         Func<Task> act = () => handler.Handle(
-            new UpdateComboCommand(combo.Id, null, [new BuildComboTrickItem(Guid.NewGuid(), 1, true, false)]),
+            new UpdateComboCommand(combo.Id, null, [new BuildComboTrickItem(Guid.NewGuid(), null, 1, true, false)]),
             CancellationToken.None);
 
         await act.Should().ThrowAsync<KeyNotFoundException>();

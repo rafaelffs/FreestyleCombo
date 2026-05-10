@@ -28,7 +28,7 @@ public class ValidatorTests
     {
         var validator = new BuildComboValidator();
         var result = validator.Validate(new BuildComboCommand(
-            [new BuildComboTrickItem(Guid.NewGuid(), 0, true, false)]));
+            [new BuildComboTrickItem(Guid.NewGuid(), null, 0, true, false)]));
 
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName.Contains("Position"));
@@ -39,7 +39,7 @@ public class ValidatorTests
     {
         var validator = new BuildComboValidator();
         var result = validator.Validate(new BuildComboCommand(
-            [new BuildComboTrickItem(Guid.NewGuid(), 1, true, false)]));
+            [new BuildComboTrickItem(Guid.NewGuid(), null, 1, true, false)]));
 
         result.IsValid.Should().BeTrue();
     }

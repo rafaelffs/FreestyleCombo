@@ -49,7 +49,7 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
         // Update tricks if provided
         if (request.Tricks is { Count: > 0 })
         {
-            var trickIds = request.Tricks.Select(t => t.TrickId).Distinct().ToList();
+            var trickIds = request.Tricks.Select(t => t.TrickId!.Value).Distinct().ToList();
             var allTricks = await _trickRepo.GetAllAsync(ct: cancellationToken);
             trickMap = allTricks.Where(t => trickIds.Contains(t.Id)).ToDictionary(t => t.Id);
 
@@ -58,9 +58,9 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
                 throw new KeyNotFoundException($"Trick(s) not found: {string.Join(", ", missing)}");
 
             var normalized = request.Tricks
-                .Select(t => trickMap[t.TrickId].IsTransition
-                    ? new BuildComboTrickItem(t.TrickId, t.Position, false, false)
-                    : new BuildComboTrickItem(t.TrickId, t.Position, t.StrongFoot, t.NoTouch && trickMap[t.TrickId].CrossOver))
+                .Select(t => trickMap[t.TrickId!.Value].IsTransition
+                    ? new BuildComboTrickItem(t.TrickId, null, t.Position, false, false)
+                    : new BuildComboTrickItem(t.TrickId, null, t.Position, t.StrongFoot, t.NoTouch && trickMap[t.TrickId!.Value].CrossOver))
                 .ToList();
 
             var ordered = normalized.OrderBy(t => t.Position).ToList();
@@ -78,7 +78,7 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
             await _comboRepo.ReplaceComboTricksAsync(combo.Id, newComboTricks, cancellationToken);
 
             combo.TrickCount = ordered.Count;
-            combo.AverageDifficulty = Math.Round(ordered.Average(t => (double)trickMap[t.TrickId].Difficulty), 1);
+            combo.AverageDifficulty = Math.Round(ordered.Average(t => (double)trickMap[t.TrickId!.Value].Difficulty), 1);
         }
 
         // If the combo was public, it must go back through admin review — unless the editor is an admin

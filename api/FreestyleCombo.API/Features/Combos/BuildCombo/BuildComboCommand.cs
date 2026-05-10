@@ -10,7 +10,8 @@ public record BuildComboCommand(
 ) : IRequest<GenerateComboResponse>;
 
 public record BuildComboTrickItem(
-    Guid TrickId,
+    Guid? TrickId,
+    Guid? SubComboId,
     int Position,
     bool StrongFoot,
     bool NoTouch
