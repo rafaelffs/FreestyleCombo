@@ -14,6 +14,7 @@ using FreestyleCombo.API.Features.Combos.GetPublicCombos;
 using FreestyleCombo.API.Features.Combos.PreviewCombo;
 using FreestyleCombo.API.Features.Combos.RejectComboVisibility;
 using FreestyleCombo.API.Features.Combos.RemoveFavourite;
+using FreestyleCombo.API.Features.Combos.SetReusable;
 using FreestyleCombo.API.Features.Combos.UpdateCombo;
 using FreestyleCombo.API.Features.Combos.UpdateVisibility;
 using MediatR;
@@ -155,6 +156,17 @@ public class CombosController : ControllerBase
         return Ok();
     }
 
+    [HttpPut("{id:guid}/reusable")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(GenerateComboResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetReusable(Guid id, [FromBody] SetReusableRequest body, CancellationToken ct)
+    {
+        var response = await _mediator.Send(new SetReusableCommand(id, body.IsReusable), ct);
+        return Ok(response);
+    }
+
     [HttpGet("favourites")]
     [Authorize]
     [ProducesResponseType(typeof(List<PublicComboDto>), StatusCodes.Status200OK)]
@@ -208,3 +220,4 @@ public class CombosController : ControllerBase
 
 public record UpdateVisibilityRequest(bool IsPublic);
 public record UpdateComboRequest(string? Name, List<BuildComboTrickItem>? Tricks);
+public record SetReusableRequest(bool IsReusable);
