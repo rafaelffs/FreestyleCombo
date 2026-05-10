@@ -100,13 +100,13 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
         }
         else
         {
-            responseRow = combo.ComboTricks.OrderBy(t => t.Position).ToList();
-            responseTricks = responseRow.ToDictionary(ct => ct.TrickId, ct => ct.Trick!);
+            responseRow = combo.ComboTricks.Where(ct => ct.TrickId.HasValue).OrderBy(t => t.Position).ToList();
+            responseTricks = responseRow.ToDictionary(ct => ct.TrickId!.Value, ct => ct.Trick!);
         }
 
         var displayText = string.Join(" ", responseRow.Select(ct =>
         {
-            var trick = responseTricks[ct.TrickId];
+            var trick = responseTricks[ct.TrickId!.Value];
             return ct.NoTouch ? $"{trick.Abbreviation}(nt)" : trick.Abbreviation;
         }));
 
@@ -126,7 +126,7 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
             Warnings = [],
             Tricks = responseRow.Select(ct =>
             {
-                var trick = responseTricks[ct.TrickId];
+                var trick = responseTricks[ct.TrickId!.Value];
                 return new ComboTrickDto
                 {
                     TrickId = trick.Id,

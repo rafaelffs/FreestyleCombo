@@ -33,12 +33,12 @@ public class GetFavouritedCombosHandler : IRequestHandler<GetFavouritedCombosQue
             IsPublic = c.IsPublic,
             Visibility = c.Visibility.ToString(),
             CreatedAt = c.CreatedAt,
-            DisplayText = string.Join(" ", c.ComboTricks.OrderBy(ct => ct.Position).Select(ct => ct.NoTouch ? $"{ct.Trick.Abbreviation}(nt)" : ct.Trick.Abbreviation)),
+            DisplayText = string.Join(" ", c.ComboTricks.Where(ct => ct.TrickId.HasValue).OrderBy(ct => ct.Position).Select(ct => ct.NoTouch ? $"{ct.Trick!.Abbreviation}(nt)" : ct.Trick!.Abbreviation)),
             AiDescription = c.AiDescription,
-            Tricks = c.ComboTricks.OrderBy(ct => ct.Position).Select(ct => new ComboTrickDto
+            Tricks = c.ComboTricks.Where(ct => ct.TrickId.HasValue).OrderBy(ct => ct.Position).Select(ct => new ComboTrickDto
             {
-                TrickId = ct.TrickId,
-                Name = ct.Trick.Name,
+                TrickId = ct.TrickId!.Value,
+                Name = ct.Trick!.Name,
                 Abbreviation = ct.Trick.Abbreviation,
                 Position = ct.Position,
                 StrongFoot = ct.StrongFoot,

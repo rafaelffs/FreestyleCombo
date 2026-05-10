@@ -35,8 +35,9 @@ public class GetComboHandler : IRequestHandler<GetComboQuery, ComboDetailDto>
         var completionCount = counts.GetValueOrDefault(combo.Id, 0);
 
         var displayText = string.Join(" ", combo.ComboTricks
+            .Where(ct => ct.TrickId.HasValue)
             .OrderBy(ct => ct.Position)
-            .Select(ct => ct.NoTouch ? $"{ct.Trick.Abbreviation}(nt)" : ct.Trick.Abbreviation));
+            .Select(ct => ct.NoTouch ? $"{ct.Trick!.Abbreviation}(nt)" : ct.Trick!.Abbreviation));
 
         var avgRating = combo.Ratings.Any() ? combo.Ratings.Average(r => r.Score) : 0;
 
@@ -58,10 +59,10 @@ public class GetComboHandler : IRequestHandler<GetComboQuery, ComboDetailDto>
             IsFavourited = isFavourited,
             IsCompleted = isCompleted,
             CompletionCount = completionCount,
-            Tricks = combo.ComboTricks.OrderBy(ct => ct.Position).Select(ct => new ComboTrickDto
+            Tricks = combo.ComboTricks.Where(ct => ct.TrickId.HasValue).OrderBy(ct => ct.Position).Select(ct => new ComboTrickDto
             {
-                TrickId = ct.TrickId,
-                Name = ct.Trick.Name,
+                TrickId = ct.TrickId!.Value,
+                Name = ct.Trick!.Name,
                 Abbreviation = ct.Trick.Abbreviation,
                 Position = ct.Position,
                 StrongFoot = ct.StrongFoot,
