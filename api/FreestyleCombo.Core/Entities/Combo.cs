@@ -13,6 +13,7 @@ public class Combo
     public bool IsPublic => Visibility == ComboVisibility.Public;
     public DateTime CreatedAt { get; set; }
     public string? AiDescription { get; set; }
+    public bool IsReusable { get; set; } = false;
 
     public AppUser Owner { get; set; } = null!;
     public ICollection<ComboTrick> ComboTricks { get; set; } = [];

@@ -19,6 +19,13 @@ public class ComboTrickConfiguration : IEntityTypeConfiguration<ComboTrick>
         builder.HasOne(ct => ct.Trick)
             .WithMany(t => t.ComboTricks)
             .HasForeignKey(ct => ct.TrickId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(ct => ct.SubCombo)
+            .WithMany()
+            .HasForeignKey(ct => ct.SubComboId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
