@@ -27,5 +27,10 @@ public class ComboTrickConfiguration : IEntityTypeConfiguration<ComboTrick>
             .HasForeignKey(ct => ct.SubComboId)
             .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.ToTable("ComboTricks", t => t.HasCheckConstraint(
+            "CK_ComboTrick_TrickOrSubCombo",
+            "(\"TrickId\" IS NOT NULL AND \"SubComboId\" IS NULL) OR (\"TrickId\" IS NULL AND \"SubComboId\" IS NOT NULL)"
+        ));
     }
 }
