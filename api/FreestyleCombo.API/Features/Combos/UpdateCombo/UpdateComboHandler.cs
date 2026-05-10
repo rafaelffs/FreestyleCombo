@@ -45,11 +45,26 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
         // These will be populated only when tricks are replaced
         List<ComboTrick>? newComboTricks = null;
         Dictionary<Guid, Trick>? trickMap = null;
+        Dictionary<Guid, Combo>? subComboMap = null;
+        List<BuildComboTrickItem>? normalizedTricksOuter = null;
+        List<BuildComboTrickItem>? allSlotsOrdered = null;
 
         // Update tricks if provided
         if (request.Tricks is { Count: > 0 })
         {
-            var trickIds = request.Tricks.Select(t => t.TrickId!.Value).Distinct().ToList();
+            // XOR validate: each slot must have exactly one of TrickId / SubComboId
+            if (request.Tricks.Any(t => (t.TrickId == null) == (t.SubComboId == null)))
+                throw new InvalidOperationException("Each slot must have exactly one of TrickId or SubComboId.");
+
+            // Flat constraint: reusable combos cannot contain sub-combo slots
+            if (combo.IsReusable && request.Tricks.Any(t => t.SubComboId != null))
+                throw new InvalidOperationException("Reusable combos cannot contain sub-combo slots.");
+
+            var trickSlots = request.Tricks.Where(t => t.TrickId != null).ToList();
+            var subComboSlots = request.Tricks.Where(t => t.SubComboId != null).ToList();
+
+            // Load and validate tricks
+            var trickIds = trickSlots.Select(t => t.TrickId!.Value).Distinct().ToList();
             var allTricks = await _trickRepo.GetAllAsync(ct: cancellationToken);
             trickMap = allTricks.Where(t => trickIds.Contains(t.Id)).ToDictionary(t => t.Id);
 
@@ -57,28 +72,82 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
             if (missing.Count > 0)
                 throw new KeyNotFoundException($"Trick(s) not found: {string.Join(", ", missing)}");
 
-            var normalized = request.Tricks
+            // Load and validate sub-combos
+            var subComboIds = subComboSlots.Select(t => t.SubComboId!.Value).Distinct().ToList();
+            subComboMap = new Dictionary<Guid, Combo>();
+            foreach (var scId in subComboIds)
+            {
+                var sc = await _comboRepo.GetByIdAsync(scId, cancellationToken)
+                    ?? throw new KeyNotFoundException($"Sub-combo {scId} not found.");
+                if (!sc.IsReusable)
+                    throw new InvalidOperationException($"Combo {scId} is not reusable.");
+                if (sc.ComboTricks.Any(ct => ct.SubComboId != null))
+                    throw new InvalidOperationException($"Reusable combo {scId} contains nested sub-combos.");
+                subComboMap[scId] = sc;
+            }
+
+            // Normalize trick slots: strip NoTouch/StrongFoot from transitions; strip NoTouch from non-CrossOver
+            var normalizedTricks = trickSlots
                 .Select(t => trickMap[t.TrickId!.Value].IsTransition
-                    ? new BuildComboTrickItem(t.TrickId, null, t.Position, false, false)
-                    : new BuildComboTrickItem(t.TrickId, null, t.Position, t.StrongFoot, t.NoTouch && trickMap[t.TrickId!.Value].CrossOver))
+                    ? t with { NoTouch = false, StrongFoot = false }
+                    : t with { NoTouch = t.NoTouch && trickMap[t.TrickId!.Value].CrossOver })
                 .ToList();
 
-            var ordered = normalized.OrderBy(t => t.Position).ToList();
+            // Calculate TrickCount (direct tricks + expanded sub-combo tricks)
+            var directTrickCount = normalizedTricks.Count;
+            var subComboTrickCount = subComboSlots.Sum(s => subComboMap[s.SubComboId!.Value].ComboTricks.Count(ct => ct.TrickId != null));
+            var totalTrickCount = directTrickCount + subComboTrickCount;
 
-            // Build new rows; ReplaceComboTricksAsync stages the delete+add without saving.
-            newComboTricks = ordered.Select(t => new ComboTrick
+            // Calculate AverageDifficulty across all tricks
+            var allDifficulties = normalizedTricks
+                .Select(t => (double)trickMap[t.TrickId!.Value].Difficulty)
+                .Concat(subComboSlots.SelectMany(s => subComboMap[s.SubComboId!.Value].ComboTricks
+                    .Where(ct => ct.TrickId != null)
+                    .Select(ct => (double)ct.Trick!.Difficulty)))
+                .ToList();
+            var avgDifficulty = totalTrickCount > 0 ? Math.Round(allDifficulties.Average(), 1) : 0;
+
+            // Order all slots by position
+            var allSlots = request.Tricks.OrderBy(t => t.Position).ToList();
+            allSlotsOrdered = allSlots;
+            normalizedTricksOuter = normalizedTricks;
+
+            // Build new ComboTrick rows
+            newComboTricks = allSlots.Select(t =>
             {
-                Id = Guid.NewGuid(),
-                ComboId = combo.Id,
-                TrickId = t.TrickId,
-                Position = t.Position,
-                StrongFoot = t.StrongFoot,
-                NoTouch = t.NoTouch,
+                if (t.TrickId != null)
+                {
+                    var norm = normalizedTricks.First(n => n.Position == t.Position);
+                    return new ComboTrick
+                    {
+                        Id = Guid.NewGuid(),
+                        ComboId = combo.Id,
+                        TrickId = t.TrickId,
+                        SubComboId = null,
+                        Position = t.Position,
+                        StrongFoot = norm.StrongFoot,
+                        NoTouch = norm.NoTouch
+                    };
+                }
+                else
+                {
+                    return new ComboTrick
+                    {
+                        Id = Guid.NewGuid(),
+                        ComboId = combo.Id,
+                        TrickId = null,
+                        SubComboId = t.SubComboId,
+                        Position = t.Position,
+                        StrongFoot = false,
+                        NoTouch = false
+                    };
+                }
             }).ToList();
+
             await _comboRepo.ReplaceComboTricksAsync(combo.Id, newComboTricks, cancellationToken);
 
-            combo.TrickCount = ordered.Count;
-            combo.AverageDifficulty = Math.Round(ordered.Average(t => (double)trickMap[t.TrickId!.Value].Difficulty), 1);
+            combo.TrickCount = totalTrickCount;
+            combo.AverageDifficulty = avgDifficulty;
         }
 
         // If the combo was public, it must go back through admin review — unless the editor is an admin
@@ -89,26 +158,101 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
 
         var owner = await _userManager.FindByIdAsync(combo.OwnerId.ToString());
 
-        // Resolve trick data for response
-        List<ComboTrick> responseRow;
-        Dictionary<Guid, Trick> responseTricks;
+        // Resolve slot data for response
+        List<BuildComboTrickItem> allSlotsForResponse;
+        List<BuildComboTrickItem> normalizedTricksForResponse;
+        Dictionary<Guid, Trick> responseTrickMap;
+        Dictionary<Guid, Combo> responseSubComboMap;
 
-        if (newComboTricks != null && trickMap != null)
+        if (newComboTricks != null && trickMap != null && subComboMap != null && allSlotsOrdered != null && normalizedTricksOuter != null)
         {
-            responseRow = newComboTricks.OrderBy(t => t.Position).ToList();
-            responseTricks = trickMap;
+            allSlotsForResponse = allSlotsOrdered;
+            normalizedTricksForResponse = normalizedTricksOuter;
+            responseTrickMap = trickMap;
+            responseSubComboMap = subComboMap;
         }
         else
         {
-            responseRow = combo.ComboTricks.Where(ct => ct.TrickId.HasValue).OrderBy(t => t.Position).ToList();
-            responseTricks = responseRow.ToDictionary(ct => ct.TrickId!.Value, ct => ct.Trick!);
+            // No tricks replaced — reconstruct from existing combo tricks (already normalized in DB)
+            var existingTrickRows = combo.ComboTricks.Where(ct => ct.TrickId.HasValue).OrderBy(t => t.Position).ToList();
+            responseTrickMap = existingTrickRows.ToDictionary(ct => ct.TrickId!.Value, ct => ct.Trick!);
+            responseSubComboMap = new Dictionary<Guid, Combo>();
+            allSlotsForResponse = combo.ComboTricks.OrderBy(ct => ct.Position).Select(ct =>
+                new BuildComboTrickItem(ct.TrickId, ct.SubComboId, ct.Position, ct.StrongFoot, ct.NoTouch)
+            ).ToList();
+            // In the no-replace path, slots are already normalized (stored values)
+            normalizedTricksForResponse = allSlotsForResponse.Where(t => t.TrickId != null).ToList();
         }
 
-        var displayText = string.Join(" ", responseRow.Select(ct =>
+        // Build DisplayText
+        var displayText = string.Join(" ", allSlotsForResponse.Select(t =>
         {
-            var trick = responseTricks[ct.TrickId!.Value];
-            return ct.NoTouch ? $"{trick.Abbreviation}(nt)" : trick.Abbreviation;
+            if (t.TrickId != null)
+            {
+                var trick = responseTrickMap[t.TrickId!.Value];
+                var norm = normalizedTricksForResponse.First(n => n.Position == t.Position);
+                return norm.NoTouch ? $"{trick.Abbreviation}(nt)" : trick.Abbreviation;
+            }
+            else
+            {
+                var sc = responseSubComboMap[t.SubComboId!.Value];
+                var inner = string.Join(" ", sc.ComboTricks
+                    .Where(ct => ct.TrickId != null)
+                    .OrderBy(ct => ct.Position)
+                    .Select(ct => ct.Trick!.Abbreviation));
+                return $"[{sc.Name}: {inner}]";
+            }
         }));
+
+        // Build response Tricks list
+        var responseTricks = allSlotsForResponse.Select(t =>
+        {
+            if (t.TrickId != null)
+            {
+                var trick = responseTrickMap[t.TrickId!.Value];
+                var norm = normalizedTricksForResponse.First(n => n.Position == t.Position);
+                return new ComboTrickDto
+                {
+                    Type = "trick",
+                    TrickId = trick.Id,
+                    Name = trick.Name,
+                    Abbreviation = trick.Abbreviation,
+                    Position = t.Position,
+                    StrongFoot = norm.StrongFoot,
+                    NoTouch = norm.NoTouch,
+                    Difficulty = trick.Difficulty,
+                    Revolution = trick.Revolution,
+                    CrossOver = trick.CrossOver,
+                    IsTransition = trick.IsTransition
+                };
+            }
+            else
+            {
+                var sc = responseSubComboMap[t.SubComboId!.Value];
+                return new ComboTrickDto
+                {
+                    Type = "combo",
+                    SubComboId = sc.Id,
+                    SubComboName = sc.Name,
+                    Position = t.Position,
+                    SubComboTricks = sc.ComboTricks
+                        .Where(ct => ct.TrickId != null)
+                        .OrderBy(ct => ct.Position)
+                        .Select(ct => new ComboTrickDto
+                        {
+                            Type = "trick",
+                            TrickId = ct.TrickId,
+                            Name = ct.Trick!.Name,
+                            Abbreviation = ct.Trick.Abbreviation,
+                            Position = ct.Position,
+                            Difficulty = ct.Trick.Difficulty,
+                            Revolution = ct.Trick.Revolution,
+                            CrossOver = ct.Trick.CrossOver,
+                            IsTransition = ct.Trick.IsTransition
+                        }).ToList()
+                };
+            }
+        }).ToList();
 
         return new GenerateComboResponse
         {
@@ -125,23 +269,7 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
             DisplayText = displayText,
             AiDescription = combo.AiDescription,
             Warnings = [],
-            Tricks = responseRow.Select(ct =>
-            {
-                var trick = responseTricks[ct.TrickId!.Value];
-                return new ComboTrickDto
-                {
-                    TrickId = trick.Id,
-                    Name = trick.Name,
-                    Abbreviation = trick.Abbreviation,
-                    Position = ct.Position,
-                    StrongFoot = ct.StrongFoot,
-                    NoTouch = ct.NoTouch,
-                    Difficulty = trick.Difficulty,
-                    Revolution = trick.Revolution,
-                    CrossOver = trick.CrossOver,
-                    IsTransition = trick.IsTransition
-                };
-            }).ToList()
+            Tricks = responseTricks
         };
     }
 }
