@@ -124,6 +124,10 @@ public class ComboRepository : IComboRepository
             .Where(c => c.IsReusable)
             .Include(c => c.ComboTricks)
                 .ThenInclude(ct2 => ct2.Trick)
+            .Include(c => c.ComboTricks)
+                .ThenInclude(ct2 => ct2.SubCombo)
+                    .ThenInclude(sc => sc!.ComboTricks)
+                        .ThenInclude(sct => sct.Trick)
             .ToListAsync(ct);
 
     public async Task<bool> IsReferencedAsSubComboAsync(Guid comboId, CancellationToken ct = default) =>
