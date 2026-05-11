@@ -179,7 +179,10 @@
     "comboSlotCount": "Combo ({{count}} tricks)",
     "noTricksAdded": "No tricks added.",
     "saveChanges": "Save changes",
-    "updateFailed": "Update failed"
+    "updateFailed": "Update failed",
+    "tricks": "tricks",
+    "subComboExpand": "Show tricks",
+    "subComboCollapse": "Hide tricks"
   },
   "tricks": {
     "pageTitle": "Tricks",

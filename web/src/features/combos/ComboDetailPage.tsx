@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { GripVertical } from 'lucide-react'
+import { GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
 import { combosApi, tricksApi, extractError, type BuildComboTrickItem, type TrickItem } from '@/lib/api'
 import { getUserId, isAdmin } from '@/lib/auth'
 import { SEO } from '@/components/SEO'
@@ -41,6 +41,7 @@ export function ComboDetailPage() {
   const { t } = useTranslation()
   const [ratingOpen, setRatingOpen] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [expandedSubCombos, setExpandedSubCombos] = useState<Set<number>>(new Set())
 
   // Edit state
   const [editName, setEditName] = useState('')
@@ -238,25 +239,68 @@ export function ComboDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(combo.tricks ?? []).map((trick) => (
-                    trick.type === 'trick' ? (
-                    <tr key={trick.position} className="border-b last:border-0">
-                      <td className="py-1.5 pr-4 text-gray-500">{trick.position}</td>
-                      <td className="py-1.5 pr-4 font-medium">{trick.name}</td>
-                      <td className="py-1.5 pr-4 font-mono text-xs">{trick.abbreviation}</td>
-                      <td className="py-1.5 pr-4">{trick.difficulty}</td>
-                      <td className="py-1.5 pr-4">{trick.strongFoot ? t('comboDetail.footStrong') : t('comboDetail.footWeak')}</td>
-                      <td className="py-1.5">{trick.noTouch ? '✓' : '—'}</td>
-                    </tr>
-                    ) : (
-                    <tr key={trick.position} className="border-b last:border-0">
-                      <td className="py-1.5 pr-4 text-gray-500">{trick.position}</td>
-                      <td className="py-1.5 pr-4 font-medium italic text-indigo-700" colSpan={5}>
-                        {trick.subComboName ?? 'Sub-combo'} ({trick.subComboTricks.length} tricks)
-                      </td>
-                    </tr>
+                  {(combo.tricks ?? []).map((trick) => {
+                    if (trick.type === 'trick') {
+                      return (
+                        <tr key={trick.position} className="border-b last:border-0">
+                          <td className="py-1.5 pr-4 text-gray-500">{trick.position}</td>
+                          <td className="py-1.5 pr-4 font-medium">{trick.name}</td>
+                          <td className="py-1.5 pr-4 font-mono text-xs">{trick.abbreviation}</td>
+                          <td className="py-1.5 pr-4">{trick.difficulty}</td>
+                          <td className="py-1.5 pr-4">{trick.strongFoot ? t('comboDetail.footStrong') : t('comboDetail.footWeak')}</td>
+                          <td className="py-1.5">{trick.noTouch ? '✓' : '—'}</td>
+                        </tr>
+                      )
+                    }
+                    // Sub-combo slot
+                    const isExpanded = expandedSubCombos.has(trick.position)
+                    const toggleExpand = () =>
+                      setExpandedSubCombos((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(trick.position)) next.delete(trick.position)
+                        else next.add(trick.position)
+                        return next
+                      })
+                    return (
+                      <>
+                        <tr
+                          key={`subcombо-${trick.position}`}
+                          className="border-b bg-indigo-50"
+                        >
+                          <td className="py-1.5 pr-4 text-gray-500">{trick.position}</td>
+                          <td className="py-1.5 pr-4" colSpan={4}>
+                            <span className="font-semibold text-indigo-800">
+                              {trick.subComboName ?? 'Sub-combo'}
+                            </span>
+                            <span className="ml-1 text-xs text-indigo-500">
+                              ({trick.subComboTricks.length} {t('comboDetail.tricks')})
+                            </span>
+                          </td>
+                          <td className="py-1.5">
+                            <button
+                              type="button"
+                              onClick={toggleExpand}
+                              aria-label={isExpanded ? t('comboDetail.subComboCollapse') : t('comboDetail.subComboExpand')}
+                              className="flex items-center gap-0.5 text-xs text-indigo-600 hover:text-indigo-800"
+                            >
+                              {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                              {isExpanded ? t('comboDetail.subComboCollapse') : t('comboDetail.subComboExpand')}
+                            </button>
+                          </td>
+                        </tr>
+                        {isExpanded && trick.subComboTricks.map((st) => (
+                          <tr key={`subcombо-${trick.position}-${st.position}`} className="border-b last:border-0 bg-indigo-50/40">
+                            <td className="py-1 pr-4 text-gray-400 pl-6 text-xs">{st.position}</td>
+                            <td className="py-1 pr-4 text-gray-600 pl-2 text-sm">{st.name}</td>
+                            <td className="py-1 pr-4 font-mono text-xs text-gray-400">{st.abbreviation}</td>
+                            <td className="py-1 pr-4 text-gray-500 text-xs">{st.difficulty}</td>
+                            <td className="py-1 pr-4 text-gray-500 text-xs">{st.strongFoot ? t('comboDetail.footStrong') : t('comboDetail.footWeak')}</td>
+                            <td className="py-1 text-gray-400 text-xs">{st.noTouch ? '✓' : '—'}</td>
+                          </tr>
+                        ))}
+                      </>
                     )
-                  ))}
+                  })}
                 </tbody>
               </table>
             </div>
