@@ -99,9 +99,15 @@ export function AdminSubmissionsPage() {
                         key={tr.position}
                         className="inline-flex items-center gap-0.5 rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"
                       >
-                        {tr.position}. {tr.abbreviation}
-                        {tr.noTouch && <span className="text-indigo-500">(nt)</span>}
-                        {!tr.strongFoot && <span className="text-orange-500">(wf)</span>}
+                        {tr.type === 'trick' ? (
+                          <>
+                            {tr.position}. {tr.abbreviation}
+                            {tr.noTouch && <span className="text-indigo-500">(nt)</span>}
+                            {!tr.strongFoot && <span className="text-orange-500">(wf)</span>}
+                          </>
+                        ) : (
+                          <>{tr.position}. {tr.subComboName ?? 'Sub-combo'} ({tr.subComboTricks.length})</>
+                        )}
                       </span>
                     ))}
                   </div>

@@ -1,4 +1,28 @@
 import api from './client'
+import type { TrickSlotDto } from './combos'
+
+export interface TrickItem {
+  type: 'trick'
+  id: string
+  name: string
+  abbreviation: string
+  crossOver: boolean
+  knee: boolean
+  revolution: number
+  difficulty: number
+  isTransition: boolean
+}
+
+export interface ComboItem {
+  type: 'combo'
+  id: string
+  name: string
+  averageDifficulty: number
+  trickCount: number
+  tricks: TrickSlotDto[]
+}
+
+export type TrickListItem = TrickItem | ComboItem
 
 export interface TrickDto {
   id: string
@@ -42,7 +66,7 @@ export interface SubmitTrickRequest {
 
 export const tricksApi = {
   getAll: (params?: { crossOver?: boolean; knee?: boolean; maxDifficulty?: number }) =>
-    api.get<TrickDto[]>('/tricks', { params }),
+    api.get<TrickListItem[]>('/tricks', { params }),
   create: (data: Omit<TrickDto, 'id'>) =>
     api.post<{ id: string }>('/tricks', data),
   update: (id: string, data: Omit<TrickDto, 'id'>) =>

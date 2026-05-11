@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { GripVertical } from 'lucide-react'
-import { combosApi, tricksApi, extractError, type BuildComboTrickItem } from '@/lib/api'
+import { combosApi, tricksApi, extractError, type BuildComboTrickItem, type TrickItem } from '@/lib/api'
 import { getUserId, isAdmin } from '@/lib/auth'
 import { SEO } from '@/components/SEO'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -77,7 +77,7 @@ export function ComboDetailPage() {
 
   const { data: tricks = [] } = useQuery({
     queryKey: ['tricks'],
-    queryFn: () => tricksApi.getAll().then((r) => r.data),
+    queryFn: () => tricksApi.getAll().then((r) => r.data.filter((item): item is TrickItem => item.type === 'trick')),
     enabled: editing,
   })
 
@@ -115,16 +115,31 @@ export function ComboDetailPage() {
     setEditName(combo!.name ?? '')
     setEditSlots(
       applyNoTouchRules(
-        (combo!.tricks ?? []).map((t_) => ({
-          trickId: t_.trickId,
-          position: t_.position,
-          strongFoot: t_.strongFoot,
-          noTouch: t_.noTouch,
-          trickName: t_.name ?? '',
-          abbreviation: t_.abbreviation,
-          crossOver: t_.crossOver,
-          isTransition: t_.isTransition,
-        })),
+        (combo!.tricks ?? []).flatMap((t_) => {
+          if (t_.type === 'trick') {
+            return [{
+              trickId: t_.trickId,
+              position: t_.position,
+              strongFoot: t_.strongFoot,
+              noTouch: t_.noTouch,
+              trickName: t_.name ?? '',
+              abbreviation: t_.abbreviation,
+              crossOver: t_.crossOver,
+              isTransition: t_.isTransition,
+            }]
+          }
+          // Sub-combo slots: expand to individual tricks for editing
+          return t_.subComboTricks.map((st) => ({
+            trickId: st.trickId,
+            position: st.position,
+            strongFoot: st.strongFoot,
+            noTouch: st.noTouch,
+            trickName: st.name ?? '',
+            abbreviation: st.abbreviation,
+            crossOver: st.crossOver,
+            isTransition: st.isTransition,
+          }))
+        }),
       ),
     )
     setTrickSearch('')
@@ -224,6 +239,7 @@ export function ComboDetailPage() {
                 </thead>
                 <tbody>
                   {(combo.tricks ?? []).map((trick) => (
+                    trick.type === 'trick' ? (
                     <tr key={trick.position} className="border-b last:border-0">
                       <td className="py-1.5 pr-4 text-gray-500">{trick.position}</td>
                       <td className="py-1.5 pr-4 font-medium">{trick.name}</td>
@@ -232,6 +248,14 @@ export function ComboDetailPage() {
                       <td className="py-1.5 pr-4">{trick.strongFoot ? t('comboDetail.footStrong') : t('comboDetail.footWeak')}</td>
                       <td className="py-1.5">{trick.noTouch ? '✓' : '—'}</td>
                     </tr>
+                    ) : (
+                    <tr key={trick.position} className="border-b last:border-0">
+                      <td className="py-1.5 pr-4 text-gray-500">{trick.position}</td>
+                      <td className="py-1.5 pr-4 font-medium italic text-indigo-700" colSpan={5}>
+                        {trick.subComboName ?? 'Sub-combo'} ({trick.subComboTricks.length} tricks)
+                      </td>
+                    </tr>
+                    )
                   ))}
                 </tbody>
               </table>

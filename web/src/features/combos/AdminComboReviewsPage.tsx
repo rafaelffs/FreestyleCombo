@@ -67,9 +67,15 @@ export function AdminComboReviewsPage() {
                       key={t.position}
                       className="inline-flex items-center gap-0.5 rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"
                     >
-                      {t.position}. {t.abbreviation}
-                      {t.noTouch && <span className="text-indigo-500">(nt)</span>}
-                      {!t.strongFoot && <span className="text-orange-500">(wf)</span>}
+                      {t.type === 'trick' ? (
+                        <>
+                          {t.position}. {t.abbreviation}
+                          {t.noTouch && <span className="text-indigo-500">(nt)</span>}
+                          {!t.strongFoot && <span className="text-orange-500">(wf)</span>}
+                        </>
+                      ) : (
+                        <>{t.position}. {t.subComboName ?? 'Sub-combo'} ({t.subComboTricks.length})</>
+                      )}
                     </span>
                   ))}
                 </div>

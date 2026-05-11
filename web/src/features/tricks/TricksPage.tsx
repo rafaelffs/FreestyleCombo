@@ -1,7 +1,7 @@
 import { useMemo, useRef, useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { tricksApi, trickSubmissionsApi, extractError, type TrickDto, type SubmitTrickRequest } from '@/lib/api'
+import { tricksApi, trickSubmissionsApi, extractError, type TrickDto, type SubmitTrickRequest, type TrickItem } from '@/lib/api'
 import { isAdmin, isAuthenticated } from '@/lib/auth'
 import { SEO } from '@/components/SEO'
 import { Button } from '@/components/ui/button'
@@ -97,7 +97,7 @@ export function TricksPage() {
   const [sortDir, setSortDir] = useState<SortDir>('asc')
 
   // Info modal
-  const [infoTrick, setInfoTrick] = useState<TrickDto | null>(null)
+  const [infoTrick, setInfoTrick] = useState<TrickItem | null>(null)
 
   // Create (admin)
   const [showCreate, setShowCreate] = useState(false)
@@ -105,7 +105,7 @@ export function TricksPage() {
   const [createError, setCreateError] = useState<string | null>(null)
 
   // Edit / delete
-  const [editTrick, setEditTrick] = useState<TrickDto | null>(null)
+  const [editTrick, setEditTrick] = useState<TrickItem | null>(null)
   const [editForm, setEditForm] = useState<Omit<TrickDto, 'id'>>(EMPTY_FORM)
   const [editError, setEditError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -142,7 +142,7 @@ export function TricksPage() {
 
   const { data: tricks = [], isLoading } = useQuery({
     queryKey: ['tricks'],
-    queryFn: () => tricksApi.getAll().then((r) => r.data),
+    queryFn: () => tricksApi.getAll().then((r) => r.data.filter((item): item is TrickItem => item.type === 'trick')),
   })
 
   const createMutation = useMutation({
@@ -175,10 +175,9 @@ export function TricksPage() {
     onError: (err) => setDeleteError(extractError(err, t('tricks.deleteFailed'))),
   })
 
-  function openEdit(trick: TrickDto) {
+  function openEdit(trick: TrickItem) {
     setEditTrick(trick)
-    const { id: _id, ...rest } = trick
-    setEditForm(rest)
+    setEditForm({ ...EMPTY_FORM, name: trick.name, abbreviation: trick.abbreviation, crossOver: trick.crossOver, knee: trick.knee, revolution: trick.revolution, difficulty: trick.difficulty, isTransition: trick.isTransition })
     setEditError(null)
   }
 
@@ -599,15 +598,15 @@ export function TricksPage() {
           <dl className="space-y-3 text-sm">
             <div>
               <dt className="text-xs font-medium uppercase text-gray-500">{t('tricks.fieldCreatedBy')}</dt>
-              <dd className="mt-0.5 text-gray-800">{infoTrick?.createdBy || <span className="text-gray-400">{t('tricks.infoNotSet')}</span>}</dd>
+              <dd className="mt-0.5 text-gray-800">{(infoTrick as TrickDto | null)?.createdBy || <span className="text-gray-400">{t('tricks.infoNotSet')}</span>}</dd>
             </div>
             <div>
               <dt className="text-xs font-medium uppercase text-gray-500">{t('tricks.fieldDateCreated')}</dt>
-              <dd className="mt-0.5 text-gray-800">{infoTrick?.dateCreated || <span className="text-gray-400">{t('tricks.infoNotSet')}</span>}</dd>
+              <dd className="mt-0.5 text-gray-800">{(infoTrick as TrickDto | null)?.dateCreated || <span className="text-gray-400">{t('tricks.infoNotSet')}</span>}</dd>
             </div>
             <div>
               <dt className="text-xs font-medium uppercase text-gray-500">{t('tricks.fieldNotes')}</dt>
-              <dd className="mt-0.5 whitespace-pre-wrap text-gray-800">{infoTrick?.notes || <span className="text-gray-400">{t('tricks.infoNotSet')}</span>}</dd>
+              <dd className="mt-0.5 whitespace-pre-wrap text-gray-800">{(infoTrick as TrickDto | null)?.notes || <span className="text-gray-400">{t('tricks.infoNotSet')}</span>}</dd>
             </div>
           </dl>
         </DialogContent>

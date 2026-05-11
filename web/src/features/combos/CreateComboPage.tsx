@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { GripVertical } from 'lucide-react'
-import { combosApi, tricksApi, preferencesApi, extractError, type GenerateComboOverrides, type TrickDto, type BuildComboTrickItem } from '@/lib/api'
+import { combosApi, tricksApi, preferencesApi, extractError, type GenerateComboOverrides, type TrickItem, type BuildComboTrickItem } from '@/lib/api'
 import { isAuthenticated, setPendingCombo } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -84,7 +84,7 @@ export function CreateComboPage() {
 
   const { data: tricks = [], isLoading: tricksLoading } = useQuery({
     queryKey: ['tricks'],
-    queryFn: () => tricksApi.getAll().then((r) => r.data),
+    queryFn: () => tricksApi.getAll().then((r) => r.data.filter((item): item is TrickItem => item.type === 'trick')),
     enabled: mode === 'build',
   })
 
@@ -122,7 +122,7 @@ export function CreateComboPage() {
   function handleSave() {
     if (!authed) {
       setPendingCombo({
-        tricks: slots.map(({ trickId, position, strongFoot, noTouch }) => ({ trickId, position, strongFoot, noTouch })),
+        tricks: slots.filter((s) => !!s.trickId).map(({ trickId, position, strongFoot, noTouch }) => ({ trickId: trickId!, position, strongFoot, noTouch })),
         name: name || undefined,
         isPublic,
       })
@@ -147,7 +147,7 @@ export function CreateComboPage() {
     setOverrides((prev) => ({ ...prev, [key]: value }))
   }
 
-  function addTrick(trick: TrickDto) {
+  function addTrick(trick: TrickItem) {
     setSlots((prev) => {
       const next = [...prev, { trickId: trick.id, position: prev.length + 1, strongFoot: true, noTouch: false, trickName: trick.name, abbreviation: trick.abbreviation, crossOver: trick.crossOver, isTransition: trick.isTransition }]
       return applyNoTouchRules(next)

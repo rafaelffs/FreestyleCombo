@@ -11,6 +11,8 @@ export {
 export type {
   ComboDto,
   ComboTrickDto,
+  TrickSlotDto,
+  SubComboSlotDto,
   GenerateComboOverrides,
   BuildComboTrickItem,
   PreviewTrickItem,
@@ -21,7 +23,7 @@ export type {
 } from './combos'
 
 export { tricksApi, trickSubmissionsApi } from './tricks'
-export type { TrickDto, TrickSubmissionDto, SubmitTrickRequest } from './tricks'
+export type { TrickDto, TrickSubmissionDto, SubmitTrickRequest, TrickListItem, TrickItem, ComboItem } from './tricks'
 
 export { preferencesApi } from './preferences'
 export type { UserPreference, PreferencePayload } from './preferences'

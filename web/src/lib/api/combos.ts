@@ -1,16 +1,28 @@
 import api, { type PagedResult } from './client'
 
-export interface ComboTrickDto {
-  position: number
+export interface TrickSlotDto {
+  type: 'trick'
   trickId: string
   name: string
   abbreviation: string
+  position: number
   strongFoot: boolean
   noTouch: boolean
   difficulty: number
+  revolution: number
   crossOver: boolean
   isTransition: boolean
 }
+
+export interface SubComboSlotDto {
+  type: 'combo'
+  subComboId: string
+  subComboName: string | null
+  position: number
+  subComboTricks: TrickSlotDto[]
+}
+
+export type ComboTrickDto = TrickSlotDto | SubComboSlotDto
 
 export interface ComboDto {
   id: string
@@ -20,6 +32,7 @@ export interface ComboDto {
   averageDifficulty: number
   trickCount: number
   isPublic?: boolean
+  isReusable: boolean
   visibility?: string
   createdAt: string
   displayText: string
@@ -45,7 +58,8 @@ export interface GenerateComboOverrides {
 }
 
 export interface BuildComboTrickItem {
-  trickId: string
+  trickId?: string | null
+  subComboId?: string | null
   position: number
   strongFoot: boolean
   noTouch: boolean
@@ -108,6 +122,8 @@ export const combosApi = {
   getPendingReview: () => api.get<ComboDto[]>('/combos/pending-review'),
   approveVisibility: (id: string) => api.post(`/combos/${id}/approve-visibility`),
   rejectVisibility: (id: string) => api.post(`/combos/${id}/reject-visibility`),
+  setReusable: (id: string, isReusable: boolean) =>
+    api.put(`/combos/${id}/reusable`, { isReusable }),
 }
 
 export interface RatingDto {

@@ -326,9 +326,15 @@ export function ComboCard({ combo, showActions = false }: Props) {
                   key={t_.position}
                   className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700"
                 >
-                  {t_.position}. {t_.abbreviation}
-                  {t_.noTouch && <span className="text-indigo-500">(nt)</span>}
-                  {!t_.strongFoot && <span className="text-orange-500">(wf)</span>}
+                  {t_.type === 'trick' ? (
+                    <>
+                      {t_.position}. {t_.abbreviation}
+                      {t_.noTouch && <span className="text-indigo-500">(nt)</span>}
+                      {!t_.strongFoot && <span className="text-orange-500">(wf)</span>}
+                    </>
+                  ) : (
+                    <>{t_.position}. {t_.subComboName ?? 'Sub-combo'} ({t_.subComboTricks.length})</>
+                  )}
                 </span>
               ))}
               {hasMore && (
