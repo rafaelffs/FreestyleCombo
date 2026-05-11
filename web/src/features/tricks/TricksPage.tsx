@@ -1,7 +1,7 @@
 import { useMemo, useRef, useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { tricksApi, trickSubmissionsApi, extractError, type TrickDto, type SubmitTrickRequest, type TrickItem } from '@/lib/api'
+import { tricksApi, trickSubmissionsApi, combosApi, extractError, type TrickDto, type SubmitTrickRequest, type TrickItem, type ComboItem } from '@/lib/api'
 import { isAdmin, isAuthenticated } from '@/lib/auth'
 import { SEO } from '@/components/SEO'
 import { Button } from '@/components/ui/button'
@@ -99,6 +99,18 @@ export function TricksPage() {
   // Info modal
   const [infoTrick, setInfoTrick] = useState<TrickItem | null>(null)
 
+  // Expanded combo rows
+  const [expandedCombos, setExpandedCombos] = useState<Set<string>>(new Set())
+
+  function toggleComboExpand(id: string) {
+    setExpandedCombos((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   // Create (admin)
   const [showCreate, setShowCreate] = useState(false)
   const [createForm, setCreateForm] = useState<Omit<TrickDto, 'id'>>(EMPTY_FORM)
@@ -140,9 +152,20 @@ export function TricksPage() {
     },
   })
 
-  const { data: tricks = [], isLoading } = useQuery({
+  const { data: allItems = [], isLoading } = useQuery({
     queryKey: ['tricks'],
-    queryFn: () => tricksApi.getAll().then((r) => r.data.filter((item): item is TrickItem => item.type === 'trick')),
+    queryFn: () => tricksApi.getAll().then((r) => r.data),
+  })
+
+  const tricks = useMemo(() => allItems.filter((item): item is TrickItem => item.type === 'trick'), [allItems])
+  const reusableCombos = useMemo(() => allItems.filter((item): item is ComboItem => item.type === 'combo'), [allItems])
+
+  const setReusableMutation = useMutation({
+    mutationFn: ({ id, isReusable }: { id: string; isReusable: boolean }) =>
+      combosApi.setReusable(id, isReusable),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['tricks'] })
+    },
   })
 
   const createMutation = useMutation({
@@ -515,7 +538,74 @@ export function TricksPage() {
                   )}
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {reusableCombos.map((combo) => {
+                const isExpanded = expandedCombos.has(combo.id)
+                const colSpan = admin ? 8 : 7
+                return (
+                  <>
+                    <tr
+                      key={combo.id}
+                      className="cursor-pointer bg-indigo-50 hover:bg-indigo-100"
+                      onClick={() => toggleComboExpand(combo.id)}
+                    >
+                      <td className="px-4 py-2 text-center text-gray-400">—</td>
+                      <td className="px-4 py-2 text-gray-700">
+                        <span className="font-medium">{combo.name}</span>
+                        <span className="bg-indigo-100 text-indigo-700 text-xs px-1.5 py-0.5 rounded ml-2">
+                          {t('tricks.comboLabel')}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-center text-gray-400">—</td>
+                      <td className="px-4 py-2 text-center">
+                        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(combo.averageDifficulty)}`}>
+                          {combo.averageDifficulty.toFixed(1)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-center text-gray-400">—</td>
+                      <td className="px-4 py-2 text-center text-gray-400">—</td>
+                      <td className="px-2 py-2 text-center text-gray-500 text-xs">
+                        {t('tricks.tricksCount', { count: combo.trickCount })}
+                      </td>
+                      {admin && (
+                        <td className="px-4 py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                          <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-gray-600">
+                            <input
+                              type="checkbox"
+                              checked={true}
+                              onChange={() => {
+                                setReusableMutation.mutate({ id: combo.id, isReusable: false })
+                              }}
+                              className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600"
+                              disabled={setReusableMutation.isPending}
+                            />
+                            {t('tricks.reusableToggle')}
+                          </label>
+                        </td>
+                      )}
+                    </tr>
+                    {isExpanded && (
+                      <tr key={`${combo.id}-expand`} className="bg-indigo-50">
+                        <td colSpan={colSpan} className="px-6 pb-3 pt-0">
+                          <div className="flex flex-wrap gap-2">
+                            {combo.tricks.map((slot, i) => (
+                              <span
+                                key={i}
+                                className="inline-flex items-center gap-1 rounded bg-white border border-indigo-200 px-2 py-0.5 text-xs text-gray-700"
+                              >
+                                <span className="font-mono font-semibold text-gray-900">{slot.abbreviation}</span>
+                                <span className={`rounded px-1 py-0.5 text-[10px] font-medium ${diffColor(slot.difficulty)}`}>
+                                  {slot.difficulty}
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                )
+              })}
+              {filtered.length === 0 && reusableCombos.length === 0 && (
                 <tr>
                   <td colSpan={admin ? 8 : 7} className="px-4 py-6 text-center text-gray-400">
                     {t('tricks.noTricksFound')}

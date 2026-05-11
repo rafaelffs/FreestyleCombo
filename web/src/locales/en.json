@@ -228,7 +228,10 @@
     "infoNotSet": "—",
     "infoTooltip": "Details",
     "addTrick": "Add Trick",
-    "createFailed": "Create failed"
+    "createFailed": "Create failed",
+    "comboLabel": "combo",
+    "tricksCount": "{{count}} tricks",
+    "reusableToggle": "Reusable"
   },
   "adminSubmissions": {
     "pageTitle": "Approvals",
