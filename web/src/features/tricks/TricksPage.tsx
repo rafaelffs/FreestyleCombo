@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useState } from 'react'
+import React, { useMemo, useRef, useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { tricksApi, trickSubmissionsApi, combosApi, extractError, type TrickDto, type SubmitTrickRequest, type TrickItem, type ComboItem } from '@/lib/api'
@@ -542,9 +542,8 @@ export function TricksPage() {
                 const isExpanded = expandedCombos.has(combo.id)
                 const colSpan = admin ? 8 : 7
                 return (
-                  <>
+                  <React.Fragment key={combo.id}>
                     <tr
-                      key={combo.id}
                       className="cursor-pointer bg-indigo-50 hover:bg-indigo-100"
                       onClick={() => toggleComboExpand(combo.id)}
                     >
@@ -602,7 +601,7 @@ export function TricksPage() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                 )
               })}
               {filtered.length === 0 && reusableCombos.length === 0 && (
