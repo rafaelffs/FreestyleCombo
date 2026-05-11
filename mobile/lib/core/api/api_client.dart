@@ -391,7 +391,7 @@ class ApiClient {
 
   // ── Tricks ───────────────────────────────────────────────────────────────
 
-  Future<List<TrickDto>> getTricks({
+  Future<List<TrickListItem>> getTricks({
     bool? crossOver,
     bool? knee,
     int? maxDifficulty,
@@ -406,8 +406,16 @@ class ApiClient {
         },
       );
       return (res.data as List<dynamic>)
-          .map((e) => TrickDto.fromJson(e as Map<String, dynamic>))
+          .map((e) => trickListItemFromJson(e as Map<String, dynamic>))
           .toList();
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> setComboReusable(String id, bool isReusable) async {
+    try {
+      await _dio.put('/combos/$id/reusable', data: {'isReusable': isReusable});
     } on DioException catch (e) {
       throw Exception(_extractMessage(e));
     }

@@ -13,9 +13,12 @@ class TricksScreen extends StatefulWidget {
 }
 
 class _TricksScreenState extends State<TricksScreen> {
-  List<TrickDto> _tricks = [];
+  List<TrickListItem> _items = [];
   bool _loading = true;
   String? _error;
+
+  // Expanded combo IDs
+  final Set<String> _expandedCombos = {};
 
   // Filters
   final _searchCtrl = TextEditingController();
@@ -43,8 +46,8 @@ class _TricksScreenState extends State<TricksScreen> {
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
     try {
-      final tricks = await ApiClient.instance.getTricks();
-      if (mounted) setState(() => _tricks = tricks);
+      final items = await ApiClient.instance.getTricks();
+      if (mounted) setState(() => _items = items);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -52,7 +55,7 @@ class _TricksScreenState extends State<TricksScreen> {
     }
   }
 
-  Future<void> _deleteTrick(TrickDto trick) async {
+  Future<void> _deleteTrick(TrickItem trick) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -70,6 +73,34 @@ class _TricksScreenState extends State<TricksScreen> {
     if (confirmed != true) return;
     try {
       await ApiClient.instance.deleteTrick(trick.id);
+      await _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    }
+  }
+
+  Future<void> _removeReusable(ComboItem combo) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Remove reusable flag?'),
+        content: Text('Remove "${combo.name}" from the reusable combos list?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Remove', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ApiClient.instance.setComboReusable(combo.id, false);
       await _load();
     } catch (e) {
       if (mounted) {
@@ -98,7 +129,7 @@ class _TricksScreenState extends State<TricksScreen> {
     );
   }
 
-  void _openEdit(TrickDto trick) {
+  void _openEdit(TrickItem trick) {
     showDialog<void>(
       context: context,
       builder: (_) => _EditTrickDialog(trick: trick, onSaved: _load),
@@ -106,7 +137,12 @@ class _TricksScreenState extends State<TricksScreen> {
   }
 
   List<double> get _revOptions {
-    final revs = _tricks.map((t) => t.revolution).toSet().toList()..sort();
+    final revs = _items
+        .whereType<TrickItem>()
+        .map((t) => t.revolution)
+        .toSet()
+        .toList()
+      ..sort();
     return revs;
   }
 
@@ -179,19 +215,30 @@ class _TricksScreenState extends State<TricksScreen> {
     );
   }
 
-  List<TrickDto> get _filtered {
+  List<TrickListItem> get _filtered {
     final q = _search.toLowerCase();
-    var list = _tricks.where((t) {
-      if (q.isNotEmpty &&
-          !t.name.toLowerCase().contains(q) &&
-          !t.abbreviation.toLowerCase().contains(q)) return false;
-      if (_minDiff != null && t.difficulty < _minDiff!) return false;
-      if (_maxDiff != null && t.difficulty > _maxDiff!) return false;
-      if (_selectedRevs.isNotEmpty && !_selectedRevs.contains(t.revolution)) return false;
+    var list = _items.where((item) {
+      if (item is TrickItem) {
+        if (q.isNotEmpty &&
+            !item.name.toLowerCase().contains(q) &&
+            !item.abbreviation.toLowerCase().contains(q)) return false;
+        if (_minDiff != null && item.difficulty < _minDiff!) return false;
+        if (_maxDiff != null && item.difficulty > _maxDiff!) return false;
+        if (_selectedRevs.isNotEmpty && !_selectedRevs.contains(item.revolution)) return false;
+        return true;
+      } else if (item is ComboItem) {
+        // Combos: only filter by search on name, ignore diff/rev filters
+        if (q.isNotEmpty && !item.name.toLowerCase().contains(q)) return false;
+        return true;
+      }
       return true;
     }).toList();
 
-    list.sort((a, b) {
+    // Sort: combos always go after tricks, tricks sorted per user choice
+    final tricks = list.whereType<TrickItem>().toList();
+    final combos = list.whereType<ComboItem>().toList();
+
+    tricks.sort((a, b) {
       int cmp;
       switch (_sortKey) {
         case _SortKey.abbreviation:
@@ -206,7 +253,9 @@ class _TricksScreenState extends State<TricksScreen> {
       return _sortAsc ? cmp : -cmp;
     });
 
-    return list;
+    combos.sort((a, b) => a.name.compareTo(b.name));
+
+    return [...tricks, ...combos];
   }
 
   void _setSort(_SortKey key) {
@@ -256,6 +305,161 @@ class _TricksScreenState extends State<TricksScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTrickTile(TrickItem t, bool admin) {
+    return ListTile(
+      dense: true,
+      title: Row(
+        children: [
+          Text(
+            t.abbreviation,
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              t.name,
+              style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.normal),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+      subtitle: Text(
+        '${t.revolution % 1 == 0 ? t.revolution.toInt() : t.revolution} revs',
+        style: const TextStyle(fontSize: 11),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _DiffChip(difficulty: t.difficulty),
+          const SizedBox(width: 4),
+          if (t.crossOver)
+            const _Tag(label: 'CO', color: Colors.indigo),
+          if (t.knee)
+            const _Tag(label: 'K', color: Colors.teal),
+          if (admin) ...[
+            const SizedBox(width: 4),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              onPressed: () => _openEdit(t),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline,
+                  size: 18, color: Colors.red),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              onPressed: () => _deleteTrick(t),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildComboTile(ComboItem c, bool admin) {
+    final expanded = _expandedCombos.contains(c.id);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListTile(
+          dense: true,
+          tileColor: Colors.purple.shade50,
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  c.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 6),
+              _ComboChip(),
+            ],
+          ),
+          subtitle: Text(
+            '${c.trickCount} tricks · avg ${c.averageDifficulty.toStringAsFixed(1)}',
+            style: const TextStyle(fontSize: 11),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (admin)
+                IconButton(
+                  icon: const Icon(Icons.link_off, size: 18, color: Colors.red),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  tooltip: 'Remove reusable',
+                  onPressed: () => _removeReusable(c),
+                ),
+              IconButton(
+                icon: Icon(
+                  expanded ? Icons.expand_less : Icons.expand_more,
+                  size: 20,
+                  color: Colors.purple.shade700,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () {
+                  setState(() {
+                    if (expanded) {
+                      _expandedCombos.remove(c.id);
+                    } else {
+                      _expandedCombos.add(c.id);
+                    }
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+        if (expanded)
+          Container(
+            color: Colors.purple.shade50.withValues(alpha: 0.5),
+            child: Column(
+              children: c.tricks.map((t) => Padding(
+                padding: const EdgeInsets.fromLTRB(24, 4, 16, 4),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      child: Text(
+                        '${t.position}',
+                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      t.abbreviation ?? '',
+                      style: const TextStyle(fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        t.name ?? '',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    _DiffChip(difficulty: t.difficulty),
+                  ],
+                ),
+              )).toList(),
+            ),
+          ),
+      ],
     );
   }
 
@@ -413,7 +617,7 @@ class _TricksScreenState extends State<TricksScreen> {
               child: Text(_error!, style: const TextStyle(color: Colors.red)),
             ),
 
-          // Tricks list
+          // Tricks/combos list
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
@@ -425,64 +629,13 @@ class _TricksScreenState extends State<TricksScreen> {
                         itemCount: filtered.length,
                         separatorBuilder: (_, __) => const Divider(height: 1),
                         itemBuilder: (context, i) {
-                          final t = filtered[i];
-                          return ListTile(
-                            dense: true,
-                            title: Row(
-                              children: [
-                                Text(
-                                  t.abbreviation,
-                                  style: const TextStyle(
-                                    fontFamily: 'monospace',
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    t.name,
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
-                                        fontWeight: FontWeight.normal),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            subtitle: Text(
-                              '${t.revolution % 1 == 0 ? t.revolution.toInt() : t.revolution} revs',
-                              style: const TextStyle(fontSize: 11),
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _DiffChip(difficulty: t.difficulty),
-                                const SizedBox(width: 4),
-                                if (t.crossOver)
-                                  const _Tag(label: 'CO', color: Colors.indigo),
-                                if (t.knee)
-                                  const _Tag(label: 'K', color: Colors.teal),
-                                if (admin) ...[
-                                  const SizedBox(width: 4),
-                                  IconButton(
-                                    icon: const Icon(Icons.edit_outlined, size: 18),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    onPressed: () => _openEdit(t),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete_outline,
-                                        size: 18, color: Colors.red),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    onPressed: () => _deleteTrick(t),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          );
+                          final item = filtered[i];
+                          if (item is TrickItem) {
+                            return _buildTrickTile(item, admin);
+                          } else if (item is ComboItem) {
+                            return _buildComboTile(item, admin);
+                          }
+                          return const SizedBox.shrink();
                         },
                       ),
           ),
@@ -540,6 +693,29 @@ class _Tag extends StatelessWidget {
       child: Text(label,
           style: TextStyle(
               fontSize: 10, color: color, fontWeight: FontWeight.bold)),
+    );
+  }
+}
+
+class _ComboChip extends StatelessWidget {
+  const _ComboChip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.purple.shade100,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        'combo',
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: Colors.purple.shade800,
+        ),
+      ),
     );
   }
 }
@@ -715,7 +891,7 @@ class _InlineSubmitFormState extends State<_InlineSubmitForm> {
 // ── Edit dialog ────────────────────────────────────────────────────────────────
 
 class _EditTrickDialog extends StatefulWidget {
-  final TrickDto trick;
+  final TrickItem trick;
   final VoidCallback onSaved;
 
   const _EditTrickDialog({required this.trick, required this.onSaved});

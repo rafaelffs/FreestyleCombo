@@ -4,7 +4,6 @@ import '../../core/api/api_client.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
 import '../../core/models/user_preference.dart';
-import '../../widgets/combo_card.dart';
 
 enum _Mode { choose, generate, build }
 
@@ -18,23 +17,55 @@ class CreateComboScreen extends StatefulWidget {
 // ── Slot item for build mode ────────────────────────────────────────────────
 
 class _SlotItem {
-  final String trickId;
-  final String trickName;
-  final String abbreviation;
+  // For a trick slot
+  final String? trickId;
+  final String? trickName;
+  final String? abbreviation;
   final bool crossOver;
+
+  // For a sub-combo slot
+  final String? subComboId;
+  final String? subComboName;
+  final List<ComboTrickDto>? subComboTricks;
+
+  bool get isSubCombo => subComboId != null;
+
   int position;
   bool strongFoot;
   bool noTouch;
+  bool expanded; // for sub-combo expand in slot list
 
-  _SlotItem({
-    required this.trickId,
-    required this.trickName,
-    required this.abbreviation,
+  _SlotItem.trick({
+    required String trickId,
+    required String trickName,
+    required String abbreviation,
     required this.crossOver,
     required this.position,
     this.strongFoot = true,
     this.noTouch = false,
-  });
+  })  : trickId = trickId,
+        trickName = trickName,
+        abbreviation = abbreviation,
+        subComboId = null,
+        subComboName = null,
+        subComboTricks = null,
+        expanded = false;
+
+  _SlotItem.combo({
+    required String subComboId,
+    required String subComboName,
+    required List<ComboTrickDto> subComboTricks,
+    required this.position,
+  })  : trickId = null,
+        trickName = null,
+        abbreviation = null,
+        crossOver = false,
+        subComboId = subComboId,
+        subComboName = subComboName,
+        subComboTricks = subComboTricks,
+        strongFoot = true,
+        noTouch = false,
+        expanded = false;
 }
 
 class _CreateComboScreenState extends State<CreateComboScreen> {
@@ -58,7 +89,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   List<String> _previewWarnings = [];
 
   // ── Build state ────────────────────────────────────────────────────────────
-  List<TrickDto> _tricks = [];
+  List<TrickListItem> _items = [];
   bool _loadingTricks = true;
   final _searchCtrl = TextEditingController();
   String _search = '';
@@ -105,7 +136,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
       final result = await ApiClient.instance.previewCombo(_selectedPrefId, overrides);
       _slots.clear();
       for (final t in result.tricks) {
-        _slots.add(_SlotItem(
+        _slots.add(_SlotItem.trick(
           trickId: t.trickId,
           trickName: t.trickName,
           abbreviation: t.abbreviation,
@@ -120,7 +151,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
         _mode = _Mode.build;
         _buildTab = 1;
       });
-      if (_tricks.isEmpty) _loadTricks();
+      if (_items.isEmpty) _loadTricks();
     } catch (e) {
       setState(() => _genError = e.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -133,8 +164,8 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   Future<void> _loadTricks() async {
     setState(() => _loadingTricks = true);
     try {
-      final tricks = await ApiClient.instance.getTricks();
-      if (mounted) setState(() => _tricks = tricks);
+      final items = await ApiClient.instance.getTricks();
+      if (mounted) setState(() => _items = items);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -146,13 +177,25 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     }
   }
 
-  void _addTrick(TrickDto trick) {
+  void _addTrickItem(TrickItem trick) {
     setState(() {
-      _slots.add(_SlotItem(
+      _slots.add(_SlotItem.trick(
         trickId: trick.id,
         trickName: trick.name,
         abbreviation: trick.abbreviation,
         crossOver: trick.crossOver,
+        position: _slots.length + 1,
+      ));
+      _buildTab = 1;
+    });
+  }
+
+  void _addComboItem(ComboItem combo) {
+    setState(() {
+      _slots.add(_SlotItem.combo(
+        subComboId: combo.id,
+        subComboName: combo.name,
+        subComboTricks: combo.tricks,
         position: _slots.length + 1,
       ));
       _buildTab = 1;
@@ -172,7 +215,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     if (!AuthService.instance.isAuthenticated) {
       final name = _nameCtrl.text.trim();
       await AuthService.instance.setPendingCombo({
-        'tricks': _slots.map((s) => {
+        'tricks': _slots.where((s) => !s.isSubCombo).map((s) => {
           'trickId': s.trickId,
           'position': s.position,
           'strongFoot': s.strongFoot,
@@ -192,9 +235,22 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
 
     setState(() { _saving = true; _buildError = null; });
     try {
-      final items = _slots
-          .map((s) => BuildComboTrickItem(trickId: s.trickId, position: s.position, strongFoot: s.strongFoot, noTouch: s.noTouch))
-          .toList();
+      final items = _slots.map((s) {
+        if (s.isSubCombo) {
+          return BuildComboTrickItem(
+            subComboId: s.subComboId,
+            position: s.position,
+            strongFoot: s.strongFoot,
+            noTouch: s.noTouch,
+          );
+        }
+        return BuildComboTrickItem(
+          trickId: s.trickId,
+          position: s.position,
+          strongFoot: s.strongFoot,
+          noTouch: s.noTouch,
+        );
+      }).toList();
       final name = _nameCtrl.text.trim();
       final combo = await ApiClient.instance.buildCombo(items, _isPublic, name: name.isEmpty ? null : name);
       setState(() => _buildResult = combo);
@@ -205,20 +261,51 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     }
   }
 
-  List<TrickDto> get _filtered {
+  List<TrickListItem> get _filtered {
     final q = _search.toLowerCase();
-    if (q.isEmpty) return _tricks;
-    return _tricks.where((t) => t.name.toLowerCase().contains(q) || t.abbreviation.toLowerCase().contains(q)).toList();
+    if (q.isEmpty) return _items;
+    return _items.where((item) {
+      if (item is TrickItem) {
+        return item.name.toLowerCase().contains(q) || item.abbreviation.toLowerCase().contains(q);
+      } else if (item is ComboItem) {
+        return item.name.toLowerCase().contains(q);
+      }
+      return false;
+    }).toList();
   }
 
   double get _avgDiff {
     if (_slots.isEmpty) return 0;
-    final total = _slots.fold<double>(0, (sum, s) {
-      final trick = _tricks.firstWhere((t) => t.id == s.trickId,
-          orElse: () => TrickDto(id: '', name: '', abbreviation: '', crossOver: false, knee: false, revolution: 0, difficulty: 0, commonLevel: 0));
-      return sum + trick.difficulty;
-    });
-    return total / _slots.length;
+    int totalDiff = 0;
+    int count = 0;
+    for (final s in _slots) {
+      if (s.isSubCombo) {
+        for (final ComboTrickDto t in s.subComboTricks ?? []) {
+          totalDiff += t.difficulty;
+          count++;
+        }
+      } else {
+        final trick = _items.whereType<TrickItem>().where((t) => t.id == s.trickId).firstOrNull;
+        if (trick != null) {
+          totalDiff += trick.difficulty;
+          count++;
+        }
+      }
+    }
+    if (count == 0) return 0;
+    return totalDiff / count;
+  }
+
+  int get _totalTrickCount {
+    int count = 0;
+    for (final s in _slots) {
+      if (s.isSubCombo) {
+        count += s.subComboTricks?.length ?? 0;
+      } else {
+        count++;
+      }
+    }
+    return count;
   }
 
   Widget _buildGuestBanner() {
@@ -263,7 +350,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
 
   void _switchToBuild() {
     setState(() => _mode = _Mode.build);
-    if (_tricks.isEmpty) _loadTricks();
+    if (_items.isEmpty) _loadTricks();
   }
 
   void _backToChoose() {
@@ -511,8 +598,8 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                 TabBar(
                   onTap: (i) => setState(() => _buildTab = i),
                   tabs: [
-                    Tab(text: 'Tricks (${_tricks.length})'),
-                    Tab(text: 'My Combo (${_slots.length})'),
+                    Tab(text: 'Tricks (${_items.length})'),
+                    Tab(text: 'My Combo ($_totalTrickCount)'),
                   ],
                 ),
                 Expanded(
@@ -557,28 +644,52 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                   itemCount: _filtered.length,
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (_, i) {
-                    final t = _filtered[i];
-                    return ListTile(
-                      title: Row(
-                        children: [
-                          Text(t.abbreviation, style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 13)),
-                          const SizedBox(width: 8),
-                          Expanded(child: Text(t.name, style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.normal), overflow: TextOverflow.ellipsis)),
-                        ],
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (t.crossOver) const _MiniTag(label: 'CO'),
-                          if (t.knee) const _MiniTag(label: 'K'),
-                          const SizedBox(width: 4),
-                          _DiffChip(difficulty: t.difficulty),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.add_circle_outline, color: Colors.indigo),
-                        ],
-                      ),
-                      onTap: () => _addTrick(t),
-                    );
+                    final item = _filtered[i];
+                    if (item is TrickItem) {
+                      return ListTile(
+                        title: Row(
+                          children: [
+                            Text(item.abbreviation, style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 13)),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text(item.name, style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.normal), overflow: TextOverflow.ellipsis)),
+                          ],
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (item.crossOver) const _MiniTag(label: 'CO'),
+                            if (item.knee) const _MiniTag(label: 'K'),
+                            const SizedBox(width: 4),
+                            _DiffChip(difficulty: item.difficulty),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.add_circle_outline, color: Colors.indigo),
+                          ],
+                        ),
+                        onTap: () => _addTrickItem(item),
+                      );
+                    } else if (item is ComboItem) {
+                      return ListTile(
+                        tileColor: Colors.purple.shade50,
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                item.name,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        subtitle: Text(
+                          'combo · ${item.trickCount} tricks · avg ${item.averageDifficulty.toStringAsFixed(1)}',
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        trailing: const Icon(Icons.add_circle_outline, color: Colors.purple),
+                        onTap: () => _addComboItem(item),
+                      );
+                    }
+                    return const SizedBox.shrink();
                   },
                 ),
         ),
@@ -599,6 +710,13 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
               separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (_, i) {
                 final s = _slots[i];
+                if (s.isSubCombo) {
+                  return _SubComboSlotTile(
+                    slot: s,
+                    onRemove: () => _removeSlot(i),
+                    onToggleExpand: () => setState(() => s.expanded = !s.expanded),
+                  );
+                }
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   child: Row(
@@ -606,8 +724,8 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                       SizedBox(width: 20, child: Text('${s.position}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey))),
                       const SizedBox(width: 8),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(s.trickName, style: const TextStyle(fontWeight: FontWeight.w500)),
-                        Text(s.abbreviation, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                        Text(s.trickName ?? '', style: const TextStyle(fontWeight: FontWeight.w500)),
+                        Text(s.abbreviation ?? '', style: const TextStyle(fontSize: 11, color: Colors.grey)),
                       ])),
                       _Toggle(label: 'SF', value: s.strongFoot, onChanged: (v) => setState(() => s.strongFoot = v)),
                       _Toggle(label: 'NT', value: s.noTouch, enabled: s.crossOver, onChanged: s.crossOver ? (v) => setState(() => s.noTouch = v) : null),
@@ -625,7 +743,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('${_slots.length} tricks · avg diff ${_avgDiff.toStringAsFixed(1)}',
+                Text('$_totalTrickCount tricks · avg diff ${_avgDiff.toStringAsFixed(1)}',
                     style: const TextStyle(fontSize: 12, color: Colors.grey), textAlign: TextAlign.center),
                 const SizedBox(height: 8),
                 Row(children: [
@@ -647,6 +765,118 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
             ),
           ),
         ],
+      ],
+    );
+  }
+}
+
+// ── Sub-combo slot tile ────────────────────────────────────────────────────────
+
+class _SubComboSlotTile extends StatelessWidget {
+  final _SlotItem slot;
+  final VoidCallback onRemove;
+  final VoidCallback onToggleExpand;
+
+  const _SubComboSlotTile({
+    required this.slot,
+    required this.onRemove,
+    required this.onToggleExpand,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          color: Colors.purple.shade50,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  child: Text(
+                    '${slot.position}',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.shade100,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'combo',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.purple.shade800),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    slot.subComboName ?? '',
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Text(
+                  '${slot.subComboTricks?.length ?? 0} tricks',
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+                IconButton(
+                  icon: Icon(
+                    slot.expanded ? Icons.expand_less : Icons.expand_more,
+                    size: 18,
+                    color: Colors.purple.shade700,
+                  ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: onToggleExpand,
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 18, color: Colors.grey),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: onRemove,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (slot.expanded && slot.subComboTricks != null)
+          Container(
+            color: Colors.purple.shade50.withValues(alpha: 0.5),
+            child: Column(
+              children: slot.subComboTricks!.map((t) => Padding(
+                padding: const EdgeInsets.fromLTRB(40, 3, 16, 3),
+                child: Row(
+                  children: [
+                    Text(
+                      '${t.position}',
+                      style: const TextStyle(fontSize: 10, color: Colors.grey),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      t.abbreviation ?? '',
+                      style: const TextStyle(fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        t.name ?? '',
+                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    _DiffChip(difficulty: t.difficulty),
+                  ],
+                ),
+              )).toList(),
+            ),
+          ),
       ],
     );
   }
