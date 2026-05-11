@@ -464,7 +464,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                   // Preference selector — only for authenticated users
                   if (authed) ...[
                     DropdownButtonFormField<String?>(
-                      value: _selectedPrefId,
+                      initialValue: _selectedPrefId,
                       decoration: const InputDecoration(
                         labelText: 'Preference',
                         border: OutlineInputBorder(),

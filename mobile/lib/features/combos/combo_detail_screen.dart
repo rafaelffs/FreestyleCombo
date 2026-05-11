@@ -5,7 +5,7 @@ import '../../core/models/combo.dart';
 import '../../widgets/rate_combo_dialog.dart';
 
 class _SlotItem {
-  final String trickId;
+  final String? trickId;
   final String trickName;
   final String abbreviation;
   bool crossOver;
@@ -20,7 +20,7 @@ class _SlotItem {
   final List<ComboTrickDto>? subComboTricks;
 
   _SlotItem({
-    required this.trickId,
+    this.trickId,
     required this.trickName,
     required this.abbreviation,
     required this.crossOver,
@@ -273,7 +273,7 @@ class _EditComboScreenState extends State<_EditComboScreen> {
     _slots = (widget.combo.tricks ?? []).map((t) {
       if (t.type == 'combo') {
         return _SlotItem(
-          trickId: t.trickId ?? '',
+          trickId: t.trickId,
           trickName: t.subComboName ?? '',
           abbreviation: '',
           crossOver: false,
@@ -287,7 +287,7 @@ class _EditComboScreenState extends State<_EditComboScreen> {
         );
       }
       return _SlotItem(
-        trickId: t.trickId ?? '',
+        trickId: t.trickId,
         trickName: t.name ?? '',
         abbreviation: t.abbreviation ?? '',
         crossOver: false, // will be updated when tricks load
