@@ -35,8 +35,8 @@ FreestyleCombo/
 |---|---|
 | `AppUser` | `IdentityUser<Guid>`, has `ICollection<Combo>`, `ICollection<ComboRating>`, `ICollection<UserPreference>`, `ICollection<TrickSubmission>`, `ICollection<UserFavouriteCombo>`, `ICollection<UserComboCompletion>` |
 | `Trick` | `Id, Name, Abbreviation, CrossOver, Knee, Revolution(decimal), Difficulty, CommonLevel` |
-| `Combo` | `Id, OwnerId, Name?, TotalDifficulty, TrickCount, Visibility(ComboVisibility), CreatedAt, AiDescription, ICollection<UserFavouriteCombo>`, `ICollection<UserComboCompletion>` — `IsPublic` is a computed property (`=> Visibility == ComboVisibility.Public`), ignored by EF |
-| `ComboTrick` | `Id, ComboId, TrickId, Position, StrongFoot, NoTouch` |
+| `Combo` | `Id, OwnerId, Name?, AverageDifficulty, TrickCount, Visibility(ComboVisibility), IsReusable(bool), CreatedAt, AiDescription, ICollection<UserFavouriteCombo>`, `ICollection<UserComboCompletion>` — `IsPublic` is a computed property (`=> Visibility == ComboVisibility.Public`), ignored by EF. `IsReusable` can only be set by admins; combo must be Public first. |
+| `ComboTrick` | `Id, ComboId, TrickId?(nullable), SubComboId?(nullable), Position, StrongFoot, NoTouch` — exactly one of TrickId/SubComboId must be non-null (DB check constraint `CK_ComboTrick_TrickOrSubCombo`). SubComboId references a reusable combo. |
 | `ComboRating` | `Id, ComboId, RatedByUserId, Score, CreatedAt` |
 | `UserPreference` | `Id, UserId, Name(string max 100), MaxDifficulty, ComboLength, StrongFootPercentage, NoTouchPercentage, MaxConsecutiveNoTouch, IncludeCrossOver, IncludeKnee, AllowedRevolutions(List<decimal>)` — 1:many with AppUser (no unique index on UserId), `AllowedRevolutions` stored as `jsonb` |
 | `TrickSubmission` | `Id, Name, Abbreviation, CrossOver, Knee, Revolution, Difficulty, CommonLevel, Status(enum), SubmittedAt, SubmittedById, ReviewedAt?, ReviewedById?` |
@@ -50,7 +50,7 @@ Approving a submission creates a real `Trick` from the submission fields.
 
 ### Interfaces (`FreestyleCombo.Core/Interfaces/`)
 - `ITrickRepository` (includes `DeleteAsync` — checks ComboTricks before deleting)
-- `IComboRepository` (includes `DeleteAsync`, `GetAllByOwnerAsync` — no pagination, includes Owner nav)
+- `IComboRepository` (includes `DeleteAsync`, `GetAllByOwnerAsync`, `GetReusableAsync`, `IsReferencedAsSubComboAsync` — all query methods eager-load `ComboTricks.SubCombo.ComboTricks.Trick`)
 - `IComboRatingRepository`, `ITrickSubmissionRepository`
 - `IUserPreferenceRepository` — `GetAllByUserIdAsync`, `GetByIdAsync`, `AddAsync`, `UpdateAsync`, `DeleteAsync`
 - `IUserFavouriteRepository` — `AddAsync`, `RemoveAsync`, `GetFavouriteComboIdsAsync`, `ExistsAsync`
@@ -60,7 +60,7 @@ Approving a submission creates a real `Trick` from the submission fields.
 ### Tricks API (`/api/tricks`)
 | Method | Route | Auth | Description |
 |---|---|---|---|
-| `GET` | `/` | Public | Get all tricks (optional filters: `crossOver`, `knee`, `maxDifficulty`) |
+| `GET` | `/` | Public | Returns `TrickListItemDto[]` — both tricks (`type: "trick"`) and reusable combos (`type: "combo"`). Tricks sorted alphabetically first, then combos alphabetically. Trick filters don't affect combos. |
 | `PUT` | `/{id}` | Admin | Update trick — all fields editable |
 | `DELETE` | `/{id}` | Admin | Delete trick — 409 Conflict if used in any combo |
 
@@ -72,7 +72,8 @@ Trick delete throws `InvalidOperationException` ("This trick is used in X combo(
 | `POST` | `/api/combos/preview` | User | Preview combo (no save, no AI) — returns `PreviewComboResponse { Tricks, Warnings }` |
 | `POST` | `/api/combos/build` | User | Build combo manually — accepts optional `name`; no AI description (`AiDescription = null`); sets `Visibility = PendingReview` if `isPublic = true` |
 | `PUT` | `/api/combos/{id}` | User/Admin | Update combo (name + tricks) — owner or admin only; if combo was `Public`, resets to `PendingReview` |
-| `DELETE` | `/api/combos/{id}` | User/Admin | Owner or Admin can delete; 403 otherwise |
+| `DELETE` | `/api/combos/{id}` | User/Admin | Owner or Admin can delete; 403 otherwise. 409 Conflict if combo is referenced as a sub-combo in another combo. |
+| `PUT` | `/api/combos/{id}/reusable` | Admin | Toggle `IsReusable` flag — 400 if setting true on non-Public combo. Body: `{ "isReusable": bool }` |
 | `POST` | `/api/combos/{id}/favourite` | User | Add combo to favourites |
 | `DELETE` | `/api/combos/{id}/favourite` | User | Remove combo from favourites |
 | `POST` | `/api/combos/{id}/complete` | User | Mark combo as done (idempotent) |
@@ -81,7 +82,9 @@ Trick delete throws `InvalidOperationException` ("This trick is used in X combo(
 | `POST` | `/api/combos/{id}/approve-visibility` | Admin | Approve → sets `Visibility = Public` |
 | `POST` | `/api/combos/{id}/reject-visibility` | Admin | Reject → sets `Visibility = Private` |
 
-`BuildComboCommand` validates: `Tricks` NotEmpty, each `Position >= 1`, NoTouch only on `CrossOver = true` tricks (handler throws `InvalidOperationException` if violated).
+`BuildComboCommand` / `UpdateComboCommand` validate: `Tricks` NotEmpty, each `Position >= 1`, NoTouch only on `CrossOver = true` tricks. Each slot must have exactly one of `TrickId`/`SubComboId` (XOR). Sub-combo slots must reference a reusable combo with no nested sub-combos (flat only). Reusable combos cannot themselves have sub-combo slots. `BuildComboTrickItem(Guid? TrickId, Guid? SubComboId, int Position, bool StrongFoot, bool NoTouch)`.
+
+`ComboTrickDto` is a discriminated union: `Type = "trick"` (trick fields) or `Type = "combo"` (SubComboId, SubComboName, SubComboTricks). All combo response DTOs include `IsReusable: bool`.
 
 `GenerateComboCommand(Guid? PreferenceId, GenerateComboOverrides? Overrides, string? Name)` — `PreferenceId` replaces the old `UsePreferences` bool. When set, the handler fetches that preference by ID and verifies ownership; when null, uses inline `Overrides`. Saved as `null` if Name is blank/whitespace. **No longer generates an AI description** — `AiDescription` is always `null` for new combos.
 
@@ -418,7 +421,7 @@ cd api
 dotnet test
 ```
 
-120 unit tests covering: combo generation/build/preview, combo visibility and deletion permissions, combo query/update handlers, pending combo review mapping, favourites/completions, auth login/register flows, account/admin handler flows, trick CRUD handlers, preference CRUD handlers, trick submission review flows, query handlers (tricks/preferences/ratings/pending approvals/submissions), revolution boundary validation (trick create/update/submission, preference and combo override allowed revolutions, preview override validation, rating score bounds), and weight adjustment job/aggregator behavior.
+193 unit tests covering: combo generation/build/preview, combo visibility and deletion permissions, combo query/update handlers, pending combo review mapping, favourites/completions, auth login/register flows, account/admin handler flows, trick CRUD handlers, preference CRUD handlers, trick submission review flows, query handlers (tricks/preferences/ratings/pending approvals/submissions), revolution boundary validation (trick create/update/submission, preference and combo override allowed revolutions, preview override validation, rating score bounds), weight adjustment job/aggregator behavior, reusable combo repository methods, GetTricks unified response, SetReusable endpoint, BuildCombo/UpdateCombo sub-combo slot support, and DeleteCombo sub-combo guard.
 
 ---
 
