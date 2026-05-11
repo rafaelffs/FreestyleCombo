@@ -302,7 +302,10 @@ export function ComboDetailPage() {
                           <tr key={`subcombo-${trick.position}-${st.position}`} className="border-b last:border-0 bg-indigo-50/40">
                             <td className="py-1 pr-4 text-gray-400 pl-6 text-xs">{st.position}</td>
                             <td className="py-1 pr-4 text-gray-600 pl-2 text-sm">{st.name}</td>
-                            <td className="py-1 pr-4 font-mono text-xs text-gray-400">{st.abbreviation}</td>
+                            <td className="py-1 pr-4 font-mono text-xs text-gray-400">
+                              {st.abbreviation}
+                              {st.noTouch && <span className="ml-1 text-indigo-500">(nt)</span>}
+                            </td>
                             <td className="py-1 pr-4 text-gray-500 text-xs">{st.difficulty}</td>
                             <td className="py-1 pr-4 text-gray-500 text-xs">{st.strongFoot ? t('comboDetail.footStrong') : t('comboDetail.footWeak')}</td>
                             <td className="py-1 text-gray-400 text-xs">{st.noTouch ? '✓' : '—'}</td>

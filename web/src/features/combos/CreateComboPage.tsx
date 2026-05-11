@@ -40,7 +40,7 @@ interface SubComboSlotItem extends BuildComboTrickItem {
   comboName: string
   trickCount: number
   avgDifficulty: number
-  trickAbbreviations: string[]
+  trickSlots: { abbreviation: string; noTouch: boolean }[]
 }
 
 type SlotItem = TrickSlotItem | SubComboSlotItem
@@ -188,7 +188,7 @@ export function CreateComboPage() {
         comboName: combo.name,
         trickCount: combo.trickCount,
         avgDifficulty: combo.averageDifficulty,
-        trickAbbreviations: combo.tricks.filter((t) => t.type === 'trick').map((t) => t.abbreviation),
+        trickSlots: combo.tricks.filter((t) => t.type === 'trick').map((t) => ({ abbreviation: t.abbreviation, noTouch: t.noTouch })),
       }]
       return applyNoTouchRules(next)
     })
@@ -609,9 +609,6 @@ export function CreateComboPage() {
                       <>
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-semibold text-indigo-700">{slot.comboName}</span>
-                          <span className="ml-2 text-xs text-gray-400">
-                            {t('createCombo.comboSlotLabel', { count: slot.trickCount, avg: slot.avgDifficulty.toFixed(1) })}
-                          </span>
                         </div>
                         <button
                           type="button"
@@ -627,8 +624,11 @@ export function CreateComboPage() {
                   </div>
                   {slot.type === 'combo' && expandedSlots.has(i) && (
                     <div className="px-10 pb-2 flex flex-wrap gap-1">
-                      {slot.trickAbbreviations.map((abbr, j) => (
-                        <span key={j} className="inline-flex items-center rounded bg-indigo-50 px-1.5 py-0.5 text-xs font-mono text-indigo-700">{abbr}</span>
+                      {slot.trickSlots.map((ts, j) => (
+                        <span key={j} className="inline-flex items-center gap-0.5 rounded bg-indigo-50 px-1.5 py-0.5 text-xs font-mono text-indigo-700">
+                          {ts.abbreviation}
+                          {ts.noTouch && <span className="text-indigo-400">(nt)</span>}
+                        </span>
                       ))}
                     </div>
                   )}

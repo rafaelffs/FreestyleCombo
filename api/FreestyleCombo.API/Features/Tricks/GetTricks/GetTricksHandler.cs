@@ -53,7 +53,9 @@ public class GetTricksHandler : IRequestHandler<GetTricksQuery, List<TrickListIt
                     Difficulty = ct.Trick.Difficulty,
                     Revolution = ct.Trick.Revolution,
                     CrossOver = ct.Trick.CrossOver,
-                    IsTransition = ct.Trick.IsTransition
+                    IsTransition = ct.Trick.IsTransition,
+                    StrongFoot = ct.StrongFoot,
+                    NoTouch = ct.NoTouch
                 }).ToList()
         }).OrderBy(c => c.Name).ToList();
 

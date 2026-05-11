@@ -99,7 +99,9 @@ public class GetPublicCombosHandler : IRequestHandler<GetPublicCombosQuery, Page
                                     Difficulty = sct.Trick.Difficulty,
                                     Revolution = sct.Trick.Revolution,
                                     CrossOver = sct.Trick.CrossOver,
-                                    IsTransition = sct.Trick.IsTransition
+                                    IsTransition = sct.Trick.IsTransition,
+                                    StrongFoot = sct.StrongFoot,
+                                    NoTouch = sct.NoTouch
                                 }).ToList()
                         };
                 }).ToList(),

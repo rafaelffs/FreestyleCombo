@@ -592,6 +592,8 @@ export function TricksPage() {
                                 className="inline-flex items-center gap-1 rounded bg-white border border-indigo-200 px-2 py-0.5 text-xs text-gray-700"
                               >
                                 <span className="font-mono font-semibold text-gray-900">{slot.abbreviation}</span>
+                                {slot.noTouch && <span className="text-indigo-500 font-medium">(nt)</span>}
+                                {!slot.strongFoot && <span className="text-orange-500 font-medium">(wf)</span>}
                                 <span className={`rounded px-1 py-0.5 text-[10px] font-medium ${diffColor(slot.difficulty)}`}>
                                   {slot.difficulty}
                                 </span>

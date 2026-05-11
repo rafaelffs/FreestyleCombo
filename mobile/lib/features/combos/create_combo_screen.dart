@@ -821,10 +821,6 @@ class _SubComboSlotTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Text(
-                  '${slot.subComboTricks?.length ?? 0} tricks',
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
-                ),
                 IconButton(
                   icon: Icon(
                     slot.expanded ? Icons.expand_less : Icons.expand_more,
@@ -863,6 +859,10 @@ class _SubComboSlotTile extends StatelessWidget {
                       t.abbreviation ?? '',
                       style: const TextStyle(fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.bold),
                     ),
+                    if (t.noTouch) ...[
+                      const SizedBox(width: 3),
+                      Text('(nt)', style: TextStyle(fontSize: 11, color: Colors.indigo.shade400, fontWeight: FontWeight.w500)),
+                    ],
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
