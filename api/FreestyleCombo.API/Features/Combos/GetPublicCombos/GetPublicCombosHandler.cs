@@ -107,7 +107,8 @@ public class GetPublicCombosHandler : IRequestHandler<GetPublicCombosQuery, Page
                 TotalRatings = c.Ratings.Count,
                 IsFavourited = favIds.Contains(c.Id),
                 IsCompleted = completedIds.Contains(c.Id),
-                CompletionCount = completionCounts.GetValueOrDefault(c.Id, 0)
+                CompletionCount = completionCounts.GetValueOrDefault(c.Id, 0),
+                IsReusable = c.IsReusable
             }).ToList()
         };
     }

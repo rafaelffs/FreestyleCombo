@@ -68,6 +68,7 @@ public class GetComboHandler : IRequestHandler<GetComboQuery, ComboDetailDto>
             IsFavourited = isFavourited,
             IsCompleted = isCompleted,
             CompletionCount = completionCount,
+            IsReusable = combo.IsReusable,
             Tricks = combo.ComboTricks.OrderBy(ct => ct.Position).Select(ct =>
             {
                 if (ct.TrickId.HasValue)

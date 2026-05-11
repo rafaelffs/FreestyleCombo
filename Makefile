@@ -8,10 +8,11 @@ dev:
 	docker-compose up -d --build api
 	@echo "Starting Web and Mobile..."
 	@osascript -e 'tell application "Terminal" to do script "cd $(CURDIR)/mobile && flutter run -d chrome"'
-	@trap 'kill 0' SIGINT; \
+	@trap 'kill 0; docker-compose stop api' SIGINT SIGTERM; \
 	  (cd web && npm run dev) & \
 	  (sleep 3 && open http://localhost:5050/swagger && open http://localhost:5173) & \
 	  wait
+	@docker-compose stop api
 
 # ---------------------------------------------------------------
 # individual layers 

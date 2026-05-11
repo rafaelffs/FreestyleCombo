@@ -21,4 +21,5 @@ public class PublicComboDto
     public bool IsFavourited { get; set; }
     public bool IsCompleted { get; set; }
     public int CompletionCount { get; set; }
+    public bool IsReusable { get; set; }
 }
