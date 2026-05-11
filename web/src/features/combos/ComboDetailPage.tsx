@@ -264,13 +264,13 @@ export function ComboDetailPage() {
                     return (
                       <>
                         <tr
-                          key={`subcombо-${trick.position}`}
+                          key={`subcombo-${trick.position}`}
                           className="border-b bg-indigo-50"
                         >
                           <td className="py-1.5 pr-4 text-gray-500">{trick.position}</td>
                           <td className="py-1.5 pr-4" colSpan={4}>
                             <span className="font-semibold text-indigo-800">
-                              {trick.subComboName ?? 'Sub-combo'}
+                              {trick.subComboName ?? t('comboDetail.subCombo')}
                             </span>
                             <span className="ml-1 text-xs text-indigo-500">
                               ({trick.subComboTricks.length} {t('comboDetail.tricks')})
@@ -289,7 +289,7 @@ export function ComboDetailPage() {
                           </td>
                         </tr>
                         {isExpanded && trick.subComboTricks.map((st) => (
-                          <tr key={`subcombо-${trick.position}-${st.position}`} className="border-b last:border-0 bg-indigo-50/40">
+                          <tr key={`subcombo-${trick.position}-${st.position}`} className="border-b last:border-0 bg-indigo-50/40">
                             <td className="py-1 pr-4 text-gray-400 pl-6 text-xs">{st.position}</td>
                             <td className="py-1 pr-4 text-gray-600 pl-2 text-sm">{st.name}</td>
                             <td className="py-1 pr-4 font-mono text-xs text-gray-400">{st.abbreviation}</td>

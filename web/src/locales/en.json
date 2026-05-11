@@ -182,7 +182,8 @@
     "updateFailed": "Update failed",
     "tricks": "tricks",
     "subComboExpand": "Show tricks",
-    "subComboCollapse": "Hide tricks"
+    "subComboCollapse": "Hide tricks",
+    "subCombo": "Sub-combo"
   },
   "tricks": {
     "pageTitle": "Tricks",
