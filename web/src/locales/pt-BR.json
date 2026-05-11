@@ -145,6 +145,11 @@
     "signUpToSave": "Cadastre-se para salvar",
     "buildFailed": "Falha ao construir"
   },
+  "createCombo": {
+    "comboSlotLabel": "combo · {{count}} truques · média {{avg}}",
+    "expandSlot": "Expandir",
+    "collapseSlot": "Recolher"
+  },
   "comboDetail": {
     "loading": "Carregando…",
     "notFound": "Combo não encontrado.",

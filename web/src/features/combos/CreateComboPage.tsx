@@ -2,8 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { GripVertical } from 'lucide-react'
-import { combosApi, tricksApi, preferencesApi, extractError, type GenerateComboOverrides, type TrickItem, type BuildComboTrickItem } from '@/lib/api'
+import { GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
+import { combosApi, tricksApi, preferencesApi, extractError, type GenerateComboOverrides, type TrickItem, type ComboItem, type BuildComboTrickItem } from '@/lib/api'
 import { isAuthenticated, setPendingCombo } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,16 +27,29 @@ const GENERATE_DEFAULTS: GenerateComboOverrides = {
   includeKnee: true,
 }
 
-interface SlotItem extends BuildComboTrickItem {
+interface TrickSlotItem extends BuildComboTrickItem {
+  type: 'trick'
   trickName: string
   abbreviation: string
   crossOver: boolean
   isTransition: boolean
 }
 
+interface SubComboSlotItem extends BuildComboTrickItem {
+  type: 'combo'
+  comboName: string
+  trickCount: number
+  avgDifficulty: number
+  trickAbbreviations: string[]
+}
+
+type SlotItem = TrickSlotItem | SubComboSlotItem
+
 function applyNoTouchRules(slots: SlotItem[]): SlotItem[] {
   return slots.map((slot, i) => {
-    const afterTransition = i === 0 || slots[i - 1].isTransition
+    if (slot.type === 'combo') return slot
+    const prevSlot = slots[i - 1]
+    const afterTransition = i === 0 || (prevSlot.type === 'trick' && prevSlot.isTransition)
     return slot.crossOver && !afterTransition && !slot.isTransition ? slot : { ...slot, noTouch: false }
   })
 }
@@ -59,6 +72,7 @@ export function CreateComboPage() {
   // Build state
   const [search, setSearch] = useState('')
   const [slots, setSlots] = useState<SlotItem[]>([])
+  const [expandedSlots, setExpandedSlots] = useState<Set<number>>(new Set())
   const [isPublic, setIsPublic] = useState(false)
   const [buildError, setBuildError] = useState<string | null>(null)
   const dragIndex = useRef<number | null>(null)
@@ -82,11 +96,14 @@ export function CreateComboPage() {
     }
   }, [])
 
-  const { data: tricks = [], isLoading: tricksLoading } = useQuery({
+  const { data: trickListItems = [], isLoading: tricksLoading } = useQuery({
     queryKey: ['tricks'],
-    queryFn: () => tricksApi.getAll().then((r) => r.data.filter((item): item is TrickItem => item.type === 'trick')),
+    queryFn: () => tricksApi.getAll().then((r) => r.data),
     enabled: mode === 'build',
   })
+
+  const tricks = trickListItems.filter((item): item is TrickItem => item.type === 'trick')
+  const comboItems = trickListItems.filter((item): item is ComboItem => item.type === 'combo')
 
   const { data: savedPrefs = [] } = useQuery({
     queryKey: ['preferences'],
@@ -102,7 +119,8 @@ export function CreateComboPage() {
       setPreviewWarnings(data.warnings)
       setSlots(
         applyNoTouchRules(
-          data.tricks.map((t_) => ({
+          data.tricks.map((t_): TrickSlotItem => ({
+            type: 'trick',
             trickId: t_.trickId,
             position: t_.position,
             strongFoot: t_.strongFoot,
@@ -119,10 +137,19 @@ export function CreateComboPage() {
     },
   })
 
+  function serializeSlots(): BuildComboTrickItem[] {
+    return slots.map((slot) => {
+      if (slot.type === 'combo') {
+        return { subComboId: slot.subComboId, position: slot.position, strongFoot: false, noTouch: false }
+      }
+      return { trickId: slot.trickId, position: slot.position, strongFoot: slot.strongFoot, noTouch: slot.noTouch }
+    })
+  }
+
   function handleSave() {
     if (!authed) {
       setPendingCombo({
-        tricks: slots.filter((s) => !!s.trickId).map(({ trickId, position, strongFoot, noTouch }) => ({ trickId: trickId!, position, strongFoot, noTouch })),
+        tricks: slots.filter((s) => s.type === 'trick' && !!s.trickId).map((s) => ({ trickId: s.trickId!, position: s.position, strongFoot: s.strongFoot, noTouch: s.noTouch })),
         name: name || undefined,
         isPublic,
       })
@@ -133,12 +160,7 @@ export function CreateComboPage() {
   }
 
   const buildMutation = useMutation({
-    mutationFn: () =>
-      combosApi.build(
-        slots.map(({ trickId, position, strongFoot, noTouch }) => ({ trickId, position, strongFoot, noTouch })),
-        isPublic,
-        name || undefined,
-      ),
+    mutationFn: () => combosApi.build(serializeSlots(), isPublic, name || undefined),
     onSuccess: ({ data }) => { navigate(`/combos/${data.id}`) },
     onError: (err) => setBuildError(extractError(err, t('create.buildFailed'))),
   })
@@ -149,7 +171,25 @@ export function CreateComboPage() {
 
   function addTrick(trick: TrickItem) {
     setSlots((prev) => {
-      const next = [...prev, { trickId: trick.id, position: prev.length + 1, strongFoot: true, noTouch: false, trickName: trick.name, abbreviation: trick.abbreviation, crossOver: trick.crossOver, isTransition: trick.isTransition }]
+      const next: SlotItem[] = [...prev, { type: 'trick', trickId: trick.id, position: prev.length + 1, strongFoot: true, noTouch: false, trickName: trick.name, abbreviation: trick.abbreviation, crossOver: trick.crossOver, isTransition: trick.isTransition }]
+      return applyNoTouchRules(next)
+    })
+    if (window.innerWidth < 1024) setMobileBuildTab('combo')
+  }
+
+  function addCombo(combo: ComboItem) {
+    setSlots((prev) => {
+      const next: SlotItem[] = [...prev, {
+        type: 'combo',
+        subComboId: combo.id,
+        position: prev.length + 1,
+        strongFoot: false,
+        noTouch: false,
+        comboName: combo.name,
+        trickCount: combo.trickCount,
+        avgDifficulty: combo.averageDifficulty,
+        trickAbbreviations: combo.tricks.filter((t) => t.type === 'trick').map((t) => t.abbreviation),
+      }]
       return applyNoTouchRules(next)
     })
     if (window.innerWidth < 1024) setMobileBuildTab('combo')
@@ -169,25 +209,52 @@ export function CreateComboPage() {
   }
 
   function toggleStrongFoot(index: number) {
-    setSlots((prev) => prev.map((s, i) => (i === index ? { ...s, strongFoot: !s.strongFoot } : s)))
+    setSlots((prev) => prev.map((s, i) => (i === index && s.type === 'trick' ? { ...s, strongFoot: !s.strongFoot } : s)))
   }
 
   function toggleNoTouch(index: number) {
     setSlots((prev) => prev.map((s, i) => {
-      if (i !== index) return s
-      const afterTransition = index === 0 || prev[index - 1].isTransition
+      if (i !== index || s.type !== 'trick') return s
+      const prevSlot = prev[index - 1]
+      const afterTransition = index === 0 || (prevSlot.type === 'trick' && prevSlot.isTransition)
       if (!s.crossOver || afterTransition) return s
       return { ...s, noTouch: !s.noTouch }
     }))
+  }
+
+  function toggleExpandSlot(index: number) {
+    setExpandedSlots((prev) => {
+      const next = new Set(prev)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+      return next
+    })
   }
 
   const filteredTricks = tricks.filter(
     (tr) => tr.name.toLowerCase().includes(search.toLowerCase()) || tr.abbreviation.toLowerCase().includes(search.toLowerCase()),
   )
 
-  const avgDiff = slots.length > 0
-    ? slots.reduce((sum, s) => { const tr = tricks.find((tr) => tr.id === s.trickId); return sum + (tr?.difficulty ?? 0) }, 0) / slots.length
-    : 0
+  const filteredCombos = comboItems.filter(
+    (c) => c.name.toLowerCase().includes(search.toLowerCase()),
+  )
+
+  // Calculate summary expanding sub-combo tricks
+  const { totalTricks, totalDiffSum } = slots.reduce(
+    (acc, s) => {
+      if (s.type === 'trick') {
+        const tr = tricks.find((tr) => tr.id === s.trickId)
+        return { totalTricks: acc.totalTricks + 1, totalDiffSum: acc.totalDiffSum + (tr?.difficulty ?? 0) }
+      } else {
+        return {
+          totalTricks: acc.totalTricks + s.trickCount,
+          totalDiffSum: acc.totalDiffSum + s.avgDifficulty * s.trickCount,
+        }
+      }
+    },
+    { totalTricks: 0, totalDiffSum: 0 },
+  )
+  const avgDiff = totalTricks > 0 ? totalDiffSum / totalTricks : 0
 
   const previewError = previewMutation.error ? extractError(previewMutation.error, t('create.previewFailed')) : null
 
@@ -412,7 +479,7 @@ export function CreateComboPage() {
           onClick={() => setMobileBuildTab('tricks')}
           className={`flex-1 py-3 text-sm font-medium transition-colors ${mobileBuildTab === 'tricks' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
         >
-          {t('create.tabTricks')} {filteredTricks.length > 0 && `(${filteredTricks.length})`}
+          {t('create.tabTricks')} {(filteredTricks.length + filteredCombos.length) > 0 && `(${filteredTricks.length + filteredCombos.length})`}
         </button>
         <button
           type="button"
@@ -433,6 +500,17 @@ export function CreateComboPage() {
               <p className="text-sm text-gray-500">{t('common.loading')}</p>
             ) : (
               <div className="max-h-[60vh] overflow-y-auto divide-y divide-gray-100 lg:max-h-[480px]">
+                {filteredCombos.map((combo) => (
+                  <button key={combo.id} type="button" onClick={() => addCombo(combo)} className="flex w-full items-center justify-between px-2 py-2 text-left hover:bg-indigo-50 transition-colors border-l-2 border-indigo-300">
+                    <div>
+                      <span className="text-sm font-semibold text-indigo-700">{combo.name}</span>
+                      <span className="ml-2 text-xs text-gray-400">
+                        {t('createCombo.comboSlotLabel', { count: combo.trickCount, avg: combo.averageDifficulty.toFixed(1) })}
+                      </span>
+                    </div>
+                    <Badge variant="secondary" className="text-indigo-600 bg-indigo-50">combo</Badge>
+                  </button>
+                ))}
                 {filteredTricks.map((trick) => (
                   <button key={trick.id} type="button" onClick={() => addTrick(trick)} className="flex w-full items-center justify-between px-2 py-2 text-left hover:bg-indigo-50 transition-colors">
                     <div>
@@ -446,7 +524,7 @@ export function CreateComboPage() {
                     </div>
                   </button>
                 ))}
-                {filteredTricks.length === 0 && <p className="py-4 text-center text-sm text-gray-400">{t('create.noTricksMatch')}</p>}
+                {filteredTricks.length === 0 && filteredCombos.length === 0 && <p className="py-4 text-center text-sm text-gray-400">{t('create.noTricksMatch')}</p>}
               </div>
             )}
           </CardContent>
@@ -457,7 +535,7 @@ export function CreateComboPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>{t('create.myComboTitle')}</CardTitle>
-              {slots.length > 0 && <span className="text-sm text-gray-500">{t('create.tricksSummary', { count: slots.length, avgDiff: avgDiff.toFixed(1) })}</span>}
+              {slots.length > 0 && <span className="text-sm text-gray-500">{t('create.tricksSummary', { count: totalTricks, avgDiff: avgDiff.toFixed(1) })}</span>}
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -500,30 +578,60 @@ export function CreateComboPage() {
                     setDragOverIndex(null)
                     setTouchHeldIndex(null)
                   }}
-                  className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors select-none ${dragOverIndex === i ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200'} ${touchHeldIndex === i ? 'drag-shaking' : ''}`}
+                  className={`rounded-lg border transition-colors select-none ${dragOverIndex === i ? 'border-indigo-400 bg-indigo-50' : slot.type === 'combo' ? 'border-indigo-200' : 'border-gray-200'} ${touchHeldIndex === i ? 'drag-shaking' : ''}`}
                 >
-                  <span data-drag-handle style={{ touchAction: 'none' }} className="shrink-0 cursor-grab active:cursor-grabbing p-2 -m-2 touch-none">
-                    <GripVertical className="w-4 h-4 text-gray-300 pointer-events-none" />
-                  </span>
-                  <span className="w-5 shrink-0 text-xs font-bold text-gray-400">{slot.position}</span>
-                  <div className="flex-1 min-w-0">
-                    <span className="font-mono text-xs font-semibold text-gray-900">{slot.abbreviation}</span>
-                    <span className="ml-1.5 text-sm text-gray-500">{slot.trickName}</span>
+                  <div className="flex items-center gap-3 px-3 py-2">
+                    <span data-drag-handle style={{ touchAction: 'none' }} className="shrink-0 cursor-grab active:cursor-grabbing p-2 -m-2 touch-none">
+                      <GripVertical className="w-4 h-4 text-gray-300 pointer-events-none" />
+                    </span>
+                    <span className="w-5 shrink-0 text-xs font-bold text-gray-400">{slot.position}</span>
+                    {slot.type === 'trick' ? (() => {
+                      const trickSlot = slot
+                      const prevSlot = i > 0 ? slots[i - 1] : null
+                      const ntDisabled = trickSlot.isTransition || !trickSlot.crossOver || i === 0 || (prevSlot?.type === 'trick' && prevSlot.isTransition)
+                      return (
+                      <>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-mono text-xs font-semibold text-gray-900">{trickSlot.abbreviation}</span>
+                          <span className="ml-1.5 text-sm text-gray-500">{trickSlot.trickName}</span>
+                        </div>
+                        <label className={`flex items-center gap-1 text-xs cursor-pointer ${trickSlot.isTransition ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}`}>
+                          <input type="checkbox" checked={trickSlot.strongFoot} onChange={() => toggleStrongFoot(i)} disabled={trickSlot.isTransition} className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 disabled:opacity-40" />
+                          SF
+                        </label>
+                        <label className={`flex items-center gap-1 text-xs cursor-pointer ${ntDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}`}>
+                          <input type="checkbox" checked={trickSlot.noTouch} onChange={() => toggleNoTouch(i)} disabled={ntDisabled} className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 disabled:opacity-40" />
+                          NT
+                        </label>
+                      </>
+                      )
+                    })() : (
+                      <>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-semibold text-indigo-700">{slot.comboName}</span>
+                          <span className="ml-2 text-xs text-gray-400">
+                            {t('createCombo.comboSlotLabel', { count: slot.trickCount, avg: slot.avgDifficulty.toFixed(1) })}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleExpandSlot(i)}
+                          className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
+                          title={expandedSlots.has(i) ? t('createCombo.collapseSlot') : t('createCombo.expandSlot')}
+                        >
+                          {expandedSlots.has(i) ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+                      </>
+                    )}
+                    <button type="button" onClick={() => removeSlot(i)} className="text-gray-400 hover:text-red-500 text-lg leading-none" title="Remove">×</button>
                   </div>
-                  <label className={`flex items-center gap-1 text-xs cursor-pointer ${slot.isTransition ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}`}>
-                    <input type="checkbox" checked={slot.strongFoot} onChange={() => toggleStrongFoot(i)} disabled={slot.isTransition} className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 disabled:opacity-40" />
-                    SF
-                  </label>
-                  {(() => {
-                    const ntDisabled = slot.isTransition || !slot.crossOver || i === 0 || slots[i - 1].isTransition
-                    return (
-                      <label className={`flex items-center gap-1 text-xs cursor-pointer ${ntDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}`}>
-                        <input type="checkbox" checked={slot.noTouch} onChange={() => toggleNoTouch(i)} disabled={ntDisabled} className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 disabled:opacity-40" />
-                        NT
-                      </label>
-                    )
-                  })()}
-                  <button type="button" onClick={() => removeSlot(i)} className="text-gray-400 hover:text-red-500 text-lg leading-none" title="Remove">×</button>
+                  {slot.type === 'combo' && expandedSlots.has(i) && (
+                    <div className="px-10 pb-2 flex flex-wrap gap-1">
+                      {slot.trickAbbreviations.map((abbr, j) => (
+                        <span key={j} className="inline-flex items-center rounded bg-indigo-50 px-1.5 py-0.5 text-xs font-mono text-indigo-700">{abbr}</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

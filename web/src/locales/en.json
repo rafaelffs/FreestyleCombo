@@ -145,6 +145,11 @@
     "signUpToSave": "Sign up to save",
     "buildFailed": "Build failed"
   },
+  "createCombo": {
+    "comboSlotLabel": "combo · {{count}} tricks · avg {{avg}}",
+    "expandSlot": "Expand",
+    "collapseSlot": "Collapse"
+  },
   "comboDetail": {
     "loading": "Loading…",
     "notFound": "Combo not found.",
