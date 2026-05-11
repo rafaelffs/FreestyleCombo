@@ -183,7 +183,9 @@
     "tricks": "tricks",
     "subComboExpand": "Show tricks",
     "subComboCollapse": "Hide tricks",
-    "subCombo": "Sub-combo"
+    "subCombo": "Sub-combo",
+    "reusable": "Reusable",
+    "setReusableFailed": "Failed to update reusable status"
   },
   "tricks": {
     "pageTitle": "Tricks",

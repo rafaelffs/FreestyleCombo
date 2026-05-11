@@ -106,6 +106,16 @@ export function ComboDetailPage() {
     onError: (err) => setDeleteError(extractError(err, t('comboDetail.deleteFailed'))),
   })
 
+  const [reusableError, setReusableError] = useState<string | null>(null)
+  const reusableMutation = useMutation({
+    mutationFn: (isReusable: boolean) => combosApi.setReusable(id!, isReusable),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['combos', id] })
+      setReusableError(null)
+    },
+    onError: (err) => setReusableError(extractError(err, t('comboDetail.setReusableFailed'))),
+  })
+
   if (isLoading) return <p className="text-gray-500">{t('comboDetail.loading')}</p>
   if (error || !combo) return <p className="text-red-600">{t('comboDetail.notFound')}</p>
 
@@ -338,6 +348,25 @@ export function ComboDetailPage() {
             )}
           </div>
           {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
+
+          {isAdmin() && combo.visibility === 'Public' && (
+            <div className="flex items-center gap-3 pt-1">
+              <span className="text-sm font-medium text-gray-700">{t('comboDetail.reusable')}</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={combo.isReusable}
+                disabled={reusableMutation.isPending}
+                onClick={() => reusableMutation.mutate(!combo.isReusable)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 ${combo.isReusable ? 'bg-indigo-600' : 'bg-gray-200'}`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition-transform ${combo.isReusable ? 'translate-x-5' : 'translate-x-0'}`}
+                />
+              </button>
+              {reusableError && <p className="text-sm text-red-600">{reusableError}</p>}
+            </div>
+          )}
         </CardContent>
       </Card>
 
