@@ -28,7 +28,7 @@ public class ComboRepositoryTests
             OwnerId = owner.Id,
             Owner = owner,
             Name = "Test Combo",
-            AverageDifficulty = 3.0,
+            TotalDifficulty = 3.0,
             TrickCount = 1,
             Visibility = visibility,
             CreatedAt = DateTime.UtcNow,

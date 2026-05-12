@@ -21,7 +21,7 @@ public class GetComboHandlerTests
             OwnerId = ownerId,
             Owner = new AppUser { Id = ownerId, UserName = "owner" },
             Visibility = visibility,
-            AverageDifficulty = 4,
+            TotalDifficulty = 4,
             TrickCount = 1,
             ComboTricks =
             [

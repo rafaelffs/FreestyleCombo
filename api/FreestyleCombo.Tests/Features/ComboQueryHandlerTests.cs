@@ -53,7 +53,7 @@ public class ComboQueryHandlerTests
             OwnerId = ownerId,
             Owner = new AppUser { Id = ownerId, UserName = ownerName, Email = ownerName + "@example.com" },
             Name = "Combo",
-            AverageDifficulty = 3.5,
+            TotalDifficulty = 3.5,
             TrickCount = 1,
             Visibility = visibility,
             CreatedAt = createdAt,
@@ -239,7 +239,7 @@ public class ComboQueryHandlerTests
         combo.Name.Should().Be("Updated Combo");
         combo.Visibility.Should().Be(ComboVisibility.PendingReview);
         combo.TrickCount.Should().Be(2);
-        combo.AverageDifficulty.Should().Be(3.0);
+        combo.TotalDifficulty.Should().Be(6.0);
         result.DisplayText.Should().Contain(crossOver.Abbreviation + "(nt)");
         result.DisplayText.Should().Contain(nonCrossOver.Abbreviation);
         result.Tricks.Single(t => t.TrickId == nonCrossOver.Id).NoTouch.Should().BeFalse();

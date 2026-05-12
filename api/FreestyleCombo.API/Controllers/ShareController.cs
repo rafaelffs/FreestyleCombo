@@ -32,9 +32,9 @@ public class ShareController : ControllerBase
                 .Select(ct2 => ct2.Trick.Abbreviation));
 
         var trickCount = combo.TrickCount;
-        var avgDiff = combo.AverageDifficulty.ToString("F1");
+        var totalDiff = combo.TotalDifficulty.ToString("F0");
         var owner = combo.Owner?.UserName ?? "anonymous";
-        var description = $"{trickCount} tricks · avg difficulty {avgDiff} · by {owner}";
+        var description = $"{trickCount} tricks · difficulty {totalDiff} · by {owner}";
 
         var spaUrl = $"{appOrigin}/combos/{id}";
         var imageUrl = $"{appOrigin}/og-image.png";

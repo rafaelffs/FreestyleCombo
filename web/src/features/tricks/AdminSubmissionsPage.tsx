@@ -85,7 +85,7 @@ export function AdminSubmissionsPage() {
                   </div>
                   <div className="flex flex-wrap gap-1">
                     <Badge variant="secondary">
-                      {t('adminSubmissions.avgDiff', { value: combo.averageDifficulty?.toFixed(1) ?? '—' })}
+                      {t('adminSubmissions.avgDiff', { value: combo.totalDifficulty ?? '—' })}
                     </Badge>
                     <Badge variant="secondary">{t('adminSubmissions.trickCount', { count: combo.trickCount })}</Badge>
                   </div>

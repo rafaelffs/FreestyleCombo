@@ -39,7 +39,7 @@ interface SubComboSlotItem extends BuildComboTrickItem {
   type: 'combo'
   comboName: string
   trickCount: number
-  avgDifficulty: number
+  totalDifficulty: number
   trickSlots: { abbreviation: string; noTouch: boolean }[]
 }
 
@@ -187,7 +187,7 @@ export function CreateComboPage() {
         noTouch: false,
         comboName: combo.name,
         trickCount: combo.trickCount,
-        avgDifficulty: combo.averageDifficulty,
+        totalDifficulty: combo.totalDifficulty,
         trickSlots: combo.tricks.filter((t) => t.type === 'trick').map((t) => ({ abbreviation: t.abbreviation, noTouch: t.noTouch })),
       }]
       return applyNoTouchRules(next)
@@ -240,21 +240,20 @@ export function CreateComboPage() {
   )
 
   // Calculate summary expanding sub-combo tricks
-  const { totalTricks, totalDiffSum } = slots.reduce(
+  const { totalTricks, totalDifficulty } = slots.reduce(
     (acc, s) => {
       if (s.type === 'trick') {
         const tr = tricks.find((tr) => tr.id === s.trickId)
-        return { totalTricks: acc.totalTricks + 1, totalDiffSum: acc.totalDiffSum + (tr?.difficulty ?? 0) }
+        return { totalTricks: acc.totalTricks + 1, totalDifficulty: acc.totalDifficulty + (tr?.difficulty ?? 0) }
       } else {
         return {
           totalTricks: acc.totalTricks + s.trickCount,
-          totalDiffSum: acc.totalDiffSum + s.avgDifficulty * s.trickCount,
+          totalDifficulty: acc.totalDifficulty + s.totalDifficulty,
         }
       }
     },
-    { totalTricks: 0, totalDiffSum: 0 },
+    { totalTricks: 0, totalDifficulty: 0 },
   )
-  const avgDiff = totalTricks > 0 ? totalDiffSum / totalTricks : 0
 
   const previewError = previewMutation.error ? extractError(previewMutation.error, t('create.previewFailed')) : null
 
@@ -505,7 +504,7 @@ export function CreateComboPage() {
                     <div>
                       <span className="text-sm font-semibold text-indigo-700">{combo.name}</span>
                       <span className="ml-2 text-xs text-gray-400">
-                        {t('createCombo.comboSlotLabel', { count: combo.trickCount, avg: combo.averageDifficulty.toFixed(1) })}
+                        {t('createCombo.comboSlotLabel', { count: combo.trickCount, total: combo.totalDifficulty })}
                       </span>
                     </div>
                     <Badge variant="secondary" className="text-indigo-600 bg-indigo-50">combo</Badge>
@@ -535,7 +534,7 @@ export function CreateComboPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>{t('create.myComboTitle')}</CardTitle>
-              {slots.length > 0 && <span className="text-sm text-gray-500">{t('create.tricksSummary', { count: totalTricks, avgDiff: avgDiff.toFixed(1) })}</span>}
+              {slots.length > 0 && <span className="text-sm text-gray-500">{t('create.tricksSummary', { count: totalTricks, totalDiff: totalDifficulty })}</span>}
             </div>
           </CardHeader>
           <CardContent className="space-y-3">

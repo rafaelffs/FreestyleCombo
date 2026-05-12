@@ -76,7 +76,7 @@ class _AdminComboReviewsScreenState extends State<AdminComboReviewsScreen> {
                       Text(combo.displayText,
                           style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 13)),
                       const SizedBox(height: 4),
-                      Text('by ${combo.ownerUserName ?? '?'} · avg diff ${combo.averageDifficulty.toStringAsFixed(1)} · ${combo.trickCount} tricks',
+                      Text('by ${combo.ownerUserName ?? '?'} · difficulty ${combo.totalDifficulty.toInt()} · ${combo.trickCount} tricks',
                           style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                       if (combo.tricks != null && combo.tricks!.isNotEmpty) ...[
                         const SizedBox(height: 8),

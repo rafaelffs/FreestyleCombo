@@ -98,14 +98,14 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
             var subComboTrickCount = subComboSlots.Sum(s => subComboMap[s.SubComboId!.Value].ComboTricks.Count(ct => ct.TrickId != null));
             var totalTrickCount = directTrickCount + subComboTrickCount;
 
-            // Calculate AverageDifficulty across all tricks
+            // Calculate TotalDifficulty across all tricks
             var allDifficulties = normalizedTricks
                 .Select(t => (double)trickMap[t.TrickId!.Value].Difficulty)
                 .Concat(subComboSlots.SelectMany(s => subComboMap[s.SubComboId!.Value].ComboTricks
                     .Where(ct => ct.TrickId != null)
                     .Select(ct => (double)ct.Trick!.Difficulty)))
                 .ToList();
-            var avgDifficulty = totalTrickCount > 0 ? Math.Round(allDifficulties.Average(), 1) : 0;
+            var totalDifficulty = allDifficulties.Sum();
 
             // Order all slots by position
             var allSlots = request.Tricks.OrderBy(t => t.Position).ToList();
@@ -147,7 +147,7 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
             await _comboRepo.ReplaceComboTricksAsync(combo.Id, newComboTricks, cancellationToken);
 
             combo.TrickCount = totalTrickCount;
-            combo.AverageDifficulty = avgDifficulty;
+            combo.TotalDifficulty = totalDifficulty;
         }
 
         // If the combo was public, it must go back through admin review — unless the editor is an admin
@@ -262,7 +262,7 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
             OwnerId = combo.OwnerId,
             OwnerUserName = owner?.UserName,
             Name = combo.Name,
-            AverageDifficulty = combo.AverageDifficulty,
+            TotalDifficulty = combo.TotalDifficulty,
             TrickCount = combo.TrickCount,
             IsPublic = combo.IsPublic,
             IsReusable = combo.IsReusable,

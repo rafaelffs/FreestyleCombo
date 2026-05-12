@@ -29,7 +29,7 @@ export interface ComboDto {
   ownerId: string
   ownerUserName?: string
   name?: string
-  averageDifficulty: number
+  totalDifficulty: number
   trickCount: number
   isPublic?: boolean
   isReusable: boolean

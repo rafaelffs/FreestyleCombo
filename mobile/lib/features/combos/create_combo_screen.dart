@@ -274,26 +274,19 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     }).toList();
   }
 
-  double get _avgDiff {
-    if (_slots.isEmpty) return 0;
-    int totalDiff = 0;
-    int count = 0;
+  int get _totalDiff {
+    int total = 0;
     for (final s in _slots) {
       if (s.isSubCombo) {
         for (final ComboTrickDto t in s.subComboTricks ?? []) {
-          totalDiff += t.difficulty;
-          count++;
+          total += t.difficulty;
         }
       } else {
         final trick = _items.whereType<TrickItem>().where((t) => t.id == s.trickId).firstOrNull;
-        if (trick != null) {
-          totalDiff += trick.difficulty;
-          count++;
-        }
+        if (trick != null) total += trick.difficulty;
       }
     }
-    if (count == 0) return 0;
-    return totalDiff / count;
+    return total;
   }
 
   int get _totalTrickCount {
@@ -541,7 +534,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
             const SizedBox(height: 8),
             Text(_buildResult!.displayText, style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            Text('${_buildResult!.trickCount} tricks · avg diff ${_buildResult!.averageDifficulty.toStringAsFixed(1)}'),
+            Text('${_buildResult!.trickCount} tricks · difficulty ${_buildResult!.totalDifficulty.toInt()}'),
             const SizedBox(height: 16),
             FilledButton.icon(
               icon: const Icon(Icons.arrow_forward),
@@ -682,7 +675,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                           ],
                         ),
                         subtitle: Text(
-                          'combo · ${item.trickCount} tricks · avg ${item.averageDifficulty.toStringAsFixed(1)}',
+                          'combo · ${item.trickCount} tricks · diff ${item.totalDifficulty.toInt()}',
                           style: const TextStyle(fontSize: 11),
                         ),
                         trailing: const Icon(Icons.add_circle_outline, color: Colors.purple),
@@ -743,7 +736,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('$_totalTrickCount tricks · avg diff ${_avgDiff.toStringAsFixed(1)}',
+                Text('$_totalTrickCount tricks · difficulty $_totalDiff',
                     style: const TextStyle(fontSize: 12, color: Colors.grey), textAlign: TextAlign.center),
                 const SizedBox(height: 8),
                 Row(children: [

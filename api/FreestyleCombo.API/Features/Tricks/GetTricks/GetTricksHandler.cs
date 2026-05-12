@@ -39,7 +39,7 @@ public class GetTricksHandler : IRequestHandler<GetTricksQuery, List<TrickListIt
             Type = "combo",
             Id = c.Id,
             Name = c.Name,
-            AverageDifficulty = (decimal?)c.AverageDifficulty,
+            TotalDifficulty = (decimal?)c.TotalDifficulty,
             TrickCount = c.TrickCount,
             Tricks = c.ComboTricks
                 .Where(ct => ct.TrickId.HasValue)

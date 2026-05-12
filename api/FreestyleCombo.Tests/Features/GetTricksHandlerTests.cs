@@ -21,7 +21,7 @@ public class GetTricksHandlerTests
             Id = Guid.NewGuid(),
             Name = name,
             IsReusable = true,
-            AverageDifficulty = tricks.Length > 0 ? tricks.Average(t => t.Difficulty) : 0,
+            TotalDifficulty = tricks.Length > 0 ? tricks.Average(t => t.Difficulty) : 0,
             TrickCount = tricks.Length,
             ComboTricks = tricks.Select((t, i) => new ComboTrick
             {

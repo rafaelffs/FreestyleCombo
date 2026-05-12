@@ -320,7 +320,7 @@ export function ComboDetailPage() {
           </div>
 
           <div className="flex gap-2 pt-1">
-            <Badge variant="secondary">{t('comboDetail.avgDifficulty', { value: combo.averageDifficulty?.toFixed(1) ?? '—' })}</Badge>
+            <Badge variant="secondary">{t('comboDetail.avgDifficulty', { value: combo.totalDifficulty ?? '—' })}</Badge>
             <Badge variant="secondary">{t('comboDetail.trickCount', { count: combo.trickCount })}</Badge>
           </div>
 

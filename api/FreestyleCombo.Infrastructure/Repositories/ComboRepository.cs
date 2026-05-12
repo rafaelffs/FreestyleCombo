@@ -31,7 +31,7 @@ public class ComboRepository : IComboRepository
             .Where(c => c.Visibility == ComboVisibility.Public);
 
         if (maxDifficulty.HasValue)
-            query = query.Where(c => c.AverageDifficulty <= maxDifficulty.Value);
+            query = query.Where(c => c.TotalDifficulty <= maxDifficulty.Value);
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -44,7 +44,7 @@ public class ComboRepository : IComboRepository
 
         query = sortBy switch
         {
-            "difficulty" => query.OrderByDescending(c => c.AverageDifficulty),
+            "difficulty" => query.OrderByDescending(c => c.TotalDifficulty),
             "rating" => query.OrderByDescending(c => c.Ratings.Any() ? c.Ratings.Average(r => r.Score) : 0),
             _ => query.OrderByDescending(c => c.CreatedAt)
         };

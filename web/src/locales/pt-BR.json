@@ -136,7 +136,7 @@
     "searchTricks": "Buscar por nome ou abreviação…",
     "noTricksMatch": "Nenhuma trick encontrada.",
     "myComboTitle": "Meu Combo",
-    "tricksSummary": "{{count}} tricks · dif. média {{avgDiff}}",
+    "tricksSummary": "{{count}} tricks · dificuldade {{totalDiff}}",
     "tapTricksHint": "Toque na aba Tricks acima para ver e adicionar tricks.",
     "clickTricksHint": "Clique nas tricks à esquerda para adicioná-las.",
     "submitForReview": "Enviar para revisão pública",
@@ -146,7 +146,7 @@
     "buildFailed": "Falha ao construir"
   },
   "createCombo": {
-    "comboSlotLabel": "combo · {{count}} truques · média {{avg}}",
+    "comboSlotLabel": "combo · {{count}} truques · dif. {{total}}",
     "expandSlot": "Expandir",
     "collapseSlot": "Recolher"
   },
@@ -163,7 +163,7 @@
     "colNoTouch": "No Touch",
     "footStrong": "Strong",
     "footWeak": "Weak",
-    "avgDifficulty": "Dif. média: {{value}}",
+    "avgDifficulty": "Dificuldade: {{value}}",
     "trickCount": "{{count}} tricks",
     "ratings": "{{count}} avaliações",
     "rateCombo": "Avaliar este combo",
@@ -250,7 +250,7 @@
     "combosSection": "Solicitações de Publicação de Combos",
     "combosError": "Falha ao carregar combos pendentes.",
     "combosNone": "Nenhum combo aguardando revisão.",
-    "avgDiff": "Dif. média: {{value}}",
+    "avgDiff": "Dificuldade: {{value}}",
     "trickCount": "{{count}} tricks",
     "submissionsSection": "Envios de Tricks",
     "submissionsError": "Falha ao carregar envios.",

@@ -53,7 +53,7 @@ export function AdminComboReviewsPage() {
                 </div>
                 <div className="flex flex-wrap gap-1">
                   <Badge variant="secondary">
-                    Avg diff: {combo.averageDifficulty?.toFixed(1) ?? '—'}
+                    Difficulty: {combo.totalDifficulty ?? '—'}
                   </Badge>
                   <Badge variant="secondary">{combo.trickCount} tricks</Badge>
                 </div>

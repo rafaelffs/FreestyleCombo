@@ -7,7 +7,7 @@ public class Combo
     public Guid Id { get; set; }
     public Guid OwnerId { get; set; }
     public string? Name { get; set; }
-    public double AverageDifficulty { get; set; }
+    public double TotalDifficulty { get; set; }
     public int TrickCount { get; set; }
     public ComboVisibility Visibility { get; set; } = ComboVisibility.Private;
     public bool IsPublic => Visibility == ComboVisibility.Public;

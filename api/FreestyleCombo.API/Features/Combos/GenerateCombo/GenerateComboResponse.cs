@@ -6,7 +6,7 @@ public class GenerateComboResponse
     public Guid OwnerId { get; set; }
     public string? OwnerUserName { get; set; }
     public string? Name { get; set; }
-    public double AverageDifficulty { get; set; }
+    public double TotalDifficulty { get; set; }
     public int TrickCount { get; set; }
     public bool IsPublic { get; set; }
     public bool IsReusable { get; set; }

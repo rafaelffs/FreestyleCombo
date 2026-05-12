@@ -379,7 +379,7 @@ class _ComboCardState extends State<ComboCard> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  _Chip(label: 'Diff: ${combo.averageDifficulty.toStringAsFixed(1)}'),
+                  _Chip(label: 'Diff: ${combo.totalDifficulty.toInt()}'),
                 ],
               ),
               if (combo.ownerUserName != null) ...[

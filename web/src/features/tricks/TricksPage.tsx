@@ -556,8 +556,8 @@ export function TricksPage() {
                       </td>
                       <td className="px-4 py-2 text-center text-gray-400">—</td>
                       <td className="px-4 py-2 text-center">
-                        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(combo.averageDifficulty)}`}>
-                          {combo.averageDifficulty.toFixed(1)}
+                        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(combo.totalDifficulty)}`}>
+                          {combo.totalDifficulty}
                         </span>
                       </td>
                       <td className="px-4 py-2 text-center text-gray-400">—</td>

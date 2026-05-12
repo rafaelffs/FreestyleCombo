@@ -163,7 +163,7 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
                   children: [
                     Chip(
                         label: Text(
-                            'Avg diff: ${combo.averageDifficulty.toStringAsFixed(1)}')),
+                            'Difficulty: ${combo.totalDifficulty.toInt()}')),
                     Chip(label: Text('${combo.trickCount} tricks')),
                     if (combo.averageRating > 0)
                       Chip(
@@ -516,7 +516,7 @@ class _EditComboScreenState extends State<_EditComboScreen> {
                         dense: true,
                         tileColor: Colors.purple.shade50,
                         title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                        subtitle: Text('combo · ${item.trickCount} tricks · avg ${item.averageDifficulty.toStringAsFixed(1)}', style: const TextStyle(fontSize: 11)),
+                        subtitle: Text('combo · ${item.trickCount} tricks · diff ${item.totalDifficulty.toInt()}', style: const TextStyle(fontSize: 11)),
                         trailing: const Icon(Icons.add_circle_outline, color: Colors.purple, size: 20),
                         onTap: () => _addCombo(item),
                       );

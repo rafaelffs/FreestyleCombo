@@ -59,7 +59,7 @@ public class GetMyCombosHandler : IRequestHandler<GetMyCombosQuery, PagedResult<
                 OwnerId = c.OwnerId,
                 OwnerUserName = c.Owner?.UserName,
                 Name = c.Name,
-                AverageDifficulty = c.AverageDifficulty,
+                TotalDifficulty = c.TotalDifficulty,
                 TrickCount = c.TrickCount,
                 IsPublic = c.IsPublic,
                 Visibility = c.Visibility.ToString(),

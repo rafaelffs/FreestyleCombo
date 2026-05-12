@@ -71,14 +71,14 @@ public class BuildComboHandler : IRequestHandler<BuildComboCommand, GenerateComb
         var subComboTrickCount = subComboSlots.Sum(s => subComboMap[s.SubComboId!.Value].ComboTricks.Count(ct => ct.TrickId != null));
         var totalTrickCount = directTrickCount + subComboTrickCount;
 
-        // Calculate AverageDifficulty across all tricks
+        // Calculate TotalDifficulty across all tricks
         var allDifficulties = normalizedTricks
             .Select(t => (double)trickMap[t.TrickId!.Value].Difficulty)
             .Concat(subComboSlots.SelectMany(s => subComboMap[s.SubComboId!.Value].ComboTricks
                 .Where(ct => ct.TrickId != null)
                 .Select(ct => (double)ct.Trick!.Difficulty)))
             .ToList();
-        var avgDifficulty = totalTrickCount > 0 ? Math.Round(allDifficulties.Average(), 1) : 0;
+        var totalDifficulty = allDifficulties.Sum();
 
         // Order all slots by position
         var allSlots = request.Tricks.OrderBy(t => t.Position).ToList();
@@ -137,7 +137,7 @@ public class BuildComboHandler : IRequestHandler<BuildComboCommand, GenerateComb
             Id = Guid.NewGuid(),
             OwnerId = userId,
             Name = string.IsNullOrWhiteSpace(request.Name) ? null : request.Name.Trim(),
-            AverageDifficulty = avgDifficulty,
+            TotalDifficulty = totalDifficulty,
             TrickCount = totalTrickCount,
             Visibility = request.IsPublic
                 ? (isAdmin ? ComboVisibility.Public : ComboVisibility.PendingReview)
@@ -205,7 +205,7 @@ public class BuildComboHandler : IRequestHandler<BuildComboCommand, GenerateComb
             OwnerId = combo.OwnerId,
             OwnerUserName = user?.UserName,
             Name = combo.Name,
-            AverageDifficulty = combo.AverageDifficulty,
+            TotalDifficulty = combo.TotalDifficulty,
             TrickCount = combo.TrickCount,
             IsPublic = combo.IsPublic,
             IsReusable = combo.IsReusable,

@@ -311,7 +311,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
             </div>
             <div className="flex shrink-0 flex-wrap gap-1 items-start">
               <Badge variant="secondary">
-                {combo.averageDifficulty?.toFixed(1) ?? '—'}
+                {combo.totalDifficulty ?? '—'}
               </Badge>
             </div>
           </div>

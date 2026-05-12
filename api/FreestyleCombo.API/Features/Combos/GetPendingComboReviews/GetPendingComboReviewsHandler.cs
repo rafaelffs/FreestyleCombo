@@ -21,7 +21,7 @@ public class GetPendingComboReviewsHandler : IRequestHandler<GetPendingComboRevi
             OwnerId = c.OwnerId,
             OwnerUserName = c.Owner?.UserName,
             Name = c.Name,
-            AverageDifficulty = c.AverageDifficulty,
+            TotalDifficulty = c.TotalDifficulty,
             TrickCount = c.TrickCount,
             IsPublic = c.IsPublic,
             Visibility = c.Visibility.ToString(),

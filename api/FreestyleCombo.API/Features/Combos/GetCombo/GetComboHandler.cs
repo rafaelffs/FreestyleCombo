@@ -56,7 +56,7 @@ public class GetComboHandler : IRequestHandler<GetComboQuery, ComboDetailDto>
             OwnerId = combo.OwnerId,
             OwnerUserName = combo.Owner?.UserName,
             Name = combo.Name,
-            AverageDifficulty = combo.AverageDifficulty,
+            TotalDifficulty = combo.TotalDifficulty,
             TrickCount = combo.TrickCount,
             IsPublic = combo.IsPublic,
             Visibility = combo.Visibility.ToString(),

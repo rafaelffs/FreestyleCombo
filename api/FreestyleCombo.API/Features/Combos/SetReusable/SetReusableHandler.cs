@@ -44,7 +44,7 @@ public class SetReusableHandler : IRequestHandler<SetReusableCommand, GenerateCo
             OwnerId = combo.OwnerId,
             OwnerUserName = owner?.UserName,
             Name = combo.Name,
-            AverageDifficulty = combo.AverageDifficulty,
+            TotalDifficulty = combo.TotalDifficulty,
             TrickCount = combo.TrickCount,
             IsPublic = combo.IsPublic,
             IsReusable = combo.IsReusable,

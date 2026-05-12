@@ -20,7 +20,7 @@ public class GetPendingComboReviewsHandlerTests
             OwnerId = Guid.NewGuid(),
             Owner = new AppUser { UserName = "owner" },
             Name = "Pending Combo",
-            AverageDifficulty = 3.0,
+            TotalDifficulty = 3.0,
             TrickCount = 1,
             Visibility = ComboVisibility.PendingReview,
             CreatedAt = DateTime.UtcNow,

@@ -17,7 +17,7 @@ public class TrickListItemDto
     public bool IsTransition { get; set; }
 
     // Populated when Type == "combo"
-    public decimal? AverageDifficulty { get; set; }
+    public decimal? TotalDifficulty { get; set; }
     public int? TrickCount { get; set; }
     public List<ComboTrickDto>? Tricks { get; set; }
 }

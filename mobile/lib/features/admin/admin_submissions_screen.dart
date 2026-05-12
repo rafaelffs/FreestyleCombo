@@ -104,7 +104,7 @@ class _AdminSubmissionsScreenState extends State<AdminSubmissionsScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'by ${combo.ownerUserName ?? '?'} · avg diff ${combo.averageDifficulty.toStringAsFixed(1)} · ${combo.trickCount} tricks',
+                                  'by ${combo.ownerUserName ?? '?'} · difficulty ${combo.totalDifficulty.toInt()} · ${combo.trickCount} tricks',
                                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                                 ),
                                 const SizedBox(height: 12),

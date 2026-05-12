@@ -136,7 +136,7 @@
     "searchTricks": "Search by name or abbreviation…",
     "noTricksMatch": "No tricks match.",
     "myComboTitle": "My Combo",
-    "tricksSummary": "{{count}} tricks · avg diff {{avgDiff}}",
+    "tricksSummary": "{{count}} tricks · difficulty {{totalDiff}}",
     "tapTricksHint": "Tap the Tricks tab above to browse and add tricks.",
     "clickTricksHint": "Click tricks on the left to add them.",
     "submitForReview": "Submit for public review",
@@ -146,7 +146,7 @@
     "buildFailed": "Build failed"
   },
   "createCombo": {
-    "comboSlotLabel": "combo · {{count}} tricks · avg {{avg}}",
+    "comboSlotLabel": "combo · {{count}} tricks · diff {{total}}",
     "expandSlot": "Expand",
     "collapseSlot": "Collapse"
   },
@@ -163,7 +163,7 @@
     "colNoTouch": "No-Touch",
     "footStrong": "Strong",
     "footWeak": "Weak",
-    "avgDifficulty": "Avg difficulty: {{value}}",
+    "avgDifficulty": "Difficulty: {{value}}",
     "trickCount": "{{count}} tricks",
     "ratings": "{{count}} ratings",
     "rateCombo": "Rate this combo",
@@ -250,7 +250,7 @@
     "combosSection": "Combo Publication Requests",
     "combosError": "Failed to load pending combos.",
     "combosNone": "No combos pending review.",
-    "avgDiff": "Avg diff: {{value}}",
+    "avgDiff": "Difficulty: {{value}}",
     "trickCount": "{{count}} tricks",
     "submissionsSection": "Trick Submissions",
     "submissionsError": "Failed to load submissions.",

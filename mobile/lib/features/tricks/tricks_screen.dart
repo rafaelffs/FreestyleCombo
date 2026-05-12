@@ -390,7 +390,7 @@ class _TricksScreenState extends State<TricksScreen> {
             ],
           ),
           subtitle: Text(
-            '${c.trickCount} tricks · avg ${c.averageDifficulty.toStringAsFixed(1)}',
+            '${c.trickCount} tricks · difficulty ${c.totalDifficulty.toInt()}',
             style: const TextStyle(fontSize: 11),
           ),
           trailing: Row(

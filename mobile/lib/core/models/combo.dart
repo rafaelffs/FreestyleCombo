@@ -90,14 +90,14 @@ class ComboItem extends TrickListItem {
   final String type = 'combo';
   final String id;
   final String name;
-  final double averageDifficulty;
+  final double totalDifficulty;
   final int trickCount;
   final List<ComboTrickDto> tricks;
 
   ComboItem({
     required this.id,
     required this.name,
-    required this.averageDifficulty,
+    required this.totalDifficulty,
     required this.trickCount,
     required this.tricks,
   });
@@ -105,7 +105,7 @@ class ComboItem extends TrickListItem {
   factory ComboItem.fromJson(Map<String, dynamic> j) => ComboItem(
         id: j['id'] as String,
         name: j['name'] as String,
-        averageDifficulty: (j['averageDifficulty'] as num).toDouble(),
+        totalDifficulty: (j['totalDifficulty'] as num).toDouble(),
         trickCount: j['trickCount'] as int,
         tricks: (j['tricks'] as List<dynamic>? ?? [])
             .map((t) => ComboTrickDto.fromJson(t as Map<String, dynamic>))
@@ -219,7 +219,7 @@ class ComboDto {
   final String ownerId;
   final String? ownerUserName;
   final String? name;
-  final double averageDifficulty;
+  final double totalDifficulty;
   final int trickCount;
   final bool? isPublic;
   final String? visibility;
@@ -239,7 +239,7 @@ class ComboDto {
     required this.ownerId,
     this.ownerUserName,
     this.name,
-    required this.averageDifficulty,
+    required this.totalDifficulty,
     required this.trickCount,
     this.isPublic,
     this.visibility,
@@ -260,7 +260,7 @@ class ComboDto {
         ownerId: j['ownerId'] as String,
         ownerUserName: j['ownerUserName'] as String?,
         name: j['name'] as String?,
-        averageDifficulty: (j['averageDifficulty'] as num).toDouble(),
+        totalDifficulty: (j['totalDifficulty'] as num).toDouble(),
         trickCount: j['trickCount'] as int,
         isPublic: j['isPublic'] as bool?,
         visibility: j['visibility'] as String?,

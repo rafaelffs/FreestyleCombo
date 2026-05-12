@@ -408,7 +408,7 @@ public class ComboBuildAndVisibilityHandlerTests
     }
 
     [Fact]
-    public async Task BuildCombo_WithSubComboSlot_CalculatesCorrectAverageDifficulty()
+    public async Task BuildCombo_WithSubComboSlot_CalculatesCorrectTotalDifficulty()
     {
         var trickRepo = new Mock<ITrickRepository>();
         var comboRepo = new Mock<IComboRepository>();
@@ -431,8 +431,8 @@ public class ComboBuildAndVisibilityHandlerTests
             new BuildComboTrickItem(null, subComboId, 2, false, false)
         ]), CancellationToken.None);
 
-        // Average of difficulties 6, 2, 4 = 4.0
-        result.AverageDifficulty.Should().Be(4.0);
+        // Sum of difficulties 6 + 2 + 4 = 12
+        result.TotalDifficulty.Should().Be(12.0);
     }
 
     [Fact]

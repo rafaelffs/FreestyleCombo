@@ -17,7 +17,7 @@ export interface ComboItem {
   type: 'combo'
   id: string
   name: string
-  averageDifficulty: number
+  totalDifficulty: number
   trickCount: number
   tricks: TrickSlotDto[]
 }
