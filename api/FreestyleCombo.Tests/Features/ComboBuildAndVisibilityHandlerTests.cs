@@ -431,8 +431,8 @@ public class ComboBuildAndVisibilityHandlerTests
             new BuildComboTrickItem(null, subComboId, 2, false, false)
         ]), CancellationToken.None);
 
-        // Sum of difficulties 6 + 2 + 4 = 12
-        result.TotalDifficulty.Should().Be(12.0);
+        // Sum: directTrick(6+1wf) + subTrick1(2+1wf) + subTrick2(4+1wf) = 15
+        result.TotalDifficulty.Should().Be(15.0);
     }
 
     [Fact]

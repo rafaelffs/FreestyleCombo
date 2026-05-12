@@ -239,7 +239,8 @@ public class ComboQueryHandlerTests
         combo.Name.Should().Be("Updated Combo");
         combo.Visibility.Should().Be(ComboVisibility.PendingReview);
         combo.TrickCount.Should().Be(2);
-        combo.TotalDifficulty.Should().Be(6.0);
+        // nonCrossOver(2+0) + crossOver(4+1nt+1wf) = 8
+        combo.TotalDifficulty.Should().Be(8.0);
         result.DisplayText.Should().Contain(crossOver.Abbreviation + "(nt)");
         result.DisplayText.Should().Contain(nonCrossOver.Abbreviation);
         result.Tricks.Single(t => t.TrickId == nonCrossOver.Id).NoTouch.Should().BeFalse();

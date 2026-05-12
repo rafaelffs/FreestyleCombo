@@ -10,6 +10,6 @@ public class CreateTrickValidator : AbstractValidator<CreateTrickCommand>
         RuleFor(x => x.Abbreviation).NotEmpty().MaximumLength(20);
         RuleFor(x => x.Revolution).InclusiveBetween(0.5m, 4m);
         RuleFor(x => x.Difficulty).InclusiveBetween(1, 10);
-        RuleFor(x => x.CommonLevel).InclusiveBetween(1, 5);
+        RuleFor(x => x.CommonLevel).InclusiveBetween(1, 10);
     }
 }

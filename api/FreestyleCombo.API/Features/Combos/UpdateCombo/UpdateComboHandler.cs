@@ -98,12 +98,12 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
             var subComboTrickCount = subComboSlots.Sum(s => subComboMap[s.SubComboId!.Value].ComboTricks.Count(ct => ct.TrickId != null));
             var totalTrickCount = directTrickCount + subComboTrickCount;
 
-            // Calculate TotalDifficulty across all tricks
+            // Calculate TotalDifficulty: base difficulty + 1 per NoTouch, + 1 per WeakFoot
             var allDifficulties = normalizedTricks
-                .Select(t => (double)trickMap[t.TrickId!.Value].Difficulty)
+                .Select(t => (double)trickMap[t.TrickId!.Value].Difficulty + (t.NoTouch ? 1 : 0) + (!t.StrongFoot ? 1 : 0))
                 .Concat(subComboSlots.SelectMany(s => subComboMap[s.SubComboId!.Value].ComboTricks
                     .Where(ct => ct.TrickId != null)
-                    .Select(ct => (double)ct.Trick!.Difficulty)))
+                    .Select(ct => (double)ct.Trick!.Difficulty + (ct.NoTouch ? 1 : 0) + (!ct.StrongFoot ? 1 : 0))))
                 .ToList();
             var totalDifficulty = allDifficulties.Sum();
 

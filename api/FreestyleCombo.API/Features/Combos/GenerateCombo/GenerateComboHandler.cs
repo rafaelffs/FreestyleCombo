@@ -128,7 +128,7 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
         // Step 6 — Get AI description
         var enhancementReq = new ComboEnhancementRequest
         {
-            TotalDifficulty = (double)comboTricks.Sum(ct2 => ct2.Trick.Difficulty),
+            TotalDifficulty = (double)comboTricks.Sum(ct2 => ct2.Trick.Difficulty) + comboTricks.Sum(ct2 => (ct2.NoTouch ? 1 : 0) + (!ct2.StrongFoot ? 1 : 0)),
             Tricks = comboTricks.Select(ct2 => new TrickInfo
             {
                 Name = ct2.Trick.Name,
