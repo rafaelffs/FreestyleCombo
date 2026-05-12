@@ -362,10 +362,9 @@ public class ValidatorTests
     }
 
     [Fact]
-    public void CreateTrickValidator_ShouldReject_CommonLevelAbove5()
+    public void CreateTrickValidator_ShouldReject_CommonLevelAbove10()
     {
-        // CreateTrick uses max 5; SubmitTrick/UpdateTrick use max 10 — this validates the tighter bound
-        var cmd = ValidCreateTrick() with { CommonLevel = 6 };
+        var cmd = ValidCreateTrick() with { CommonLevel = 11 };
         var result = new CreateTrickValidator().Validate(cmd);
 
         result.IsValid.Should().BeFalse();
