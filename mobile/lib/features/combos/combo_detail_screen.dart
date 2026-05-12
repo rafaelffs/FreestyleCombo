@@ -686,7 +686,7 @@ class _TrickList extends StatelessWidget {
               _TD(t.name ?? ''),
               _TD(t.abbreviation ?? '', mono: true),
               _TD(t.difficulty.toString()),
-              _TD(t.strongFoot ? 'S' : 'W'),
+              _TD(t.strongFoot ? 'SF' : 'WF'),
               _TD(t.noTouch ? '✓' : '—'),
             ],
           )),
@@ -734,7 +734,7 @@ class _TrickList extends StatelessWidget {
                   Expanded(child: Text(st.name ?? '', style: TextStyle(fontSize: 12, color: Colors.grey[600]), overflow: TextOverflow.ellipsis)),
                   Text('${st.difficulty}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
                   const SizedBox(width: 8),
-                  Text(st.strongFoot ? 'S' : 'W', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  Text(st.strongFoot ? 'SF' : 'WF', style: const TextStyle(fontSize: 11, color: Colors.grey)),
                 ],
               ),
             )).toList(),
@@ -754,7 +754,7 @@ class _TrickList extends StatelessWidget {
             ],
           ),
           trailing: Text(
-            '${t.difficulty} · ${t.strongFoot ? 'S' : 'W'} · ${t.noTouch ? 'NT' : '—'}',
+            '${t.difficulty} · ${t.strongFoot ? 'SF' : 'WF'} · ${t.noTouch ? 'NT' : '—'}',
             style: const TextStyle(fontSize: 11, color: Colors.grey),
           ),
         );

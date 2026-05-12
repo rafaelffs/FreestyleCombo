@@ -146,7 +146,7 @@
     "buildFailed": "Falha ao construir"
   },
   "createCombo": {
-    "comboSlotLabel": "combo · {{count}} truques · dif. {{total}}",
+    "comboSlotLabel": "combo · {{count}} tricks · dif. {{total}}",
     "expandSlot": "Expandir",
     "collapseSlot": "Recolher"
   },
@@ -159,7 +159,7 @@
     "colName": "Nome",
     "colAbbr": "Abr.",
     "colDifficulty": "Dificuldade",
-    "colFoot": "Pé",
+    "colFoot": "Foot",
     "colNoTouch": "No Touch",
     "footStrong": "Strong",
     "footWeak": "Weak",
@@ -180,9 +180,9 @@
     "noTricksAdded": "Nenhuma trick adicionada.",
     "saveChanges": "Salvar alterações",
     "updateFailed": "Falha ao atualizar",
-    "tricks": "truques",
-    "subComboExpand": "Mostrar truques",
-    "subComboCollapse": "Ocultar truques",
+    "tricks": "tricks",
+    "subComboExpand": "Mostrar tricks",
+    "subComboCollapse": "Ocultar tricks",
     "subCombo": "Sub-combo",
     "reusable": "Reutilizável",
     "setReusableFailed": "Falha ao atualizar status de reutilizável"
@@ -241,7 +241,7 @@
     "addTrick": "Adicionar Trick",
     "createFailed": "Falha ao criar",
     "comboLabel": "combo",
-    "tricksCount": "{{count}} truques",
+    "tricksCount": "{{count}} tricks",
     "reusableToggle": "Reutilizável"
   },
   "adminSubmissions": {
@@ -250,7 +250,7 @@
     "combosSection": "Solicitações de Publicação de Combos",
     "combosError": "Falha ao carregar combos pendentes.",
     "combosNone": "Nenhum combo aguardando revisão.",
-    "avgDiff": "Dificuldade: {{value}}",
+    "avgDiff": "Dif. média: {{value}}",
     "trickCount": "{{count}} tricks",
     "submissionsSection": "Envios de Tricks",
     "submissionsError": "Falha ao carregar envios.",
