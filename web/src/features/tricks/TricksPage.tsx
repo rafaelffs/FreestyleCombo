@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { tricksApi, trickSubmissionsApi, combosApi, extractError, type TrickDto, type SubmitTrickRequest, type TrickItem, type ComboItem } from '@/lib/api'
@@ -78,6 +79,7 @@ function SortHeader({ label, col, sortKey, sortDir, onSort, className = '', cent
 
 export function TricksPage() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const admin = isAdmin()
   const authed = isAuthenticated()
   const { t } = useTranslation()
@@ -280,24 +282,26 @@ export function TricksPage() {
       </div>
 
       {/* FAB */}
-      {authed && (
-        <button
-          type="button"
-          onClick={() => {
-            if (admin) {
-              setCreateForm(EMPTY_FORM)
-              setCreateError(null)
-              setShowCreate(true)
-            } else {
-              setShowSubmit((v) => !v)
-            }
-          }}
-          className="fixed bottom-6 right-6 z-40 inline-flex h-14 cursor-pointer items-center gap-2 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-indigo-700 active:bg-indigo-800"
-        >
-          <span className="text-lg leading-none">{showSubmit ? '✕' : '+'}</span>
-          {showSubmit ? t('tricks.fabCancel') : t('tricks.fabSubmit')}
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={() => {
+          if (!authed) {
+            navigate('/login')
+            return
+          }
+          if (admin) {
+            setCreateForm(EMPTY_FORM)
+            setCreateError(null)
+            setShowCreate(true)
+          } else {
+            setShowSubmit((v) => !v)
+          }
+        }}
+        className="fixed bottom-6 right-6 z-40 inline-flex h-14 cursor-pointer items-center gap-2 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-indigo-700 active:bg-indigo-800"
+      >
+        <span className="text-lg leading-none">{showSubmit ? '✕' : '+'}</span>
+        {showSubmit ? t('tricks.fabCancel') : t('tricks.fabSubmit')}
+      </button>
 
       {submitted && <p className="text-sm text-green-600">{t('tricks.submitted')}</p>}
 

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
+import { FootToggle } from '@/components/ui/foot-toggle'
 import { combosApi, tricksApi, preferencesApi, extractError, type GenerateComboOverrides, type TrickItem, type ComboItem, type BuildComboTrickItem } from '@/lib/api'
 import { isAuthenticated, setPendingCombo } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
@@ -70,6 +71,7 @@ export function CreateComboPage() {
   const [previewWarnings, setPreviewWarnings] = useState<string[]>([])
 
   // Build state
+  const [abbrevOnly, setAbbrevOnly] = useState(false)
   const [search, setSearch] = useState('')
   const [slots, setSlots] = useState<SlotItem[]>([])
   const [expandedSlots, setExpandedSlots] = useState<Set<number>>(new Set())
@@ -492,7 +494,15 @@ export function CreateComboPage() {
       <div className="lg:grid lg:gap-6 lg:grid-cols-2">
         {/* Left — trick picker */}
         <Card className={mobileBuildTab === 'tricks' ? 'block' : 'hidden lg:block'}>
-          <CardHeader><CardTitle>{t('create.availableTricks')}</CardTitle></CardHeader>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>{t('create.availableTricks')}</CardTitle>
+              <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none">
+                <input type="checkbox" checked={abbrevOnly} onChange={(e) => setAbbrevOnly(e.target.checked)} className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600" />
+                {t('create.abbrevOnly')}
+              </label>
+            </div>
+          </CardHeader>
           <CardContent className="space-y-3">
             <Input placeholder={t('create.searchTricks')} value={search} onChange={(e) => setSearch(e.target.value)} />
             {tricksLoading ? (
@@ -514,7 +524,7 @@ export function CreateComboPage() {
                   <button key={trick.id} type="button" onClick={() => addTrick(trick)} className="flex w-full items-center justify-between px-2 py-2 text-left hover:bg-indigo-50 transition-colors">
                     <div>
                       <span className="font-mono text-xs font-semibold text-gray-900">{trick.abbreviation}</span>
-                      <span className="ml-2 text-sm text-gray-500">{trick.name}</span>
+                      {!abbrevOnly && <span className="ml-2 text-sm text-gray-500">{trick.name}</span>}
                     </div>
                     <div className="flex items-center gap-1">
                       {trick.crossOver && <Badge variant="secondary">CO</Badge>}
@@ -592,12 +602,9 @@ export function CreateComboPage() {
                       <>
                         <div className="flex-1 min-w-0">
                           <span className="font-mono text-xs font-semibold text-gray-900">{trickSlot.abbreviation}</span>
-                          <span className="ml-1.5 text-sm text-gray-500">{trickSlot.trickName}</span>
+                          {!abbrevOnly && <span className="ml-1.5 text-sm text-gray-500">{trickSlot.trickName}</span>}
                         </div>
-                        <label className={`flex items-center gap-1 text-xs cursor-pointer ${trickSlot.isTransition ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}`}>
-                          <input type="checkbox" checked={trickSlot.strongFoot} onChange={() => toggleStrongFoot(i)} disabled={trickSlot.isTransition} className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 disabled:opacity-40" />
-                          SF
-                        </label>
+                        <FootToggle value={trickSlot.strongFoot} onChange={() => toggleStrongFoot(i)} disabled={trickSlot.isTransition} />
                         <label className={`flex items-center gap-1 text-xs cursor-pointer ${ntDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}`}>
                           <input type="checkbox" checked={trickSlot.noTouch} onChange={() => toggleNoTouch(i)} disabled={ntDisabled} className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 disabled:opacity-40" />
                           NT

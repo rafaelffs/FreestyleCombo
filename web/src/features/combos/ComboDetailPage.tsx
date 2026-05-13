@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
+import { FootToggle } from '@/components/ui/foot-toggle'
 import { combosApi, tricksApi, extractError, type BuildComboTrickItem, type TrickItem } from '@/lib/api'
 import { getUserId, isAdmin } from '@/lib/auth'
 import { SEO } from '@/components/SEO'
@@ -444,9 +445,7 @@ export function ComboDetailPage() {
                       </span>
                       <span className="w-4 shrink-0 text-xs font-bold text-gray-400">{slot.position}</span>
                       <span className="flex-1 text-sm">{slot.trickName} <span className="font-mono text-xs text-gray-400">{slot.abbreviation}</span></span>
-                      <label className="flex items-center gap-0.5 text-xs text-gray-600 cursor-pointer">
-                        <input type="checkbox" checked={slot.strongFoot} onChange={() => toggleSF(i)} className="h-3 w-3" /> SF
-                      </label>
+                      <FootToggle value={slot.strongFoot} onChange={() => toggleSF(i)} />
                       {(() => {
                         const ntDisabled = !slot.crossOver || i === 0 || editSlots[i - 1].isTransition
                         return (

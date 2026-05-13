@@ -18,6 +18,9 @@ public class RejectComboVisibilityHandler : IRequestHandler<RejectComboVisibilit
         if (combo.Visibility != ComboVisibility.PendingReview)
             throw new InvalidOperationException("Only combos pending review can be rejected.");
 
+        if (combo.IsReusable)
+            throw new InvalidOperationException("Reusable combos cannot be set to non-public.");
+
         combo.Visibility = ComboVisibility.Private;
         await _repo.UpdateAsync(combo, cancellationToken);
     }

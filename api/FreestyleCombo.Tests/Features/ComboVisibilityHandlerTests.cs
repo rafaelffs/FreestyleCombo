@@ -97,4 +97,18 @@ public class ComboVisibilityHandlerTests
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Only combos pending review can be rejected.");
     }
+
+    [Fact]
+    public async Task Reject_ReusableCombo_ThrowsInvalidOperationException()
+    {
+        var combo = PendingCombo();
+        combo.IsReusable = true;
+        _comboRepo.Setup(r => r.GetByIdAsync(_comboId, It.IsAny<CancellationToken>())).ReturnsAsync(combo);
+
+        Func<Task> act = () => new RejectComboVisibilityHandler(_comboRepo.Object)
+            .Handle(new RejectComboVisibilityCommand(_comboId), CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Reusable combos cannot be set to non-public.");
+    }
 }

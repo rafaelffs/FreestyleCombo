@@ -283,6 +283,25 @@ public class ComboQueryHandlerTests
     }
 
     [Fact]
+    public async Task UpdateCombo_ReusablePublicCombo_ByOwner_StaysPublic()
+    {
+        var comboRepo = new Mock<IComboRepository>();
+        var trickRepo = new Mock<ITrickRepository>();
+        var userManager = CreateUserManagerMock();
+        var combo = CreateCombo(Guid.NewGuid(), _userId, "me", ComboVisibility.Public, DateTime.UtcNow);
+        combo.IsReusable = true;
+        comboRepo.Setup(r => r.GetByIdAsync(combo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(combo);
+        comboRepo.Setup(r => r.UpdateAsync(combo, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        userManager.Setup(m => m.FindByIdAsync(combo.OwnerId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "me" });
+
+        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId), userManager.Object);
+        var result = await handler.Handle(new UpdateComboCommand(combo.Id, "Renamed", null), CancellationToken.None);
+
+        combo.Visibility.Should().Be(ComboVisibility.Public);
+        result.Visibility.Should().Be("Public");
+    }
+
+    [Fact]
     public async Task UpdateCombo_ComboNotFound_ThrowsKeyNotFoundException()
     {
         var comboRepo = new Mock<IComboRepository>();

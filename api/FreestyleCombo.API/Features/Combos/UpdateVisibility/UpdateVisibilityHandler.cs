@@ -33,6 +33,9 @@ public class UpdateVisibilityHandler : IRequestHandler<UpdateVisibilityCommand>
         }
         else
         {
+            if (combo.IsReusable)
+                throw new InvalidOperationException("Reusable combos cannot be set to non-public.");
+
             // Only admins can remove a combo that is already Public
             if (combo.Visibility == ComboVisibility.Public && !isAdmin)
                 throw new UnauthorizedAccessException("Only admins can make a public combo private.");

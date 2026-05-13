@@ -151,6 +151,20 @@ public class ComboBuildAndVisibilityHandlerTests
     }
 
     [Fact]
+    public async Task UpdateVisibility_ReusableCombo_MakePrivate_ThrowsInvalidOperationException()
+    {
+        var repo = new Mock<IComboRepository>();
+        var combo = new Combo { Id = _comboId, OwnerId = _userId, Visibility = ComboVisibility.Public, IsReusable = true };
+        repo.Setup(r => r.GetByIdAsync(_comboId, It.IsAny<CancellationToken>())).ReturnsAsync(combo);
+
+        Func<Task> act = () => new UpdateVisibilityHandler(repo.Object, CreateHttp(_userId, isAdmin: true))
+            .Handle(new UpdateVisibilityCommand(_comboId, _userId, false), CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Reusable combos cannot be set to non-public.");
+    }
+
+    [Fact]
     public async Task PreviewCombo_WithSavedPreference_ReturnsOrderedPreview()
     {
         var trickRepo = new Mock<ITrickRepository>();
