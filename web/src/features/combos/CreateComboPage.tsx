@@ -46,12 +46,22 @@ interface SubComboSlotItem extends BuildComboTrickItem {
 
 type SlotItem = TrickSlotItem | SubComboSlotItem
 
+function prevLastTrickIsCrossOver(slots: SlotItem[], i: number): boolean {
+  if (i === 0) return false
+  const prev = slots[i - 1]
+  if (prev.type === 'trick') return prev.crossOver && !prev.isTransition
+  if (prev.type === 'combo') {
+    const last = prev.trickSlots?.[prev.trickSlots.length - 1]
+    return last != null // sub-combo last trick crossOver is unknown client-side; allow and let server normalize
+  }
+  return false
+}
+
 function applyNoTouchRules(slots: SlotItem[]): SlotItem[] {
   return slots.map((slot, i) => {
     if (slot.type === 'combo') return slot
-    const prevSlot = slots[i - 1]
-    const afterTransition = i === 0 || (prevSlot.type === 'trick' && prevSlot.isTransition)
-    return slot.crossOver && !afterTransition && !slot.isTransition ? slot : { ...slot, noTouch: false }
+    if (slot.isTransition) return { ...slot, noTouch: false }
+    return prevLastTrickIsCrossOver(slots, i) ? slot : { ...slot, noTouch: false }
   })
 }
 
@@ -217,9 +227,7 @@ export function CreateComboPage() {
   function toggleNoTouch(index: number) {
     setSlots((prev) => prev.map((s, i) => {
       if (i !== index || s.type !== 'trick') return s
-      const prevSlot = prev[index - 1]
-      const afterTransition = index === 0 || (prevSlot.type === 'trick' && prevSlot.isTransition)
-      if (!s.crossOver || afterTransition) return s
+      if (s.isTransition || !prevLastTrickIsCrossOver(prev, index)) return s
       return { ...s, noTouch: !s.noTouch }
     }))
   }
@@ -597,7 +605,7 @@ export function CreateComboPage() {
                     {slot.type === 'trick' ? (() => {
                       const trickSlot = slot
                       const prevSlot = i > 0 ? slots[i - 1] : null
-                      const ntDisabled = trickSlot.isTransition || !trickSlot.crossOver || i === 0 || (prevSlot?.type === 'trick' && prevSlot.isTransition)
+                      const ntDisabled = trickSlot.isTransition || !prevLastTrickIsCrossOver(slots, i)
                       return (
                       <>
                         <div className="flex-1 min-w-0">

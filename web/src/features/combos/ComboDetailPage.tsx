@@ -21,10 +21,16 @@ interface SlotItem extends BuildComboTrickItem {
   isTransition: boolean
 }
 
+function prevIsCrossOver(slots: SlotItem[], i: number): boolean {
+  if (i === 0) return false
+  const prev = slots[i - 1]
+  return prev.crossOver && !prev.isTransition
+}
+
 function applyNoTouchRules(slots: SlotItem[]): SlotItem[] {
   return slots.map((slot, i) => {
-    const afterTransition = i === 0 || slots[i - 1].isTransition
-    return slot.crossOver && !afterTransition ? slot : { ...slot, noTouch: false }
+    if (slot.isTransition) return { ...slot, noTouch: false }
+    return prevIsCrossOver(slots, i) ? slot : { ...slot, noTouch: false }
   })
 }
 
@@ -186,8 +192,7 @@ export function ComboDetailPage() {
   function toggleNT(index: number) {
     setEditSlots((prev) => prev.map((s, i) => {
       if (i !== index) return s
-      const afterTransition = index === 0 || prev[index - 1].isTransition
-      if (!s.crossOver || afterTransition) return s
+      if (s.isTransition || !prevIsCrossOver(prev, index)) return s
       return { ...s, noTouch: !s.noTouch }
     }))
   }
@@ -447,7 +452,7 @@ export function ComboDetailPage() {
                       <span className="flex-1 text-sm">{slot.trickName} <span className="font-mono text-xs text-gray-400">{slot.abbreviation}</span></span>
                       <FootToggle value={slot.strongFoot} onChange={() => toggleSF(i)} />
                       {(() => {
-                        const ntDisabled = !slot.crossOver || i === 0 || editSlots[i - 1].isTransition
+                        const ntDisabled = slot.isTransition || !prevIsCrossOver(editSlots, i)
                         return (
                           <label className={`flex items-center gap-0.5 text-xs cursor-pointer ${ntDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}`}>
                             <input type="checkbox" checked={slot.noTouch} onChange={() => toggleNT(i)} disabled={ntDisabled} className="h-3 w-3" /> NT
