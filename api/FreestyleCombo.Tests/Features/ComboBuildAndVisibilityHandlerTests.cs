@@ -249,24 +249,49 @@ public class ComboBuildAndVisibilityHandlerTests
     }
 
     [Fact]
-    public async Task BuildCombo_NoTouchOnCrossOverTrick_IsPreserved()
+    public async Task BuildCombo_NoTouchAfterCrossOverTrick_IsPreserved()
     {
         var trickRepo = new Mock<ITrickRepository>();
         var comboRepo = new Mock<IComboRepository>();
         var userManager = CreateUserManagerMock();
-        var crossOverTrick = TrickFaker.Create(crossOver: true, difficulty: 3);
+        var coTrick = TrickFaker.Create(crossOver: true, difficulty: 3);
+        var nextTrick = TrickFaker.Create(crossOver: false, difficulty: 2);
         Combo? savedCombo = null;
 
-        trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([crossOverTrick]);
+        trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([coTrick, nextTrick]);
         comboRepo.Setup(r => r.AddAsync(It.IsAny<Combo>(), It.IsAny<CancellationToken>()))
             .Callback<Combo, CancellationToken>((c, _) => savedCombo = c)
             .Returns(Task.CompletedTask);
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "me" });
 
         await new BuildComboHandler(trickRepo.Object, comboRepo.Object, CreateHttp(_userId), userManager.Object)
-            .Handle(new BuildComboCommand([new BuildComboTrickItem(crossOverTrick.Id, null, 1, true, true)], false), CancellationToken.None);
+            .Handle(new BuildComboCommand(
+                [new BuildComboTrickItem(coTrick.Id, null, 1, true, false), new BuildComboTrickItem(nextTrick.Id, null, 2, true, true)],
+                false), CancellationToken.None);
 
-        savedCombo!.ComboTricks.Single().NoTouch.Should().BeTrue();
+        savedCombo!.ComboTricks.Single(ct => ct.TrickId == nextTrick.Id).NoTouch.Should().BeTrue();
+        savedCombo!.ComboTricks.Single(ct => ct.TrickId == coTrick.Id).NoTouch.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task BuildCombo_NoTouchOnFirstTrick_IsStripped()
+    {
+        var trickRepo = new Mock<ITrickRepository>();
+        var comboRepo = new Mock<IComboRepository>();
+        var userManager = CreateUserManagerMock();
+        var coTrick = TrickFaker.Create(crossOver: true, difficulty: 3);
+        Combo? savedCombo = null;
+
+        trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([coTrick]);
+        comboRepo.Setup(r => r.AddAsync(It.IsAny<Combo>(), It.IsAny<CancellationToken>()))
+            .Callback<Combo, CancellationToken>((c, _) => savedCombo = c)
+            .Returns(Task.CompletedTask);
+        userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "me" });
+
+        await new BuildComboHandler(trickRepo.Object, comboRepo.Object, CreateHttp(_userId), userManager.Object)
+            .Handle(new BuildComboCommand([new BuildComboTrickItem(coTrick.Id, null, 1, true, true)], false), CancellationToken.None);
+
+        savedCombo!.ComboTricks.Single().NoTouch.Should().BeFalse();
     }
 
     [Fact]

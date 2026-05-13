@@ -239,11 +239,12 @@ public class ComboQueryHandlerTests
         combo.Name.Should().Be("Updated Combo");
         combo.Visibility.Should().Be(ComboVisibility.PendingReview);
         combo.TrickCount.Should().Be(2);
-        // nonCrossOver(2+0) + crossOver(4+1nt+1wf) = 8
+        // crossOver(4+0nt+1wf) + nonCrossOver(2+1nt+0sf) = 8 — NT on pos1 stripped (no prev), NT on pos2 kept (prev is CO)
         combo.TotalDifficulty.Should().Be(8.0);
-        result.DisplayText.Should().Contain(crossOver.Abbreviation + "(nt)");
-        result.DisplayText.Should().Contain(nonCrossOver.Abbreviation);
-        result.Tricks.Single(t => t.TrickId == nonCrossOver.Id).NoTouch.Should().BeFalse();
+        result.DisplayText.Should().Contain(nonCrossOver.Abbreviation + "(nt)");
+        result.DisplayText.Should().NotContain(crossOver.Abbreviation + "(nt)");
+        result.Tricks.Single(t => t.TrickId == crossOver.Id).NoTouch.Should().BeFalse();
+        result.Tricks.Single(t => t.TrickId == nonCrossOver.Id).NoTouch.Should().BeTrue();
         comboRepo.Verify(r => r.ReplaceComboTricksAsync(combo.Id, It.IsAny<IEnumerable<ComboTrick>>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 

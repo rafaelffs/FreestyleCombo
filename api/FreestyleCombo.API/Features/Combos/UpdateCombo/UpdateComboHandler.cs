@@ -86,12 +86,26 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
                 subComboMap[scId] = sc;
             }
 
-            // Normalize trick slots: strip NoTouch/StrongFoot from transitions; strip NoTouch from non-CrossOver
-            var normalizedTricks = trickSlots
-                .Select(t => trickMap[t.TrickId!.Value].IsTransition
-                    ? t with { NoTouch = false, StrongFoot = false }
-                    : t with { NoTouch = t.NoTouch && trickMap[t.TrickId!.Value].CrossOver })
-                .ToList();
+            // Normalize trick slots: strip NoTouch/StrongFoot from transitions; NT allowed only if previous slot's last trick is CO
+            var allSlotsByPos = request.Tricks.OrderBy(t => t.Position).ToList();
+            var normalizedTricks = new List<BuildComboTrickItem>();
+            for (int i = 0; i < allSlotsByPos.Count; i++)
+            {
+                var t = allSlotsByPos[i];
+                if (t.TrickId == null) continue;
+                var trick = trickMap[t.TrickId!.Value];
+                if (trick.IsTransition) { normalizedTricks.Add(t with { NoTouch = false, StrongFoot = false }); continue; }
+                bool prevIsCO = false;
+                if (i > 0)
+                {
+                    var prev = allSlotsByPos[i - 1];
+                    if (prev.TrickId != null && trickMap.TryGetValue(prev.TrickId.Value, out var pt))
+                        prevIsCO = pt.CrossOver;
+                    else if (prev.SubComboId != null && subComboMap.TryGetValue(prev.SubComboId.Value, out var psc))
+                        prevIsCO = psc.ComboTricks.Where(ct => ct.TrickId != null).OrderBy(ct => ct.Position).LastOrDefault()?.Trick?.CrossOver ?? false;
+                }
+                normalizedTricks.Add(t with { NoTouch = t.NoTouch && prevIsCO });
+            }
 
             // Calculate TrickCount (direct tricks + expanded sub-combo tricks)
             var directTrickCount = normalizedTricks.Count;
