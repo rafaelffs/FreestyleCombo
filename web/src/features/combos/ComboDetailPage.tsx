@@ -113,6 +113,7 @@ export function ComboDetailPage() {
     onError: (err) => setDeleteError(extractError(err, t('comboDetail.deleteFailed'))),
   })
 
+  const [abbrevOnly, setAbbrevOnly] = useState(false)
   const [reusableError, setReusableError] = useState<string | null>(null)
   const reusableMutation = useMutation({
     mutationFn: (isReusable: boolean) => combosApi.setReusable(id!, isReusable),
@@ -241,87 +242,70 @@ export function ComboDetailPage() {
           )}
 
           <div>
-            <h3 className="mb-2 text-sm font-medium text-gray-700">{t('comboDetail.tricksHeader')}</h3>
-            <div className="overflow-x-auto -mx-4 sm:mx-0">
-              <table className="w-full min-w-[400px] text-sm">
-                <thead>
-                  <tr className="border-b text-left text-gray-500">
-                    <th className="pb-1 pr-4">{t('comboDetail.colPosition')}</th>
-                    <th className="pb-1 pr-4">{t('comboDetail.colName')}</th>
-                    <th className="pb-1 pr-4">{t('comboDetail.colAbbr')}</th>
-                    <th className="pb-1 pr-4">{t('comboDetail.colDifficulty')}</th>
-                    <th className="pb-1 pr-4">{t('comboDetail.colFoot')}</th>
-                    <th className="pb-1">{t('comboDetail.colNoTouch')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(combo.tricks ?? []).map((trick) => {
-                    if (trick.type === 'trick') {
-                      return (
-                        <tr key={trick.position} className="border-b last:border-0">
-                          <td className="py-1.5 pr-4 text-gray-500">{trick.position}</td>
-                          <td className="py-1.5 pr-4 font-medium">{trick.name}</td>
-                          <td className="py-1.5 pr-4 font-mono text-xs">{trick.abbreviation}</td>
-                          <td className="py-1.5 pr-4">{trick.difficulty}</td>
-                          <td className="py-1.5 pr-4">{trick.strongFoot ? t('comboDetail.footStrong') : t('comboDetail.footWeak')}</td>
-                          <td className="py-1.5">{trick.noTouch ? '✓' : '—'}</td>
-                        </tr>
-                      )
-                    }
-                    // Sub-combo slot
-                    const isExpanded = expandedSubCombos.has(trick.position)
-                    const toggleExpand = () =>
-                      setExpandedSubCombos((prev) => {
-                        const next = new Set(prev)
-                        if (next.has(trick.position)) next.delete(trick.position)
-                        else next.add(trick.position)
-                        return next
-                      })
-                    return (
-                      <>
-                        <tr
-                          key={`subcombo-${trick.position}`}
-                          className="border-b bg-indigo-50"
-                        >
-                          <td className="py-1.5 pr-4 text-gray-500">{trick.position}</td>
-                          <td className="py-1.5 pr-4" colSpan={4}>
-                            <span className="font-semibold text-indigo-800">
-                              {trick.subComboName ?? t('comboDetail.subCombo')}
-                            </span>
-                            <span className="ml-1 text-xs text-indigo-500">
-                              ({trick.subComboTricks.length} {t('comboDetail.tricks')})
-                            </span>
-                          </td>
-                          <td className="py-1.5">
-                            <button
-                              type="button"
-                              onClick={toggleExpand}
-                              aria-label={isExpanded ? t('comboDetail.subComboCollapse') : t('comboDetail.subComboExpand')}
-                              className="flex items-center gap-0.5 text-xs text-indigo-600 hover:text-indigo-800"
-                            >
-                              {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                              {isExpanded ? t('comboDetail.subComboCollapse') : t('comboDetail.subComboExpand')}
-                            </button>
-                          </td>
-                        </tr>
-                        {isExpanded && trick.subComboTricks.map((st) => (
-                          <tr key={`subcombo-${trick.position}-${st.position}`} className="border-b last:border-0 bg-indigo-50/40">
-                            <td className="py-1 pr-4 text-gray-400 pl-6 text-xs">{st.position}</td>
-                            <td className="py-1 pr-4 text-gray-600 pl-2 text-sm">{st.name}</td>
-                            <td className="py-1 pr-4 font-mono text-xs text-gray-400">
-                              {st.abbreviation}
-                              {st.noTouch && <span className="ml-1 text-indigo-500">(nt)</span>}
-                            </td>
-                            <td className="py-1 pr-4 text-gray-500 text-xs">{st.difficulty}</td>
-                            <td className="py-1 pr-4 text-gray-500 text-xs">{st.strongFoot ? t('comboDetail.footStrong') : t('comboDetail.footWeak')}</td>
-                            <td className="py-1 text-gray-400 text-xs">{st.noTouch ? '✓' : '—'}</td>
-                          </tr>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-gray-700">{t('comboDetail.tricksHeader')}</h3>
+              <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none">
+                <input type="checkbox" checked={abbrevOnly} onChange={(e) => setAbbrevOnly(e.target.checked)} className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600" />
+                {t('comboDetail.abbrevOnly')}
+              </label>
+            </div>
+            <div className="space-y-1">
+              {(combo.tricks ?? []).map((trick) => {
+                if (trick.type === 'trick') {
+                  return (
+                    <div key={trick.position} className="flex items-center gap-2 rounded border border-gray-200 px-2 py-1.5">
+                      <span className="w-4 shrink-0 text-xs font-bold text-gray-400">{trick.position}</span>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-mono text-xs font-semibold text-gray-900">{trick.abbreviation}</span>
+                        {!abbrevOnly && <span className="ml-1.5 text-sm text-gray-500">{trick.name}</span>}
+                      </div>
+                      <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(trick.difficulty ?? 0)}`}>{trick.difficulty}</span>
+                      <FootToggle value={trick.strongFoot} onChange={() => {}} />
+                      <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold ${trick.noTouch ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-400'}`}>NT</span>
+                    </div>
+                  )
+                }
+                // Sub-combo slot
+                const isExpanded = expandedSubCombos.has(trick.position)
+                const toggleExpand = () =>
+                  setExpandedSubCombos((prev) => {
+                    const next = new Set(prev)
+                    if (next.has(trick.position)) next.delete(trick.position)
+                    else next.add(trick.position)
+                    return next
+                  })
+                return (
+                  <div key={`subcombo-${trick.position}`} className="rounded border border-indigo-200 bg-indigo-50 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={toggleExpand}
+                      className="flex w-full items-center gap-2 px-2 py-1.5 text-left"
+                    >
+                      <span className="w-4 shrink-0 text-xs font-bold text-gray-400">{trick.position}</span>
+                      <span className="flex-1 text-sm font-semibold text-indigo-800">
+                        {trick.subComboName ?? t('comboDetail.subCombo')}
+                        <span className="ml-1 font-normal text-xs text-indigo-500">({trick.subComboTricks.length} {t('comboDetail.tricks')})</span>
+                      </span>
+                      {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-indigo-400" /> : <ChevronDown className="w-3.5 h-3.5 text-indigo-400" />}
+                    </button>
+                    {isExpanded && (
+                      <div className="border-t border-indigo-100 divide-y divide-indigo-100">
+                        {trick.subComboTricks.map((st) => (
+                          <div key={`subcombo-${trick.position}-${st.position}`} className="flex items-center gap-2 px-2 py-1.5 pl-8 bg-indigo-50/40">
+                            <div className="flex-1 min-w-0">
+                              <span className="font-mono text-xs font-semibold text-gray-700">{st.abbreviation}</span>
+                              {!abbrevOnly && <span className="ml-1.5 text-xs text-gray-500">{st.name}</span>}
+                            </div>
+                            <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(st.difficulty ?? 0)}`}>{st.difficulty}</span>
+                            <FootToggle value={st.strongFoot} onChange={() => {}} />
+                            <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold ${st.noTouch ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-400'}`}>NT</span>
+                          </div>
                         ))}
-                      </>
-                    )
-                  })}
-                </tbody>
-              </table>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
 
