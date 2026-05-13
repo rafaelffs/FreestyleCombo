@@ -221,7 +221,7 @@ export function ComboDetailPage() {
             <div>
               {combo.name && <p className="text-sm font-semibold text-gray-900 mb-1">{combo.name}</p>}
               <CardTitle className="font-mono text-xl">{combo.displayText}</CardTitle>
-              {combo.ownerUserName && (
+              {combo.ownerUserName && !combo.isReusable && (
                 <p className="text-sm text-gray-500 mt-0.5">{t('combos.by')} {combo.ownerUserName}</p>
               )}
             </div>

@@ -293,7 +293,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
               ) : (
                 <p className="text-sm font-mono font-semibold text-gray-900 truncate">{combo.displayText}</p>
               )}
-              {combo.ownerUserName && (
+              {combo.ownerUserName && !combo.isReusable && (
                 <p className="mt-0.5 text-xs text-gray-500">
                   {t('combos.by')}{' '}
                   {combo.ownerId ? (
