@@ -604,7 +604,6 @@ export function CreateComboPage() {
                     <span className="w-5 shrink-0 text-xs font-bold text-gray-400">{slot.position}</span>
                     {slot.type === 'trick' ? (() => {
                       const trickSlot = slot
-                      const prevSlot = i > 0 ? slots[i - 1] : null
                       const ntDisabled = trickSlot.isTransition || !prevLastTrickIsCrossOver(slots, i)
                       return (
                       <>
