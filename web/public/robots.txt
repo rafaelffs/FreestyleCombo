@@ -5,4 +5,4 @@ Disallow: /account
 Disallow: /preferences
 Disallow: /combos/create
 
-Sitemap: https://freestylecombo.com/sitemap.xml
+Sitemap: https://fscombo.com/sitemap.xml
