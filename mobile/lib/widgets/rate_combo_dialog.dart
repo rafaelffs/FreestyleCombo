@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../core/api/api_client.dart';
+import '../theme/app_colors.dart';
 
 class RateComboDialog extends StatefulWidget {
   final String comboId;
@@ -37,11 +39,15 @@ class _RateComboDialogState extends State<RateComboDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Rate this combo'),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      title: Text('Rate this combo', style: GoogleFonts.plusJakartaSans(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.ink)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('Select a score from 1 to 5'),
+          Text(
+            'Select a score from 1 to 5',
+            style: GoogleFonts.plusJakartaSans(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.muted),
+          ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -49,36 +55,40 @@ class _RateComboDialogState extends State<RateComboDialog> {
               final star = i + 1;
               return GestureDetector(
                 onTap: () => setState(() => _score = star),
-                child: Icon(
-                  star <= _score ? Icons.star : Icons.star_border,
-                  color: Colors.amber,
-                  size: 36,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: Icon(
+                    star <= _score ? Icons.star_rounded : Icons.star_border_rounded,
+                    color: AppColors.star,
+                    size: 36,
+                  ),
                 ),
               );
             }),
           ),
           if (_error != null) ...[
             const SizedBox(height: 12),
-            Text(_error!,
-                style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
-                    fontSize: 13)),
+            Text(_error!, style: const TextStyle(color: AppColors.red, fontSize: 13)),
           ],
         ],
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text('Cancel', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, color: AppColors.muted)),
         ),
         FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.indigo,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
           onPressed: (_loading || _score == 0) ? null : _submit,
           child: _loading
               ? const SizedBox(
                   height: 16,
                   width: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('Submit'),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Text('Submit', style: TextStyle(fontWeight: FontWeight.w800)),
         ),
       ],
     );

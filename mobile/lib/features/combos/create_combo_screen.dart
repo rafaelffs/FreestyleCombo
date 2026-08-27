@@ -1,11 +1,18 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
 import '../../core/models/user_preference.dart';
+import '../../theme/app_colors.dart';
+import '../../widgets/difficulty_chip.dart';
+import 'unsaved_combo_guard.dart';
 
 enum _Mode { choose, generate, build }
+
+enum _TypeFilter { all, tricks, combos }
 
 class CreateComboScreen extends StatefulWidget {
   const CreateComboScreen({super.key});
@@ -22,6 +29,7 @@ class _SlotItem {
   final String? trickName;
   final String? abbreviation;
   final bool crossOver;
+  final bool isTransition;
 
   // For a sub-combo slot
   final String? subComboId;
@@ -29,6 +37,21 @@ class _SlotItem {
   final List<ComboTrickDto>? subComboTricks;
 
   bool get isSubCombo => subComboId != null;
+
+  // Matches the server's actual rule (BuildComboHandler/GenerateComboHandler):
+  // a trick can be marked no-touch only if the trick immediately before it
+  // is a CrossOver move — not based on the no-touch trick's own CrossOver
+  // flag. A transition trick (e.g. "Combo") never enables it for the next
+  // slot; a sub-combo slot enables it only if its own last trick is CrossOver.
+  bool get allowsNoTouchOnNext {
+    if (isTransition) return false;
+    if (isSubCombo) {
+      final tricks = subComboTricks;
+      if (tricks == null || tricks.isEmpty) return false;
+      return tricks.last.crossOver;
+    }
+    return crossOver;
+  }
 
   int position;
   bool strongFoot;
@@ -43,6 +66,7 @@ class _SlotItem {
     required this.position,
     this.strongFoot = true,
     this.noTouch = false,
+    this.isTransition = false,
   })  : trickId = trickId,
         trickName = trickName,
         abbreviation = abbreviation,
@@ -60,6 +84,7 @@ class _SlotItem {
         trickName = null,
         abbreviation = null,
         crossOver = false,
+        isTransition = false,
         subComboId = subComboId,
         subComboName = subComboName,
         subComboTricks = subComboTricks,
@@ -93,6 +118,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   bool _loadingTricks = true;
   final _searchCtrl = TextEditingController();
   String _search = '';
+  _TypeFilter _typeFilter = _TypeFilter.all;
   final List<_SlotItem> _slots = [];
   bool _isPublic = false;
   bool _saving = false;
@@ -102,6 +128,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
 
   @override
   void dispose() {
+    UnsavedComboGuard.clear();
     _nameCtrl.dispose();
     _searchCtrl.dispose();
     super.dispose();
@@ -120,7 +147,10 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   }
 
   Future<void> _preview() async {
-    setState(() { _genLoading = true; _genError = null; });
+    setState(() {
+      _genLoading = true;
+      _genError = null;
+    });
     try {
       final overrides = _selectedPrefId != null
           ? null
@@ -133,7 +163,8 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
               includeCrossOver: _includeCrossOver,
               includeKnee: _includeKnee,
             );
-      final result = await ApiClient.instance.previewCombo(_selectedPrefId, overrides);
+      final result =
+          await ApiClient.instance.previewCombo(_selectedPrefId, overrides);
       _slots.clear();
       for (final t in result.tricks) {
         _slots.add(_SlotItem.trick(
@@ -177,7 +208,30 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     }
   }
 
-  void _addTrickItem(TrickItem trick) {
+  Future<void> _promptAddTrick(TrickItem trick) async {
+    // A "transition" trick (e.g. "Combo") is a simple connector between real
+    // tricks, not a move with its own foot/no-touch — add it straight away.
+    if (trick.isTransition) {
+      setState(() {
+        _slots.add(_SlotItem.trick(
+          trickId: trick.id,
+          trickName: trick.name,
+          abbreviation: trick.abbreviation,
+          crossOver: trick.crossOver,
+          position: _slots.length + 1,
+          isTransition: true,
+        ));
+      });
+      return;
+    }
+    // No-touch is valid only if the *preceding* trick is a CrossOver move
+    // (matches the server's rule) — the trick being added has no say in it.
+    final allowNoTouch = _slots.isNotEmpty && _slots.last.allowsNoTouchOnNext;
+    final choice = await _showAddOptionsSheet(
+      title: trick.name,
+      allowNoTouch: allowNoTouch,
+    );
+    if (choice == null) return;
     setState(() {
       _slots.add(_SlotItem.trick(
         trickId: trick.id,
@@ -185,28 +239,145 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
         abbreviation: trick.abbreviation,
         crossOver: trick.crossOver,
         position: _slots.length + 1,
+        strongFoot: choice.strongFoot,
+        noTouch: choice.noTouch,
       ));
-      _buildTab = 1;
     });
   }
 
-  void _addComboItem(ComboItem combo) {
+  Future<void> _promptAddCombo(ComboItem combo) async {
+    final choice = await _showAddOptionsSheet(
+      title: combo.name,
+      allowNoTouch: false,
+    );
+    if (choice == null) return;
     setState(() {
       _slots.add(_SlotItem.combo(
         subComboId: combo.id,
         subComboName: combo.name,
         subComboTricks: combo.tricks,
         position: _slots.length + 1,
-      ));
-      _buildTab = 1;
+      )..strongFoot = choice.strongFoot);
     });
+  }
+
+  Future<_AddOptionsChoice?> _showAddOptionsSheet({
+    required String title,
+    required bool allowNoTouch,
+  }) {
+    var strongFoot = true;
+    var noTouch = false;
+    return showModalBottomSheet<_AddOptionsChoice>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => Padding(
+          padding: EdgeInsets.fromLTRB(
+              22, 20, 22, 24 + MediaQuery.of(ctx).viewInsets.bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: AppColors.line2,
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink),
+              ),
+              const SizedBox(height: 22),
+              _FieldLabel('Foot'),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                      child: _PresetChip(
+                          label: 'Weak foot',
+                          selected: !strongFoot,
+                          onTap: () => setSt(() => strongFoot = false))),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: _PresetChip(
+                          label: 'Strong foot',
+                          selected: strongFoot,
+                          onTap: () => setSt(() => strongFoot = true))),
+                ],
+              ),
+              if (allowNoTouch) ...[
+                const SizedBox(height: 18),
+                _ToggleRow(
+                  label: 'No touch',
+                  value: noTouch,
+                  onChanged: (v) => setSt(() => noTouch = v),
+                ),
+              ],
+              const SizedBox(height: 32),
+              SizedBox(
+                height: 52,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.indigo,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                  ),
+                  onPressed: () => Navigator.pop(
+                      ctx,
+                      _AddOptionsChoice(
+                          strongFoot: strongFoot, noTouch: noTouch)),
+                  child: const Text('Add to combo',
+                      style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _removeSlot(int index) {
     setState(() {
       _slots.removeAt(index);
-      for (var i = 0; i < _slots.length; i++) _slots[i].position = i + 1;
+      _renumberSlots();
     });
+  }
+
+  void _reorderSlot(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) newIndex -= 1;
+      final item = _slots.removeAt(oldIndex);
+      _slots.insert(newIndex, item);
+      _renumberSlots();
+    });
+  }
+
+  void _renumberSlots() {
+    for (var i = 0; i < _slots.length; i++) {
+      _slots[i].position = i + 1;
+      // No-touch is only valid right after a CrossOver trick — clear it if
+      // reordering/removal put something else before this one now.
+      final allowed = i > 0 && _slots[i - 1].allowsNoTouchOnNext;
+      if (!_slots[i].isSubCombo && !allowed && _slots[i].noTouch) {
+        _slots[i].noTouch = false;
+      }
+    }
   }
 
   Future<void> _save() async {
@@ -215,12 +386,15 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     if (!AuthService.instance.isAuthenticated) {
       final name = _nameCtrl.text.trim();
       await AuthService.instance.setPendingCombo({
-        'tricks': _slots.where((s) => !s.isSubCombo).map((s) => {
-          'trickId': s.trickId,
-          'position': s.position,
-          'strongFoot': s.strongFoot,
-          'noTouch': s.noTouch,
-        }).toList(),
+        'tricks': _slots
+            .where((s) => !s.isSubCombo)
+            .map((s) => {
+                  'trickId': s.trickId,
+                  'position': s.position,
+                  'strongFoot': s.strongFoot,
+                  'noTouch': s.noTouch,
+                })
+            .toList(),
         'name': name.isEmpty ? null : name,
         'isPublic': _isPublic,
       });
@@ -233,7 +407,10 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
       return;
     }
 
-    setState(() { _saving = true; _buildError = null; });
+    setState(() {
+      _saving = true;
+      _buildError = null;
+    });
     try {
       final items = _slots.map((s) {
         if (s.isSubCombo) {
@@ -252,10 +429,12 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
         );
       }).toList();
       final name = _nameCtrl.text.trim();
-      final combo = await ApiClient.instance.buildCombo(items, _isPublic, name: name.isEmpty ? null : name);
+      final combo = await ApiClient.instance
+          .buildCombo(items, _isPublic, name: name.isEmpty ? null : name);
       setState(() => _buildResult = combo);
     } catch (e) {
-      setState(() => _buildError = e.toString().replaceFirst('Exception: ', ''));
+      setState(
+          () => _buildError = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -263,11 +442,15 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
 
   List<TrickListItem> get _filtered {
     final q = _search.toLowerCase();
-    if (q.isEmpty) return _items;
     return _items.where((item) {
       if (item is TrickItem) {
-        return item.name.toLowerCase().contains(q) || item.abbreviation.toLowerCase().contains(q);
+        if (_typeFilter == _TypeFilter.combos) return false;
+        if (q.isEmpty) return true;
+        return item.name.toLowerCase().contains(q) ||
+            item.abbreviation.toLowerCase().contains(q);
       } else if (item is ComboItem) {
+        if (_typeFilter == _TypeFilter.tricks) return false;
+        if (q.isEmpty) return true;
         return item.name.toLowerCase().contains(q);
       }
       return false;
@@ -282,7 +465,10 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
           total += t.difficulty;
         }
       } else {
-        final trick = _items.whereType<TrickItem>().where((t) => t.id == s.trickId).firstOrNull;
+        final trick = _items
+            .whereType<TrickItem>()
+            .where((t) => t.id == s.trickId)
+            .firstOrNull;
         if (trick != null) total += trick.difficulty;
       }
     }
@@ -304,25 +490,24 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   Widget _buildGuestBanner() {
     if (AuthService.instance.isAuthenticated) return const SizedBox.shrink();
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      margin: const EdgeInsets.fromLTRB(22, 14, 22, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue.shade200),
+        color: AppColors.indigoTint,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFD7DBFA)),
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
-          const SizedBox(width: 8),
+          const Icon(Icons.info_outline, size: 18, color: AppColors.indigo),
+          const SizedBox(width: 10),
           Expanded(
-            child: Text.rich(
-              TextSpan(
-                style: TextStyle(fontSize: 13, color: Colors.blue.shade800),
-                children: const [
-                  TextSpan(text: 'Create a free account to save your combos. '),
-                ],
-              ),
+            child: Text(
+              'Create a free account to save your combos.',
+              style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.ink2),
             ),
           ),
           TextButton(
@@ -331,8 +516,10 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              foregroundColor: AppColors.indigo,
             ),
-            child: Text('Sign up', style: TextStyle(fontSize: 13, color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
+            child: const Text('Sign up',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -346,7 +533,10 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     if (_items.isEmpty) _loadTricks();
   }
 
-  void _backToChoose() {
+  Future<void> _backToChoose() async {
+    if (_slots.isNotEmpty && _buildResult == null) {
+      if (!await _confirmDiscardCombo()) return;
+    }
     setState(() {
       _mode = _Mode.choose;
       _slots.clear();
@@ -356,28 +546,97 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     });
   }
 
+  Future<bool> _confirmDiscardCombo() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Discard combo?',
+            style: GoogleFonts.plusJakartaSans(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.ink)),
+        content: Text(
+          'You have ${_slots.length} trick${_slots.length == 1 ? '' : 's'} in this combo. Leaving now will discard it.',
+          style: GoogleFonts.plusJakartaSans(color: AppColors.ink2, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep editing'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Discard', style: TextStyle(color: AppColors.red, fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final title = switch (_mode) {
+      _Mode.choose => 'Create Combo',
+      _Mode.generate => 'Generate',
+      _Mode.build => 'Build combo',
+    };
+    UnsavedComboGuard.pendingTrickCount =
+        (_mode == _Mode.build && _buildResult == null) ? _slots.length : 0;
+
     return PopScope(
       canPop: _mode == _Mode.choose,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && _mode != _Mode.choose) _backToChoose();
       },
       child: Scaffold(
+        backgroundColor: AppColors.bg,
         appBar: AppBar(
-          title: const Text('Create Combo'),
-          leading: _mode != _Mode.choose
-              ? IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: _backToChoose,
-                )
-              : null,
+          title: Text(title),
+          leading:
+              _mode != _Mode.choose ? _BackButton(onTap: _backToChoose) : null,
         ),
         body: _mode == _Mode.choose
             ? _buildChooseView()
             : _mode == _Mode.generate
                 ? _buildGenerateView()
                 : _buildBuildView(),
+        bottomNavigationBar:
+            _mode == _Mode.generate ? _buildGenerateActionBar() : null,
+      ),
+    );
+  }
+
+  Widget _buildGenerateActionBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(22, 14, 22, 20),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.line)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 52,
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.indigo,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+            ),
+            onPressed: _genLoading ? null : _preview,
+            icon: _genLoading
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.bolt),
+            label: Text(
+              _genLoading ? 'Generating…' : 'Generate combo',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -391,29 +650,36 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
         children: [
           _buildGuestBanner(),
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-          Text('How would you like to create your combo?',
-              style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 24),
-          _ModeCard(
-            icon: Icons.auto_awesome,
-            title: 'Auto-generate',
-            description: 'Let the app build a combo based on your settings.',
-            onTap: () {
-              setState(() => _mode = _Mode.generate);
-              _loadPreferences();
-            },
-          ),
-          const SizedBox(height: 16),
-          _ModeCard(
-            icon: Icons.build_outlined,
-            title: 'Build manually',
-            description: 'Pick tricks one by one and configure each slot.',
-            onTap: _switchToBuild,
-          ),
+                Text(
+                  'How would you like to create your combo?',
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink),
+                ),
+                const SizedBox(height: 20),
+                _ModeCard(
+                  icon: Icons.auto_awesome,
+                  title: 'Auto-generate',
+                  description:
+                      'Let the app build a combo based on your settings.',
+                  onTap: () {
+                    setState(() => _mode = _Mode.generate);
+                    _loadPreferences();
+                  },
+                ),
+                const SizedBox(height: 14),
+                _ModeCard(
+                  icon: Icons.build_outlined,
+                  title: 'Build manually',
+                  description:
+                      'Pick tricks one by one and configure each slot.',
+                  onTap: _switchToBuild,
+                ),
               ],
             ),
           ),
@@ -426,93 +692,138 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
 
   Widget _buildGenerateView() {
     final authed = AuthService.instance.isAuthenticated;
+    final locked = _selectedPrefId != null;
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _buildGuestBanner(),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(22),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-          // Name field at the top
-          TextField(
-            controller: _nameCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Combo name (optional)',
-              hintText: 'e.g. My signature combo',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Options', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 12),
-                  // Preference selector — only for authenticated users
-                  if (authed) ...[
-                    DropdownButtonFormField<String?>(
-                      initialValue: _selectedPrefId,
-                      decoration: const InputDecoration(
-                        labelText: 'Preference',
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      items: [
-                        const DropdownMenuItem<String?>(value: null, child: Text('Custom')),
-                        ..._savedPrefs.map((p) => DropdownMenuItem<String?>(value: p.id, child: Text(p.name))),
+                _FieldLabel('Combo name'),
+                const SizedBox(height: 8),
+                _AppTextField(
+                    controller: _nameCtrl, hint: 'e.g. My signature combo'),
+                if (authed) ...[
+                  const SizedBox(height: 22),
+                  _FieldLabel('Base preset'),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 38,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        _PresetChip(
+                          label: 'Custom',
+                          selected: _selectedPrefId == null,
+                          onTap: () => setState(() => _selectedPrefId = null),
+                        ),
+                        for (final p in _savedPrefs) ...[
+                          const SizedBox(width: 8),
+                          _PresetChip(
+                            label: p.name,
+                            selected: _selectedPrefId == p.id,
+                            onTap: () => setState(() {
+                              _selectedPrefId = p.id;
+                              _comboLength = p.comboLength;
+                              _maxDifficulty = p.maxDifficulty;
+                              _strongFootPct = p.strongFootPercentage;
+                              _noTouchPct = p.noTouchPercentage;
+                              _maxConsecNoTouch = p.maxConsecutiveNoTouch;
+                              _includeCrossOver = p.includeCrossOver;
+                              _includeKnee = p.includeKnee;
+                            }),
+                          ),
+                        ],
                       ],
-                      onChanged: (v) {
-                        setState(() {
-                          _selectedPrefId = v;
-                          final pref = v != null ? _savedPrefs.firstWhere((p) => p.id == v) : null;
-                          if (pref != null) {
-                            _comboLength = pref.comboLength;
-                            _maxDifficulty = pref.maxDifficulty;
-                            _strongFootPct = pref.strongFootPercentage;
-                            _noTouchPct = pref.noTouchPercentage;
-                            _maxConsecNoTouch = pref.maxConsecutiveNoTouch;
-                            _includeCrossOver = pref.includeCrossOver;
-                            _includeKnee = pref.includeKnee;
-                          }
-                        });
-                      },
                     ),
-                  ],
-                  const Divider(),
-                  _SliderRow(label: 'Combo length: $_comboLength', value: _comboLength.toDouble(), min: 1, max: 100, divisions: 99, onChanged: _selectedPrefId == null ? (v) => setState(() => _comboLength = v.round()) : null),
-                  _SliderRow(label: 'Max difficulty: $_maxDifficulty', value: _maxDifficulty.toDouble(), min: 1, max: 10, divisions: 9, onChanged: _selectedPrefId == null ? (v) => setState(() => _maxDifficulty = v.round()) : null),
-                  _SliderRow(label: 'Strong foot: $_strongFootPct%', value: _strongFootPct.toDouble(), min: 0, max: 100, divisions: 10, onChanged: _selectedPrefId == null ? (v) => setState(() => _strongFootPct = v.round()) : null),
-                  _SliderRow(label: 'No-touch: $_noTouchPct%', value: _noTouchPct.toDouble(), min: 0, max: 100, divisions: 10, onChanged: _selectedPrefId == null ? (v) => setState(() => _noTouchPct = v.round()) : null),
-                  _SliderRow(label: 'Max consecutive NT: $_maxConsecNoTouch', value: _maxConsecNoTouch.toDouble(), min: 0, max: 30, divisions: 30, onChanged: _selectedPrefId == null ? (v) => setState(() => _maxConsecNoTouch = v.round()) : null),
-                  SwitchListTile(title: const Text('Include crossover'), value: _includeCrossOver, onChanged: _selectedPrefId == null ? (v) => setState(() => _includeCrossOver = v) : null, contentPadding: EdgeInsets.zero),
-                  SwitchListTile(title: const Text('Include knee'), value: _includeKnee, onChanged: _selectedPrefId == null ? (v) => setState(() => _includeKnee = v) : null, contentPadding: EdgeInsets.zero),
-                  if (_selectedPrefId != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text('Fields are locked to the selected preference. Choose "Custom" to edit.', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-                    ),
+                  ),
                 ],
-              ),
-            ),
-          ),
-          if (_genError != null) ...[
-            const SizedBox(height: 12),
-            Text(_genError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-          ],
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: _genLoading ? null : _preview,
-            icon: _genLoading
-                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.auto_awesome),
-            label: Text(_genLoading ? 'Generating…' : 'Generate Combo'),
-          ),
+                const SizedBox(height: 22),
+                _AppSlider(
+                  label: 'Combo length',
+                  value: _comboLength.toDouble(),
+                  min: 1,
+                  max: 100,
+                  onChanged: locked
+                      ? null
+                      : (v) => setState(() => _comboLength = v.round()),
+                ),
+                const SizedBox(height: 20),
+                _AppSlider(
+                  label: 'Max difficulty',
+                  value: _maxDifficulty.toDouble(),
+                  min: 1,
+                  max: 10,
+                  formatValue: (v) => '${v.round()} / 10',
+                  onChanged: locked
+                      ? null
+                      : (v) => setState(() => _maxDifficulty = v.round()),
+                ),
+                const SizedBox(height: 20),
+                _AppSlider(
+                  label: 'Strong foot',
+                  value: _strongFootPct.toDouble(),
+                  min: 0,
+                  max: 100,
+                  formatValue: (v) => '${v.round()}%',
+                  onChanged: locked
+                      ? null
+                      : (v) => setState(() => _strongFootPct = v.round()),
+                ),
+                const SizedBox(height: 20),
+                _AppSlider(
+                  label: 'No-touch',
+                  value: _noTouchPct.toDouble(),
+                  min: 0,
+                  max: 100,
+                  formatValue: (v) => '${v.round()}%',
+                  onChanged: locked
+                      ? null
+                      : (v) => setState(() => _noTouchPct = v.round()),
+                ),
+                const SizedBox(height: 20),
+                _AppSlider(
+                  label: 'Max consecutive no-touch',
+                  value: _maxConsecNoTouch.toDouble(),
+                  min: 0,
+                  max: 30,
+                  onChanged: locked
+                      ? null
+                      : (v) => setState(() => _maxConsecNoTouch = v.round()),
+                ),
+                const SizedBox(height: 20),
+                _ToggleRow(
+                  label: 'Include cross-overs',
+                  value: _includeCrossOver,
+                  onChanged: locked
+                      ? null
+                      : (v) => setState(() => _includeCrossOver = v),
+                ),
+                const SizedBox(height: 11),
+                _ToggleRow(
+                  label: 'Include knee tricks',
+                  value: _includeKnee,
+                  onChanged:
+                      locked ? null : (v) => setState(() => _includeKnee = v),
+                ),
+                if (locked)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text(
+                      'Fields are locked to the selected preset. Choose "Custom" to edit.',
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11.5, color: AppColors.faint),
+                    ),
+                  ),
+                if (_genError != null) ...[
+                  const SizedBox(height: 14),
+                  Text(_genError!,
+                      style: const TextStyle(color: AppColors.red)),
+                ],
               ],
             ),
           ),
@@ -525,162 +836,235 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
 
   Widget _buildBuildView() {
     if (_buildResult != null) {
-      return SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Saved!', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            Text(_buildResult!.displayText, style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text('${_buildResult!.trickCount} tricks · difficulty ${_buildResult!.totalDifficulty.toInt()}'),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              icon: const Icon(Icons.arrow_forward),
-              label: const Text('View combo'),
-              onPressed: () => context.push('/combos/${_buildResult!.id}'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: () => setState(() { _buildResult = null; _slots.clear(); _buildTab = 0; _previewWarnings = []; }),
-              child: const Text('Build another'),
-            ),
-          ],
-        ),
-      );
+      return _buildSavedView();
     }
 
     return Column(
       children: [
         _buildGuestBanner(),
-        // Name field at the top
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-          child: TextField(
+          padding: const EdgeInsets.fromLTRB(22, 16, 22, 0),
+          child: _AppTextField(
             controller: _nameCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Combo name (optional)',
-              hintText: 'e.g. My signature combo',
-              border: OutlineInputBorder(),
-              isDense: true,
-            ),
+            hint: 'Combo name (optional)',
           ),
         ),
         if (_previewWarnings.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            padding: const EdgeInsets.fromLTRB(22, 12, 22, 0),
             child: Container(
-              padding: const EdgeInsets.all(10),
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.amber.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.amber.shade200),
+                color: AppColors.amberBg,
+                borderRadius: BorderRadius.circular(12),
+                border: const Border.fromBorderSide(
+                    BorderSide(color: Color(0xFFFDE68A))),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: _previewWarnings.map((w) => Text(w, style: TextStyle(fontSize: 12, color: Colors.amber.shade900))).toList(),
+                children: _previewWarnings
+                    .map((w) => Text(w,
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12, color: AppColors.amber)))
+                    .toList(),
               ),
             ),
           ),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          child: _Segmented2(
+            labels: [
+              'Tricks (${_items.length})',
+              'My Combo ($_totalTrickCount)'
+            ],
+            pulseCounts: [null, _totalTrickCount],
+            selectedIndex: _buildTab,
+            onSelected: (i) => setState(() => _buildTab = i),
+          ),
+        ),
+        const SizedBox(height: 12),
         Expanded(
-          child: DefaultTabController(
-            length: 2,
-            child: Column(
-              children: [
-                TabBar(
-                  onTap: (i) => setState(() => _buildTab = i),
-                  tabs: [
-                    Tab(text: 'Tricks (${_items.length})'),
-                    Tab(text: 'My Combo ($_totalTrickCount)'),
-                  ],
-                ),
-                Expanded(
-                  child: IndexedStack(
-                    index: _buildTab,
-                    children: [
-                      _buildPickerTab(),
-                      _buildComboTab(),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          child: IndexedStack(
+            index: _buildTab,
+            children: [
+              _buildPickerTab(),
+              _buildComboTab(),
+            ],
           ),
         ),
       ],
     );
   }
 
+  Widget _buildSavedView() {
+    final result = _buildResult!;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: const BoxDecoration(
+                    gradient: AppColors.grad, shape: BoxShape.circle),
+                child: const Icon(Icons.check_rounded, color: Colors.white),
+              ),
+              const SizedBox(width: 14),
+              Text('Saved!',
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            (result.name != null && result.name!.isNotEmpty)
+                ? result.name!
+                : result.displayText,
+            style: GoogleFonts.jetBrainsMono(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${result.trickCount} tricks · difficulty ${result.totalDifficulty.toInt()}',
+            style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                color: AppColors.muted,
+                fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            height: 52,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.indigo,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+              ),
+              icon: const Icon(Icons.arrow_forward),
+              label: const Text('View combo',
+                  style: TextStyle(fontWeight: FontWeight.w800)),
+              // Replace (not push) so the back button from the detail screen
+              // returns to wherever "Generate"/"Build" was opened from,
+              // instead of back to this "Saved!" confirmation screen.
+              onPressed: () =>
+                  context.pushReplacement('/combos/${result.id}'),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 52,
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.line2),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+              ),
+              onPressed: () => setState(() {
+                _buildResult = null;
+                _slots.clear();
+                _buildTab = 0;
+                _previewWarnings = [];
+              }),
+              child: const Text('Build another',
+                  style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _typeChip(_TypeFilter type, String label) {
+    final active = _typeFilter == type;
+    return GestureDetector(
+      onTap: () => setState(() => _typeFilter = type),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: active ? AppColors.indigo : AppColors.chipBg,
+          borderRadius: BorderRadius.circular(11),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+            color: active ? Colors.white : AppColors.ink2,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPickerTab() {
+    final filtered = _filtered;
+    // Transition tricks (e.g. "Combo") are simple connectors, not full moves —
+    // pinned above the scrolling list so they stay visible while scrolling,
+    // and added with a single tap (see _promptAddTrick).
+    final pinned =
+        filtered.whereType<TrickItem>().where((t) => t.isTransition).toList();
+    final rest = filtered
+        .where((item) => !(item is TrickItem && item.isTransition))
+        .toList();
+
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(12),
-          child: TextField(
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          child: _SearchField(
             controller: _searchCtrl,
-            decoration: InputDecoration(
-              hintText: 'Search…',
-              prefixIcon: const Icon(Icons.search),
-              border: const OutlineInputBorder(),
-              suffixIcon: _search.isNotEmpty
-                  ? IconButton(icon: const Icon(Icons.clear), onPressed: () { _searchCtrl.clear(); setState(() => _search = ''); })
-                  : null,
-            ),
+            value: _search,
             onChanged: (v) => setState(() => _search = v),
           ),
         ),
+        const SizedBox(height: 10),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          child: Row(
+            children: [
+              _typeChip(_TypeFilter.all, 'All'),
+              const SizedBox(width: 6),
+              _typeChip(_TypeFilter.tricks, 'Tricks'),
+              const SizedBox(width: 6),
+              _typeChip(_TypeFilter.combos, 'Combos'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (pinned.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 0, 22, 8),
+            child: Column(
+              children: pinned
+                  .map((t) =>
+                      _PickerTrickRow(item: t, onAdd: () => _promptAddTrick(t)))
+                  .toList(),
+            ),
+          ),
         Expanded(
           child: _loadingTricks
-              ? const Center(child: CircularProgressIndicator())
-              : ListView.separated(
-                  itemCount: _filtered.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+              ? const Center(
+                  child: CircularProgressIndicator(color: AppColors.indigo))
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
+                  itemCount: rest.length,
                   itemBuilder: (_, i) {
-                    final item = _filtered[i];
+                    final item = rest[i];
                     if (item is TrickItem) {
-                      return ListTile(
-                        title: Row(
-                          children: [
-                            Text(item.abbreviation, style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 13)),
-                            const SizedBox(width: 8),
-                            Expanded(child: Text(item.name, style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.normal), overflow: TextOverflow.ellipsis)),
-                          ],
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (item.crossOver) const _MiniTag(label: 'CO'),
-                            if (item.knee) const _MiniTag(label: 'K'),
-                            const SizedBox(width: 4),
-                            _DiffChip(difficulty: item.difficulty),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.add_circle_outline, color: Colors.indigo),
-                          ],
-                        ),
-                        onTap: () => _addTrickItem(item),
-                      );
+                      return _PickerTrickRow(
+                          item: item, onAdd: () => _promptAddTrick(item));
                     } else if (item is ComboItem) {
-                      return ListTile(
-                        tileColor: Colors.purple.shade50,
-                        title: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                item.name,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                        subtitle: Text(
-                          'combo · ${item.trickCount} tricks · diff ${item.totalDifficulty.toInt()}',
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                        trailing: const Icon(Icons.add_circle_outline, color: Colors.purple),
-                        onTap: () => _addComboItem(item),
-                      );
+                      return _PickerComboRow(
+                          item: item, onAdd: () => _promptAddCombo(item));
                     }
                     return const SizedBox.shrink();
                   },
@@ -694,70 +1078,104 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     return Column(
       children: [
         if (_slots.isEmpty)
-          const Expanded(child: Center(child: Text('Add tricks from the first tab.', style: TextStyle(color: Colors.grey))))
+          Expanded(
+            child: Center(
+              child: Text(
+                'Add tricks from the first tab.',
+                style: GoogleFonts.plusJakartaSans(
+                    color: AppColors.muted, fontWeight: FontWeight.w600),
+              ),
+            ),
+          )
         else
           Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.only(top: 8, bottom: 8),
+            child: ReorderableListView.builder(
+              buildDefaultDragHandles: false,
+              padding: const EdgeInsets.fromLTRB(22, 0, 22, 8),
               itemCount: _slots.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              onReorder: _reorderSlot,
               itemBuilder: (_, i) {
                 final s = _slots[i];
+                final noTouchAllowed = i > 0 && _slots[i - 1].allowsNoTouchOnNext;
                 if (s.isSubCombo) {
                   return _SubComboSlotTile(
+                    key: ObjectKey(s),
+                    index: i,
                     slot: s,
                     onRemove: () => _removeSlot(i),
-                    onToggleExpand: () => setState(() => s.expanded = !s.expanded),
+                    onToggleExpand: () =>
+                        setState(() => s.expanded = !s.expanded),
                   );
                 }
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  child: Row(
-                    children: [
-                      SizedBox(width: 20, child: Text('${s.position}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey))),
-                      const SizedBox(width: 8),
-                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(s.trickName ?? '', style: const TextStyle(fontWeight: FontWeight.w500)),
-                        Text(s.abbreviation ?? '', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                      ])),
-                      _Toggle(label: 'SF', value: s.strongFoot, onChanged: (v) => setState(() => s.strongFoot = v)),
-                      _Toggle(label: 'NT', value: s.noTouch, enabled: s.crossOver, onChanged: s.crossOver ? (v) => setState(() => s.noTouch = v) : null),
-                      IconButton(icon: const Icon(Icons.close, size: 18, color: Colors.grey), onPressed: () => _removeSlot(i)),
-                    ],
-                  ),
+                return _SlotTile(
+                  key: ObjectKey(s),
+                  index: i,
+                  slot: s,
+                  noTouchAllowed: noTouchAllowed,
+                  onRemove: () => _removeSlot(i),
+                  onToggleStrongFoot: (v) => setState(() => s.strongFoot = v),
+                  onToggleNoTouch: (v) => setState(() => s.noTouch = v),
                 );
               },
             ),
           ),
-        if (_slots.isNotEmpty) ...[
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.all(16),
+        if (_slots.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.fromLTRB(22, 14, 22, 20),
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              border: Border(top: BorderSide(color: AppColors.line)),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('$_totalTrickCount tricks · difficulty $_totalDiff',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey), textAlign: TextAlign.center),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Checkbox(value: _isPublic, onChanged: (v) => setState(() => _isPublic = v ?? false)),
-                  const Text('Make public'),
-                ]),
+                Text(
+                  '$_totalTrickCount tricks · difficulty $_totalDiff',
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12.5,
+                      color: AppColors.muted,
+                      fontWeight: FontWeight.w600),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                _ToggleRow(
+                  label: 'Submit as public',
+                  value: _isPublic,
+                  onChanged: (v) => setState(() => _isPublic = v),
+                ),
                 if (_buildError != null) ...[
-                  const SizedBox(height: 4),
-                  Text(_buildError!, style: const TextStyle(color: Colors.red, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  Text(_buildError!,
+                      style:
+                          const TextStyle(color: AppColors.red, fontSize: 13)),
                 ],
-                const SizedBox(height: 8),
-                FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: _saving
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : Text(AuthService.instance.isAuthenticated ? 'Save Combo' : 'Sign up to save'),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 52,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.indigo,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                    ),
+                    onPressed: _saving ? null : _save,
+                    child: _saving
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white))
+                        : Text(
+                            AuthService.instance.isAuthenticated
+                                ? 'Save combo'
+                                : 'Sign up to save',
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                  ),
                 ),
               ],
             ),
           ),
-        ],
       ],
     );
   }
@@ -766,11 +1184,14 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
 // ── Sub-combo slot tile ────────────────────────────────────────────────────────
 
 class _SubComboSlotTile extends StatelessWidget {
+  final int index;
   final _SlotItem slot;
   final VoidCallback onRemove;
   final VoidCallback onToggleExpand;
 
   const _SubComboSlotTile({
+    super.key,
+    required this.index,
     required this.slot,
     required this.onRemove,
     required this.onToggleExpand,
@@ -778,55 +1199,83 @@ class _SubComboSlotTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          color: Colors.purple.shade50,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: AppColors.noTouchBg,
+        border: Border.all(color: const Color(0xFFE5E0FB)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
             child: Row(
               children: [
-                SizedBox(
-                  width: 20,
-                  child: Text(
-                    '${slot.position}',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
+                ReorderableDragStartListener(
+                  index: index,
+                  child: const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: Icon(Icons.drag_indicator, size: 18, color: AppColors.noTouchText),
                   ),
                 ),
-                const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  width: 30,
+                  height: 30,
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: Colors.purple.shade100,
-                    borderRadius: BorderRadius.circular(4),
+                    color: const Color(0xFFEDE9FE),
+                    borderRadius: BorderRadius.circular(9),
                   ),
                   child: Text(
-                    'combo',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.purple.shade800),
+                    '${slot.position}',
+                    style: GoogleFonts.jetBrainsMono(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.noTouchText),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEDE9FE),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'COMBO',
+                    style: GoogleFonts.plusJakartaSans(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.noTouchText,
+                        letterSpacing: 0.4),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     slot.subComboName ?? '',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w700, fontSize: 14),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 IconButton(
                   icon: Icon(
-                    slot.expanded ? Icons.expand_less : Icons.expand_more,
-                    size: 18,
-                    color: Colors.purple.shade700,
-                  ),
+                      slot.expanded ? Icons.expand_less : Icons.expand_more,
+                      size: 20,
+                      color: AppColors.noTouchText),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: onToggleExpand,
                 ),
                 const SizedBox(width: 4),
                 IconButton(
-                  icon: const Icon(Icons.close, size: 18, color: Colors.grey),
+                  icon:
+                      const Icon(Icons.close, size: 18, color: AppColors.muted),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: onRemove,
@@ -834,48 +1283,461 @@ class _SubComboSlotTile extends StatelessWidget {
               ],
             ),
           ),
-        ),
-        if (slot.expanded && slot.subComboTricks != null)
+          if (slot.expanded && slot.subComboTricks != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(13, 0, 13, 12),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: slot.subComboTricks!.map((t) {
+                  final suffix =
+                      t.noTouch ? '·nt' : (!t.strongFoot ? '·wf' : '');
+                  return Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                    decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(9)),
+                    child: Text(
+                      '${t.position}. ${t.abbreviation ?? ''}$suffix',
+                      style: GoogleFonts.jetBrainsMono(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.ink2),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Regular slot tile (Build screen "slot" row) ─────────────────────────────────
+
+class _SlotTile extends StatelessWidget {
+  final int index;
+  final _SlotItem slot;
+  final bool noTouchAllowed;
+  final VoidCallback onRemove;
+  final ValueChanged<bool> onToggleStrongFoot;
+  final ValueChanged<bool> onToggleNoTouch;
+
+  const _SlotTile({
+    super.key,
+    required this.index,
+    required this.slot,
+    required this.noTouchAllowed,
+    required this.onRemove,
+    required this.onToggleStrongFoot,
+    required this.onToggleNoTouch,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          ReorderableDragStartListener(
+            index: index,
+            child: const Icon(Icons.drag_indicator, size: 18, color: AppColors.faint),
+          ),
+          const SizedBox(width: 8),
           Container(
-            color: Colors.purple.shade50.withValues(alpha: 0.5),
-            child: Column(
-              children: slot.subComboTricks!.map((t) => Padding(
-                padding: const EdgeInsets.fromLTRB(40, 3, 16, 3),
-                child: Row(
-                  children: [
-                    Text(
-                      '${t.position}',
-                      style: const TextStyle(fontSize: 10, color: Colors.grey),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      t.abbreviation ?? '',
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                    if (t.noTouch) ...[
-                      const SizedBox(width: 3),
-                      Text('(nt)', style: TextStyle(fontSize: 11, color: Colors.indigo.shade400, fontWeight: FontWeight.w500)),
-                    ],
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        t.name ?? '',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    _DiffChip(difficulty: t.difficulty),
-                  ],
-                ),
-              )).toList(),
+            width: 30,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+                color: AppColors.indigoTint,
+                borderRadius: BorderRadius.circular(9)),
+            child: Text(
+              '${slot.position}',
+              style: GoogleFonts.jetBrainsMono(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.indigo),
             ),
           ),
-      ],
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              slot.trickName ?? '',
+              style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          _SlotFlagToggle(
+            label: 'SF',
+            active: slot.strongFoot,
+            onTap: () => onToggleStrongFoot(!slot.strongFoot),
+          ),
+          const SizedBox(width: 6),
+          _SlotFlagToggle(
+            label: 'NT',
+            active: slot.noTouch,
+            enabled: noTouchAllowed,
+            onTap: noTouchAllowed ? () => onToggleNoTouch(!slot.noTouch) : null,
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18, color: AppColors.muted),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            onPressed: onRemove,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SlotFlagToggle extends StatelessWidget {
+  final String label;
+  final bool active;
+  final bool enabled;
+  final VoidCallback? onTap;
+
+  const _SlotFlagToggle(
+      {required this.label,
+      required this.active,
+      this.enabled = true,
+      this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = active ? AppColors.indigoTint : Colors.transparent;
+    final fg = !enabled
+        ? AppColors.faint
+        : (active ? AppColors.indigo : AppColors.muted);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+        decoration:
+            BoxDecoration(color: bg, borderRadius: BorderRadius.circular(7)),
+        child: Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+              fontSize: 10.5, fontWeight: FontWeight.w800, color: fg),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Picker rows ──────────────────────────────────────────────────────────────────
+
+class _PickerTrickRow extends StatelessWidget {
+  final TrickItem item;
+  final VoidCallback onAdd;
+  const _PickerTrickRow({required this.item, required this.onAdd});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: onAdd,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.line),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                      color: AppColors.chipBg,
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Text(
+                    item.abbreviation,
+                    style: GoogleFonts.jetBrainsMono(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.indigo),
+                  ),
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.name,
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${item.revolution} rev${item.crossOver ? ' · crossover' : ''}${item.knee ? ' · knee' : ''}',
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11.5,
+                            color: AppColors.muted,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+                DifficultyChip(item.difficulty),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PickerComboRow extends StatelessWidget {
+  final ComboItem item;
+  final VoidCallback onAdd;
+  const _PickerComboRow({required this.item, required this.onAdd});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: const Color(0xFFF7F5FE),
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: onAdd,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+            decoration: BoxDecoration(
+              border: Border.all(color: const Color(0xFFE5E0FB)),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                      color: const Color(0xFFEDE9FE),
+                      borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(Icons.layers,
+                      size: 18, color: AppColors.noTouchText),
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.name,
+                              style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.ink),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                                color: const Color(0xFFEDE9FE),
+                                borderRadius: BorderRadius.circular(6)),
+                            child: Text(
+                              'COMBO',
+                              style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.noTouchText),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${item.trickCount} tricks',
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11.5,
+                            color: AppColors.muted,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                DifficultyChip(item.totalDifficulty.toInt()),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
 
 // ── Helper widgets ─────────────────────────────────────────────────────────────
+
+class _BackButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _BackButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: Material(
+        color: AppColors.surface,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(13),
+            side: const BorderSide(color: AppColors.line2)),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(13),
+          onTap: onTap,
+          child: const SizedBox(
+              width: 42,
+              height: 42,
+              child: Icon(Icons.arrow_back_ios_new_rounded,
+                  size: 18, color: AppColors.ink)),
+        ),
+      ),
+    );
+  }
+}
+
+class _FieldLabel extends StatelessWidget {
+  final String text;
+  const _FieldLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text.toUpperCase(),
+      style: GoogleFonts.plusJakartaSans(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.8,
+          color: AppColors.faint),
+    );
+  }
+}
+
+class _AppTextField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  const _AppTextField({required this.controller, required this.hint});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+              color: AppColors.ink.withValues(alpha: 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 3)),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        style: GoogleFonts.plusJakartaSans(
+            fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: GoogleFonts.plusJakartaSans(
+              color: AppColors.faint, fontWeight: FontWeight.w600),
+          prefixIcon: const Icon(Icons.edit_outlined,
+              size: 19, color: AppColors.indigo),
+          filled: true,
+          fillColor: AppColors.surface,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(15),
+              borderSide: const BorderSide(color: AppColors.line2)),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(15),
+              borderSide: const BorderSide(color: AppColors.line2)),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(15),
+              borderSide:
+                  const BorderSide(color: AppColors.indigo, width: 1.5)),
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchField extends StatelessWidget {
+  final TextEditingController controller;
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  const _SearchField(
+      {required this.controller, required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      style: GoogleFonts.plusJakartaSans(
+          fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
+      decoration: InputDecoration(
+        hintText: 'Search…',
+        hintStyle: GoogleFonts.plusJakartaSans(
+            color: AppColors.faint, fontWeight: FontWeight.w600),
+        prefixIcon: const Icon(Icons.search, color: AppColors.faint),
+        suffixIcon: value.isNotEmpty
+            ? IconButton(
+                icon: const Icon(Icons.clear, color: AppColors.faint),
+                onPressed: () {
+                  controller.clear();
+                  onChanged('');
+                },
+              )
+            : null,
+        filled: true,
+        fillColor: AppColors.surface,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: const BorderSide(color: AppColors.line2)),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: const BorderSide(color: AppColors.line2)),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: const BorderSide(color: AppColors.indigo, width: 1.5)),
+      ),
+      onChanged: onChanged,
+    );
+  }
+}
 
 class _ModeCard extends StatelessWidget {
   final IconData icon;
@@ -883,33 +1745,56 @@ class _ModeCard extends StatelessWidget {
   final String description;
   final VoidCallback onTap;
 
-  const _ModeCard({required this.icon, required this.title, required this.description, required this.onTap});
+  const _ModeCard(
+      {required this.icon,
+      required this.title,
+      required this.description,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.line),
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: Row(
             children: [
               Container(
                 width: 48,
                 height: 48,
-                decoration: BoxDecoration(color: Colors.indigo.shade50, borderRadius: BorderRadius.circular(10)),
-                child: Icon(icon, color: Colors.indigo, size: 24),
+                decoration: BoxDecoration(
+                    gradient: AppColors.grad,
+                    borderRadius: BorderRadius.circular(14)),
+                child: Icon(icon, color: Colors.white, size: 22),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                  const SizedBox(height: 4),
-                  Text(description, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-                ]),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15.5,
+                            color: AppColors.ink)),
+                    const SizedBox(height: 4),
+                    Text(description,
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12.5,
+                            color: AppColors.muted,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
               ),
-              const Icon(Icons.chevron_right, color: Colors.grey),
+              const Icon(Icons.chevron_right, color: AppColors.faint),
             ],
           ),
         ),
@@ -918,83 +1803,338 @@ class _ModeCard extends StatelessWidget {
   }
 }
 
-class _DiffChip extends StatelessWidget {
-  final int difficulty;
-  const _DiffChip({required this.difficulty});
+class _PresetChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _PresetChip(
+      {required this.label, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    Color bg;
-    Color fg;
-    if (difficulty <= 4) { bg = Colors.green.shade100; fg = Colors.green.shade800; }
-    else if (difficulty <= 7) { bg = Colors.yellow.shade100; fg = Colors.yellow.shade900; }
-    else { bg = Colors.red.shade100; fg = Colors.red.shade800; }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
-      child: Text('$difficulty', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: fg)),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 9),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.indigo : AppColors.chipBg,
+          borderRadius: BorderRadius.circular(11),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: selected ? Colors.white : AppColors.ink2,
+          ),
+        ),
+      ),
     );
   }
 }
 
-class _MiniTag extends StatelessWidget {
+class _AppSlider extends StatelessWidget {
   final String label;
-  const _MiniTag({required this.label});
+  final double value;
+  final double min;
+  final double max;
+  final ValueChanged<double>? onChanged;
+  final String Function(double)? formatValue;
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(right: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(4)),
-      child: Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-    );
+  const _AppSlider({
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    this.onChanged,
+    this.formatValue,
+  });
+
+  void _handle(Offset local, double width) {
+    if (onChanged == null || width <= 0) return;
+    final pct = (local.dx / width).clamp(0.0, 1.0);
+    onChanged!(min + pct * (max - min));
   }
-}
-
-class _Toggle extends StatelessWidget {
-  final String label;
-  final bool value;
-  final bool enabled;
-  final ValueChanged<bool>? onChanged;
-
-  const _Toggle({required this.label, required this.value, this.enabled = true, this.onChanged});
 
   @override
   Widget build(BuildContext context) {
+    final enabled = onChanged != null;
+    final pct = ((value - min) / (max - min)).clamp(0.0, 1.0);
+    final valueLabel =
+        formatValue != null ? formatValue!(value) : value.round().toString();
+
     return Column(
-      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 10, color: enabled ? Colors.grey[700] : Colors.grey[400])),
-        Checkbox(
-          value: value,
-          onChanged: enabled ? (v) => onChanged?.call(v ?? false) : null,
-          visualDensity: VisualDensity.compact,
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label,
+                style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink)),
+            Text(
+              valueLabel,
+              style: GoogleFonts.jetBrainsMono(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: enabled ? AppColors.indigo : AppColors.faint),
+            ),
+          ],
+        ),
+        const SizedBox(height: 11),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            return GestureDetector(
+              onTapDown:
+                  enabled ? (d) => _handle(d.localPosition, width) : null,
+              onHorizontalDragUpdate:
+                  enabled ? (d) => _handle(d.localPosition, width) : null,
+              child: SizedBox(
+                height: 24,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      top: 8,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        height: 8,
+                        decoration: BoxDecoration(
+                            color: const Color(0xFFE4E3EF),
+                            borderRadius: BorderRadius.circular(5)),
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      left: 0,
+                      child: Container(
+                        width: (pct * width).clamp(0.0, width),
+                        height: 8,
+                        decoration: BoxDecoration(
+                          gradient: enabled ? AppColors.grad : null,
+                          color: enabled ? null : AppColors.line2,
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: (pct * width - 12)
+                          .clamp(0.0, width - 24 < 0 ? 0.0 : width - 24),
+                      top: 0,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          border: Border.all(
+                              color:
+                                  enabled ? AppColors.indigo : AppColors.faint,
+                              width: 4),
+                          boxShadow: const [
+                            BoxShadow(
+                                color: Color(0x40141221),
+                                blurRadius: 8,
+                                offset: Offset(0, 3))
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ],
     );
   }
 }
 
-class _SliderRow extends StatelessWidget {
+class _ToggleRow extends StatelessWidget {
   final String label;
-  final double value;
-  final double min;
-  final double max;
-  final int? divisions;
-  final ValueChanged<double>? onChanged;
+  final bool value;
+  final ValueChanged<bool>? onChanged;
 
-  const _SliderRow({required this.label, required this.value, required this.min, required this.max, this.divisions, required this.onChanged});
+  const _ToggleRow({required this.label, required this.value, this.onChanged});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(fontSize: 13, color: onChanged == null ? Colors.grey : null)),
-        Slider(value: value, min: min, max: max, divisions: divisions, onChanged: onChanged),
-      ],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onChanged == null ? null : () => onChanged!(!value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border.all(color: AppColors.line),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label,
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink)),
+              IgnorePointer(
+                child: CupertinoSwitch(
+                  value: value,
+                  activeTrackColor: AppColors.indigo,
+                  onChanged: onChanged,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
+}
+
+class _Segmented2 extends StatelessWidget {
+  final List<String> labels;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  /// Optional per-tab counter — when the value for a tab changes, that tab's
+  /// label plays a pop/flash animation so additions are noticeable even
+  /// without navigating to that tab.
+  final List<int?>? pulseCounts;
+
+  const _Segmented2({
+    required this.labels,
+    required this.selectedIndex,
+    required this.onSelected,
+    this.pulseCounts,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+          color: const Color(0xFFE7E6F0),
+          borderRadius: BorderRadius.circular(14)),
+      child: Row(
+        children: [
+          for (var i = 0; i < labels.length; i++)
+            Expanded(
+              child: GestureDetector(
+                onTap: () => onSelected(i),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                  decoration: BoxDecoration(
+                    color:
+                        i == selectedIndex ? Colors.white : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: i == selectedIndex
+                        ? [
+                            BoxShadow(
+                                color: AppColors.ink.withValues(alpha: 0.12),
+                                blurRadius: 3,
+                                offset: const Offset(0, 1))
+                          ]
+                        : null,
+                  ),
+                  child: _PulseOnChange(
+                    pulseKey: pulseCounts?[i],
+                    child: Text(
+                      labels[i],
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: i == selectedIndex
+                            ? AppColors.ink
+                            : AppColors.muted,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Wraps [child] with a pop + flash animation that replays every time
+/// [pulseKey] changes value — used to draw the eye to a tab label when a
+/// count updates without navigating away from the current tab.
+class _PulseOnChange extends StatefulWidget {
+  final Object? pulseKey;
+  final Widget child;
+
+  const _PulseOnChange({required this.pulseKey, required this.child});
+
+  @override
+  State<_PulseOnChange> createState() => _PulseOnChangeState();
+}
+
+class _PulseOnChangeState extends State<_PulseOnChange> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 550));
+    // Deliberately not forwarded here — mounting with an already-populated
+    // count (e.g. landing on this tab right after Generate) must not pulse;
+    // only a genuine key change on an already-mounted widget should.
+  }
+
+  @override
+  void didUpdateWidget(covariant _PulseOnChange oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.pulseKey != oldWidget.pulseKey) {
+      _controller
+        ..value = 1.0
+        ..animateTo(0.0, curve: Curves.easeOut);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.pulseKey == null) return widget.child;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, builtChild) {
+        final t = _controller.value;
+        final scale = 1.0 + 0.4 * t;
+        return Transform.scale(
+          scale: scale,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: AppColors.indigo.withValues(alpha: 0.2 * t),
+            ),
+            child: builtChild,
+          ),
+        );
+      },
+      child: widget.child,
+    );
+  }
+}
+
+class _AddOptionsChoice {
+  final bool strongFoot;
+  final bool noTouch;
+  const _AddOptionsChoice({required this.strongFoot, required this.noTouch});
 }

@@ -338,7 +338,13 @@
     "changePassword": "Alterar senha",
     "passwordChanged": "Senha alterada.",
     "passwordMismatch": "As novas senhas não coincidem.",
-    "failedChangePassword": "Falha ao alterar senha."
+    "failedChangePassword": "Falha ao alterar senha.",
+    "dangerZone": "Excluir Conta",
+    "deleteAccountDescription": "Exclui permanentemente sua conta, combos, preferências e avaliações. Essa ação não pode ser desfeita.",
+    "deleteAccountConfirm": "Tem certeza de que deseja excluir sua conta permanentemente? Essa ação não pode ser desfeita.",
+    "deleteAccount": "Excluir conta",
+    "deletingAccount": "Excluindo…",
+    "failedDeleteAccount": "Falha ao excluir a conta."
   },
   "userProfile": {
     "notFound": "Usuário não encontrado."
@@ -349,5 +355,59 @@
     "play": "Play",
     "pause": "Pause",
     "hint": "Arraste para rotacionar · Role para zoom"
+  },
+  "footer": {
+    "privacy": "Política de Privacidade",
+    "terms": "Termos de Serviço"
+  },
+  "legal": {
+    "privacy": {
+      "title": "Política de Privacidade",
+      "lastUpdated": "Última atualização: 27 de agosto de 2026",
+      "intro": "O FreestyleCombo (\"nós\") respeita sua privacidade. Esta política explica quais informações coletamos quando você usa o site e o aplicativo móvel do FreestyleCombo, e como as usamos.",
+      "section1Title": "Informações que Coletamos",
+      "section1Body": "Informações de conta: o e-mail e o nome de usuário com os quais você se cadastra, e uma senha armazenada de forma criptografada (nunca guardamos sua senha em texto simples).\n\nConteúdo que você cria: combos de freestyle football, sequências de tricks, preferências salvas, avaliações que você dá a combos de outros usuários, e qualquer trick que você envie para revisão.\n\nNão coletamos dados de localização, contatos, fotos ou dados de sensores do dispositivo.",
+      "section2Title": "Como Usamos Suas Informações",
+      "section2Body": "Para criar e proteger sua conta, autenticar você e manter sua sessão ativa.\nPara mostrar seus próprios combos, preferências, avaliações e tricks enviadas.\nPara publicar combos que você marcar como públicos, para que outros usuários possam vê-los e avaliá-los.\nPara gerar uma descrição opcional escrita por IA para combos que você gerar (veja \"Serviços de Terceiros\" abaixo).\nPara recalcular periodicamente o quão comum é cada trick, com base em avaliações agregadas de todos os usuários — isso nunca usa informações que identifiquem você individualmente.",
+      "section3Title": "Serviços de Terceiros",
+      "section3Body": "Usamos a API Claude da Anthropic para escrever uma breve descrição de um combo que você gerar. Apenas os nomes das tricks e a estrutura desse combo são enviados à Anthropic — nunca seu e-mail, nome de usuário ou qualquer outra informação da conta.",
+      "section4Title": "Compartilhamento de Informações",
+      "section4Body": "Combos que você marcar como públicos ficam visíveis para outros usuários, junto com seu nome de usuário (nunca seu e-mail). Avaliações que você faz são atribuídas à sua conta. Não vendemos seus dados nem os compartilhamos com anunciantes.",
+      "section5Title": "Retenção de Dados e Exclusão de Conta",
+      "section5Body": "Você pode excluir sua conta permanentemente a qualquer momento — pelo aplicativo (Perfil → Excluir conta) ou pelo site (Conta → Excluir Conta). Isso remove imediata e permanentemente sua conta, combos, preferências, avaliações e tricks enviadas. Esta ação não pode ser desfeita.",
+      "section6Title": "Segurança",
+      "section6Body": "Senhas são armazenadas de forma criptografada e nunca em texto simples. Todo o tráfego entre o aplicativo e nossos servidores é criptografado com HTTPS. O acesso a funções administrativas é restrito a contas autorizadas.",
+      "section7Title": "Privacidade de Crianças",
+      "section7Body": "O FreestyleCombo não é direcionado a crianças menores de 13 anos, e não coletamos intencionalmente informações de crianças menores de 13 anos.",
+      "section8Title": "Alterações a Esta Política",
+      "section8Body": "Podemos atualizar esta política periodicamente. Alterações significativas serão refletidas atualizando a data de \"Última atualização\" acima.",
+      "section9Title": "Fale Conosco",
+      "section9Body": "Dúvidas sobre esta política? Entre em contato em support@fscombo.com."
+    },
+    "terms": {
+      "title": "Termos de Serviço",
+      "lastUpdated": "Última atualização: 27 de agosto de 2026",
+      "intro": "Estes Termos de Serviço (\"Termos\") regem o uso do FreestyleCombo. Ao criar uma conta ou usar o aplicativo, você concorda com estes Termos.",
+      "section1Title": "Descrição do Serviço",
+      "section1Body": "O FreestyleCombo permite que você gere, monte, salve e compartilhe combos de freestyle football, avalie combos públicos de outros usuários e envie novas tricks para revisão.",
+      "section2Title": "Contas",
+      "section2Body": "Você deve fornecer informações precisas ao se cadastrar e é responsável por manter suas credenciais de login confidenciais. Você é responsável por toda atividade realizada em sua conta.",
+      "section3Title": "Conteúdo do Usuário",
+      "section3Body": "Você mantém a propriedade dos combos, preferências e tricks enviadas que você cria. Ao marcar um combo como público, você concede a outros usuários o direito de visualizá-lo, concluí-lo e avaliá-lo, e nos concede o direito de exibi-lo dentro do aplicativo. Tricks enviadas são revisadas por administradores e podem ser aprovadas ou rejeitadas.",
+      "section4Title": "Uso Aceitável",
+      "section4Body": "Você concorda em não se passar por outras pessoas, enviar conteúdo falso ou abusivo, tentar interromper o serviço, ou usar o aplicativo para qualquer finalidade ilegal.",
+      "section5Title": "Dificuldade de Tricks e Conteúdo Gerado por IA",
+      "section5Body": "Classificações de dificuldade, pesos de nível de popularidade e descrições de combos geradas por IA são fornecidas apenas para entretenimento e referência. Elas são geradas pela comunidade e por algoritmos, e não substituem orientação profissional.",
+      "section6Title": "Aviso sobre Atividade Física",
+      "section6Body": "O freestyle football envolve movimento físico e risco inerente de lesão. Você é o único responsável por avaliar sua própria capacidade antes de tentar qualquer trick ou combo exibido no aplicativo. Pratique por sua conta e risco, dentro dos seus próprios limites.",
+      "section7Title": "Encerramento",
+      "section7Body": "Você pode excluir sua conta a qualquer momento. Podemos suspender ou encerrar contas que violem estes Termos.",
+      "section8Title": "Isenção de Garantias e Limitação de Responsabilidade",
+      "section8Body": "O aplicativo é fornecido \"como está\", sem garantias de qualquer tipo. Na máxima extensão permitida por lei, não nos responsabilizamos por danos indiretos, incidentais ou consequenciais decorrentes do uso do aplicativo.",
+      "section9Title": "Alterações a Estes Termos",
+      "section9Body": "Podemos atualizar estes Termos periodicamente. O uso continuado do aplicativo após a entrada em vigor das alterações constitui aceitação dos Termos revisados.",
+      "section10Title": "Fale Conosco",
+      "section10Body": "Dúvidas sobre estes Termos? Entre em contato em support@fscombo.com."
+    }
   }
 }

@@ -15,6 +15,8 @@ import { AdminSubmissionsPage } from '@/features/tricks/AdminSubmissionsPage'
 import { AccountPage } from '@/features/account/AccountPage'
 import { UserProfilePage } from '@/features/users/UserProfilePage'
 import { AdminUsersPage } from '@/features/admin/AdminUsersPage'
+import { PrivacyPage } from '@/features/legal/PrivacyPage'
+import { TermsPage } from '@/features/legal/TermsPage'
 
 export default function App() {
   return (
@@ -30,6 +32,8 @@ export default function App() {
           <Route path="/animation" element={<AnimationPage />} />
           <Route path="/users/:id" element={<UserProfilePage />} />
           <Route path="/combos/create" element={<CreateComboPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
 
           {/* Protected */}
           <Route element={<ProtectedRoute />}>

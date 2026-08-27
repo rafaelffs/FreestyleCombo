@@ -1,14 +1,16 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../auth/auth_service.dart';
 import '../models/combo.dart';
 import '../models/trick_submission.dart';
 import '../models/user_preference.dart';
 import '../models/user.dart';
 
-// Change to your machine's local IP when testing on a physical device.
-// Android emulator: http://10.0.2.2:5050
+// Release builds (TestFlight/App Store, Play Store) always talk to production.
+// Debug builds default to localhost — change to your machine's local IP when
+// testing on a physical device. Android emulator: http://10.0.2.2:5050
 // iOS simulator / web: http://localhost:5050
-const String kBaseUrl = 'http://localhost:5050/api';
+const String kBaseUrl = kReleaseMode ? 'https://www.fscombo.com/api' : 'http://localhost:5050/api';
 
 class ApiClient {
   static ApiClient? _instance;
@@ -413,6 +415,15 @@ class ApiClient {
     }
   }
 
+  Future<TrickDto> getTrickById(String id) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>('/tricks/$id');
+      return TrickDto.fromJson(res.data!);
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
   Future<void> setComboReusable(String id, bool isReusable) async {
     try {
       await _dio.put('/combos/$id/reusable', data: {'isReusable': isReusable});
@@ -525,6 +536,14 @@ class ApiClient {
             'currentPassword': currentPassword,
             'newPassword': newPassword,
           });
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> deleteAccount() async {
+    try {
+      await _dio.delete('/account/me');
     } on DioException catch (e) {
       throw Exception(_extractMessage(e));
     }

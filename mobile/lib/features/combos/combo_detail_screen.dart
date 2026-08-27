@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
+import '../../theme/app_colors.dart';
+import '../../widgets/difficulty_chip.dart';
 import '../../widgets/rate_combo_dialog.dart';
 
 class _SlotItem {
@@ -45,20 +49,26 @@ class ComboDetailScreen extends StatefulWidget {
 class _ComboDetailScreenState extends State<ComboDetailScreen> {
   late Future<ComboDto> _future;
 
+  bool _favLoading = false;
+  bool _favoured = false;
+  bool _completedLoading = false;
+  bool _completed = false;
+
   Future<void> _deleteCombo(String comboId) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Delete combo?'),
         content: const Text('This action cannot be undone.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: AppColors.red)),
           ),
         ],
       ),
@@ -86,6 +96,14 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
     setState(() {
       _future = ApiClient.instance.getComboById(widget.id);
     });
+    _future.then((combo) {
+      if (mounted) {
+        setState(() {
+          _favoured = combo.isFavourited;
+          _completed = combo.isCompleted;
+        });
+      }
+    });
   }
 
   Future<void> _openEdit(ComboDto combo) async {
@@ -109,15 +127,53 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
     );
   }
 
+  Future<void> _toggleFavourite(String comboId) async {
+    setState(() => _favLoading = true);
+    try {
+      if (_favoured) {
+        await ApiClient.instance.removeFavourite(comboId);
+      } else {
+        await ApiClient.instance.addFavourite(comboId);
+      }
+      setState(() => _favoured = !_favoured);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) setState(() => _favLoading = false);
+    }
+  }
+
+  Future<void> _toggleCompleted(String comboId) async {
+    setState(() => _completedLoading = true);
+    try {
+      if (_completed) {
+        await ApiClient.instance.unmarkCompleted(comboId);
+      } else {
+        await ApiClient.instance.markCompleted(comboId);
+      }
+      setState(() => _completed = !_completed);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) setState(() => _completedLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Combo Detail')),
+      backgroundColor: AppColors.bg,
       body: FutureBuilder<ComboDto>(
         future: _future,
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator(color: AppColors.indigo));
           }
           if (snap.hasError) {
             return Center(child: Text(snap.error.toString()));
@@ -125,121 +181,568 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
           final combo = snap.data!;
           final currentUserId = AuthService.instance.userId;
           final isOwner = combo.ownerId == currentUserId;
+          final isAdmin = AuthService.instance.isAdmin;
+          final authed = currentUserId != null;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Text(
-                  combo.displayText,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+          return CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: _DetailHero(
+                  combo: combo,
+                  isOwner: isOwner,
+                  isAdmin: isAdmin,
+                  authed: authed,
+                  favoured: _favoured,
+                  favLoading: _favLoading,
+                  onToggleFavourite: () => _toggleFavourite(combo.id),
+                  onEdit: () => _openEdit(combo),
+                  onDelete: () => _deleteCombo(combo.id),
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    if (combo.ownerUserName != null)
-                      Text('by ${combo.ownerUserName}',
-                          style: TextStyle(
-                              fontSize: 12, color: Colors.grey[600])),
-                    const SizedBox(width: 8),
-                    Text(
-                      combo.createdAt.substring(0, 10),
-                      style:
-                          TextStyle(fontSize: 12, color: Colors.grey[500]),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Badges
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    Chip(
-                        label: Text(
-                            'Difficulty: ${combo.totalDifficulty.toInt()}')),
-                    Chip(label: Text('${combo.trickCount} tricks')),
-                    if (combo.averageRating > 0)
-                      Chip(
-                          label: Text(
-                              '★ ${combo.averageRating.toStringAsFixed(1)} (${combo.totalRatings})')),
-                  ],
-                ),
-
-                // AI Description
-                if (combo.aiDescription != null &&
-                    combo.aiDescription!.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border(
-                          left: BorderSide(
-                              color: Theme.of(context).colorScheme.primary,
-                              width: 3)),
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primaryContainer
-                          .withValues(alpha: 0.3),
-                    ),
-                    child: Text(
-                      combo.aiDescription!,
-                      style: const TextStyle(fontStyle: FontStyle.italic),
-                    ),
-                  ),
-                ],
-
-                // Trick list
-                if (combo.tricks != null && combo.tricks!.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Text('Tricks',
-                      style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  Card(
-                    clipBehavior: Clip.antiAlias,
-                    child: _TrickList(tricks: combo.tricks!),
-                  ),
-                ],
-
-                // Actions
-                const SizedBox(height: 20),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (!isOwner && currentUserId != null)
-                      OutlinedButton.icon(
-                        onPressed: () => _openRating(combo.id),
-                        icon: const Icon(Icons.star_outline),
-                        label: const Text('Rate this combo'),
-                      ),
-                    if (isOwner)
-                      OutlinedButton.icon(
-                        onPressed: () => _openEdit(combo),
-                        icon: const Icon(Icons.edit_outlined),
-                        label: const Text('Edit combo'),
-                      ),
-                    if (isOwner || AuthService.instance.isAdmin)
-                      OutlinedButton.icon(
-                        onPressed: () => _deleteCombo(combo.id),
-                        icon: const Icon(Icons.delete_outline),
-                        label: const Text('Delete combo'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(22, 18, 22, 24),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    if (combo.aiDescription != null && combo.aiDescription!.isNotEmpty)
+                      _AiDescriptionCard(text: combo.aiDescription!),
+                    if (combo.tricks != null && combo.tricks!.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      Text(
+                        'SEQUENCE',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          color: AppColors.faint,
                         ),
                       ),
-                  ],
+                      const SizedBox(height: 12),
+                      for (var i = 0; i < combo.tricks!.length; i++)
+                        _SequenceStep(
+                          trick: combo.tricks![i],
+                          isLast: i == combo.tricks!.length - 1,
+                        ),
+                    ],
+                  ]),
                 ),
-              ],
+              ),
+            ],
+          );
+        },
+      ),
+      bottomNavigationBar: FutureBuilder<ComboDto>(
+        future: _future,
+        builder: (context, snap) {
+          if (!snap.hasData) return const SizedBox.shrink();
+          final combo = snap.data!;
+          final currentUserId = AuthService.instance.userId;
+          final isOwner = combo.ownerId == currentUserId;
+          final authed = currentUserId != null;
+          final canRate = !isOwner && authed;
+          if (!authed) return const SizedBox.shrink();
+
+          return Container(
+            padding: const EdgeInsets.fromLTRB(22, 14, 22, 20),
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              border: Border(top: BorderSide(color: AppColors.line)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Row(
+                children: [
+                  if (canRate) ...[
+                    Expanded(
+                      child: SizedBox(
+                        height: 52,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _openRating(combo.id),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.star,
+                            side: const BorderSide(color: Color(0xFFFDE68A)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          icon: const Icon(Icons.star_rounded),
+                          label: const Text('Rate', style: TextStyle(fontWeight: FontWeight.w800)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 11),
+                  ],
+                  Expanded(
+                    flex: canRate ? 2 : 1,
+                    child: SizedBox(
+                      height: 52,
+                      child: FilledButton.icon(
+                        onPressed: _completedLoading ? null : () => _toggleCompleted(combo.id),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _completed ? AppColors.green : AppColors.indigo,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        icon: Icon(_completed ? Icons.check_circle : Icons.check_circle_outline),
+                        label: Text(
+                          _completed ? 'Marked as done' : 'Mark as done',
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Formats the trick list as "(ABBR)(nt) (ABBR) (SubCombo)…" for the hero
+/// headline — each trick wrapped in parentheses, with "(nt)" appended right
+/// after any no-touch trick. Returns null when there's nothing to format
+/// (caller falls back to combo.displayText).
+String? _formatSequence(List<ComboTrickDto>? tricks) {
+  if (tricks == null || tricks.isEmpty) return null;
+  final buffer = StringBuffer();
+  for (final t in tricks) {
+    final label = t.type == 'combo' ? (t.subComboName ?? 'Combo') : (t.abbreviation ?? '?');
+    if (buffer.isNotEmpty) buffer.write(' ');
+    buffer.write('($label)');
+    if (t.noTouch) buffer.write('(nt)');
+  }
+  return buffer.toString();
+}
+
+class _DetailHero extends StatelessWidget {
+  final ComboDto combo;
+  final bool isOwner;
+  final bool isAdmin;
+  final bool authed;
+  final bool favoured;
+  final bool favLoading;
+  final VoidCallback onToggleFavourite;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _DetailHero({
+    required this.combo,
+    required this.isOwner,
+    required this.isAdmin,
+    required this.authed,
+    required this.favoured,
+    required this.favLoading,
+    required this.onToggleFavourite,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(gradient: AppColors.grad),
+      child: ClipRect(
+        child: Stack(
+          children: [
+            Positioned(
+              top: -70,
+              right: -60,
+              child: Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.lime.withValues(alpha: 0.18),
+                ),
+              ),
+            ),
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(22, 6, 22, 26),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        _HeroIconButton(
+                          icon: Icons.arrow_back_ios_new_rounded,
+                          // Reached here via go() + pushReplacement (e.g. Generate ->
+                          // save -> "View combo"), which can leave nothing to pop to.
+                          onTap: () => context.canPop() ? context.pop() : context.go('/combos'),
+                        ),
+                        const Spacer(),
+                        if (authed)
+                          _HeroIconButton(
+                            icon: favoured ? Icons.favorite : Icons.favorite_border,
+                            iconColor: favoured ? AppColors.pink : Colors.white,
+                            onTap: favLoading ? null : onToggleFavourite,
+                          ),
+                        if (isOwner) ...[
+                          const SizedBox(width: 9),
+                          _HeroIconButton(icon: Icons.edit_outlined, onTap: onEdit),
+                        ],
+                        if (isOwner || isAdmin) ...[
+                          const SizedBox(width: 9),
+                          _HeroIconButton(icon: Icons.delete_outline, onTap: onDelete),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'Combo${combo.ownerUserName != null ? ' · by ${combo.ownerUserName}' : ''}',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1,
+                        color: Colors.white.withValues(alpha: 0.8),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      (combo.name != null && combo.name!.isNotEmpty)
+                          ? combo.name!
+                          : _formatSequence(combo.tricks) ?? combo.displayText,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.6,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        _StatPill(value: '${combo.totalDifficulty.toInt()}', label: 'Difficulty'),
+                        const SizedBox(width: 9),
+                        _StatPill(value: '${combo.trickCount}', label: 'Tricks'),
+                        const SizedBox(width: 9),
+                        _StatPill(
+                          value: combo.totalRatings > 0
+                              ? '${combo.averageRating.toStringAsFixed(1)}★'
+                              : '—',
+                          label: combo.totalRatings > 0 ? '${combo.totalRatings} ratings' : 'No ratings',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroIconButton extends StatelessWidget {
+  final IconData icon;
+  final Color? iconColor;
+  final VoidCallback? onTap;
+
+  const _HeroIconButton({required this.icon, this.iconColor, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(13),
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.25)),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(13),
+        onTap: onTap,
+        child: SizedBox(
+          width: 42,
+          height: 42,
+          child: Icon(icon, size: 19, color: iconColor ?? Colors.white),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  final String value;
+  final String label;
+  const _StatPill({required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: GoogleFonts.jetBrainsMono(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label.toUpperCase(),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.4,
+              color: Colors.white.withValues(alpha: 0.82),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AiDescriptionCard extends StatelessWidget {
+  final String text;
+  const _AiDescriptionCard({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F1FE),
+        border: Border.all(color: const Color(0xFFE5E0FB)),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '"$text"',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontStyle: FontStyle.italic,
+              color: const Color(0xFF4B3FA8),
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 9),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.auto_awesome, size: 13, color: Color(0xFF8B7CE0)),
+              const SizedBox(width: 6),
+              Text(
+                'GENERATED BY CLAUDE',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.5,
+                  color: const Color(0xFF8B7CE0),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SequenceStep extends StatefulWidget {
+  final ComboTrickDto trick;
+  final bool isLast;
+  const _SequenceStep({required this.trick, required this.isLast});
+
+  @override
+  State<_SequenceStep> createState() => _SequenceStepState();
+}
+
+class _SequenceStepState extends State<_SequenceStep> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = widget.trick;
+    final isSubCombo = t.type == 'combo';
+    final highlight = t.noTouch;
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: highlight ? AppColors.indigo : AppColors.surface,
+                  border: Border.all(color: AppColors.indigo, width: 1.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${t.position}',
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: highlight ? Colors.white : AppColors.indigo,
+                  ),
+                ),
+              ),
+              if (!widget.isLast)
+                Expanded(
+                  child: Container(width: 2, color: AppColors.line2, margin: const EdgeInsets.symmetric(vertical: 4)),
+                ),
+            ],
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: isSubCombo ? _buildSubCombo(t) : _buildTrick(t),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrick(ComboTrickDto t) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              t.name ?? t.abbreviation ?? '',
+              style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (!t.strongFoot) ...[
+            _FlagTag(label: 'weak', bg: AppColors.amberBg, fg: AppColors.amber),
+            const SizedBox(width: 6),
+          ],
+          if (t.noTouch) ...[
+            _FlagTag(label: 'NT', bg: AppColors.noTouchBg, fg: AppColors.noTouchText),
+            const SizedBox(width: 6),
+          ],
+          if (t.difficulty > 0) DifficultyChip(t.difficulty),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubCombo(ComboTrickDto t) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () => setState(() => _expanded = !_expanded),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.noTouchBg,
+              border: Border.all(color: const Color(0xFFE5E0FB)),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEDE9FE),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'COMBO',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.noTouchText,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    t.subComboName ?? 'Sub-combo',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Text(
+                  '${t.subComboTricks?.length ?? 0} tricks',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.muted),
+                ),
+                Icon(
+                  _expanded ? Icons.expand_less : Icons.expand_more,
+                  size: 20,
+                  color: AppColors.noTouchText,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_expanded)
+          Padding(
+            padding: const EdgeInsets.only(top: 8, left: 12),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: (t.subComboTricks ?? []).map((st) {
+                final label = st.abbreviation ?? '?';
+                final suffix = st.noTouch ? '·nt' : (!st.strongFoot ? '·wf' : '');
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.chipBg,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Text(
+                    '${st.position}. $label$suffix',
+                    style: GoogleFonts.jetBrainsMono(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.ink2),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _FlagTag extends StatelessWidget {
+  final String label;
+  final Color bg;
+  final Color fg;
+  const _FlagTag({required this.label, required this.bg, required this.fg});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(7)),
+      child: Text(
+        label,
+        style: GoogleFonts.plusJakartaSans(fontSize: 10.5, fontWeight: FontWeight.w800, color: fg),
       ),
     );
   }
@@ -412,55 +915,58 @@ class _EditComboScreenState extends State<_EditComboScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: const Text('Edit Combo'),
+        title: const Text('Edit combo'),
         actions: [
-          TextButton(
-            onPressed: _saving || _slots.isEmpty ? null : _save,
-            child: _saving
-                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Save'),
+          Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: TextButton(
+              onPressed: _saving || _slots.isEmpty ? null : _save,
+              child: _saving
+                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.indigo))
+                  : const Text('Save', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.indigo)),
+            ),
           ),
         ],
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            padding: const EdgeInsets.fromLTRB(22, 12, 22, 0),
             child: TextField(
               controller: _nameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Combo name (optional)',
-                border: OutlineInputBorder(),
-                isDense: true,
+              style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
+              decoration: InputDecoration(
+                hintText: 'Combo name (optional)',
+                filled: true,
+                fillColor: AppColors.chipBg,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.line2)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.line2)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.indigo, width: 1.5)),
               ),
             ),
           ),
           if (_error != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-              child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 13)),
+              padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
+              child: Text(_error!, style: const TextStyle(color: AppColors.red, fontSize: 13)),
             ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: _EditSegmented(
+              labels: ['Tricks (${_items.length})', 'Combo (${_slots.length})'],
+              selectedIndex: _tab,
+              onSelected: (i) => setState(() => _tab = i),
+            ),
+          ),
+          const SizedBox(height: 12),
           Expanded(
-            child: DefaultTabController(
-              length: 2,
-              child: Column(
-                children: [
-                  TabBar(
-                    onTap: (i) => setState(() => _tab = i),
-                    tabs: [
-                      Tab(text: 'Tricks (${_items.length})'),
-                      Tab(text: 'Combo (${_slots.length})'),
-                    ],
-                  ),
-                  Expanded(
-                    child: IndexedStack(
-                      index: _tab,
-                      children: [_pickerTab(), _comboTab()],
-                    ),
-                  ),
-                ],
-              ),
+            child: IndexedStack(
+              index: _tab,
+              children: [_pickerTab(), _comboTab()],
             ),
           ),
         ],
@@ -472,52 +978,52 @@ class _EditComboScreenState extends State<_EditComboScreen> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 22),
           child: TextField(
             controller: _searchCtrl,
+            style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
             decoration: InputDecoration(
               hintText: 'Search…',
-              prefixIcon: const Icon(Icons.search),
-              border: const OutlineInputBorder(),
-              isDense: true,
+              hintStyle: GoogleFonts.plusJakartaSans(color: AppColors.faint, fontWeight: FontWeight.w600),
+              prefixIcon: const Icon(Icons.search, color: AppColors.faint),
+              filled: true,
+              fillColor: AppColors.surface,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.line2)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.line2)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.indigo, width: 1.5)),
               suffixIcon: _search.isNotEmpty
-                  ? IconButton(icon: const Icon(Icons.clear), onPressed: () { _searchCtrl.clear(); setState(() => _search = ''); })
+                  ? IconButton(icon: const Icon(Icons.clear, color: AppColors.faint), onPressed: () { _searchCtrl.clear(); setState(() => _search = ''); })
                   : null,
             ),
             onChanged: (v) => setState(() => _search = v),
           ),
         ),
+        const SizedBox(height: 12),
         Expanded(
           child: _loadingTricks
-              ? const Center(child: CircularProgressIndicator())
-              : ListView.separated(
+              ? const Center(child: CircularProgressIndicator(color: AppColors.indigo))
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
                   itemCount: _filtered.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (_, i) {
                     final item = _filtered[i];
                     if (item is TrickItem) {
-                      return ListTile(
-                        dense: true,
-                        title: Text(item.name, style: const TextStyle(fontSize: 13)),
-                        subtitle: Text(item.abbreviation, style: const TextStyle(fontSize: 11)),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (item.crossOver) _Tag('CO'),
-                            if (item.knee) _Tag('K'),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.add_circle_outline, color: Colors.indigo, size: 20),
-                          ],
-                        ),
+                      return _EditPickerRow(
+                        abbreviation: item.abbreviation,
+                        name: item.name,
+                        meta: '${item.crossOver ? 'crossover' : ''}${item.crossOver && item.knee ? ' · ' : ''}${item.knee ? 'knee' : ''}',
+                        difficulty: item.difficulty,
+                        isCombo: false,
                         onTap: () => _addTrick(item),
                       );
                     } else if (item is ComboItem) {
-                      return ListTile(
-                        dense: true,
-                        tileColor: Colors.purple.shade50,
-                        title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                        subtitle: Text('combo · ${item.trickCount} tricks · diff ${item.totalDifficulty.toInt()}', style: const TextStyle(fontSize: 11)),
-                        trailing: const Icon(Icons.add_circle_outline, color: Colors.purple, size: 20),
+                      return _EditPickerRow(
+                        abbreviation: null,
+                        name: item.name,
+                        meta: '${item.trickCount} tricks',
+                        difficulty: item.totalDifficulty.toInt(),
+                        isCombo: true,
                         onTap: () => _addCombo(item),
                       );
                     }
@@ -531,269 +1037,312 @@ class _EditComboScreenState extends State<_EditComboScreen> {
 
   Widget _comboTab() {
     if (_slots.isEmpty) {
-      return const Center(child: Text('No tricks. Add from the Tricks tab.', style: TextStyle(color: Colors.grey)));
+      return Center(
+        child: Text(
+          'Add tricks from the Tricks tab.',
+          style: GoogleFonts.plusJakartaSans(color: AppColors.muted, fontWeight: FontWeight.w600),
+        ),
+      );
     }
-    return ListView.separated(
-      padding: const EdgeInsets.only(top: 8, bottom: 8),
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
       itemCount: _slots.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (_, i) {
         final s = _slots[i];
         if (s.isSubCombo) {
-          return Container(
-            color: Colors.purple.shade50,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              child: Row(
-                children: [
-                  SizedBox(width: 20, child: Text('${s.position}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey))),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: Colors.purple.shade100,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text('combo', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.purple.shade800)),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(s.subComboName ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13), overflow: TextOverflow.ellipsis)),
-                  Text('${s.subComboTricks?.length ?? 0} tricks', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 18, color: Colors.grey),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    onPressed: () => _removeSlot(i),
-                  ),
-                ],
-              ),
-            ),
-          );
+          return _EditSubComboSlot(slot: s, onRemove: () => _removeSlot(i));
         }
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          child: Row(
-            children: [
-              SizedBox(width: 20, child: Text('${s.position}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey))),
-              const SizedBox(width: 8),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(s.trickName, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
-                Text(s.abbreviation, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-              ])),
-              _ToggleCheck(
-                label: 'SF',
-                value: s.strongFoot,
-                onChanged: (v) => setState(() => s.strongFoot = v),
-              ),
-              _ToggleCheck(
-                label: 'NT',
-                value: s.noTouch,
-                enabled: s.crossOver,
-                onChanged: s.crossOver ? (v) => setState(() => s.noTouch = v) : null,
-              ),
-              IconButton(
-                icon: const Icon(Icons.close, size: 18, color: Colors.grey),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                onPressed: () => _removeSlot(i),
-              ),
-            ],
-          ),
+        return _EditSlot(
+          slot: s,
+          onRemove: () => _removeSlot(i),
+          onToggleStrongFoot: (v) => setState(() => s.strongFoot = v),
+          onToggleNoTouch: (v) => setState(() => s.noTouch = v),
         );
       },
     );
   }
 }
 
-class _Tag extends StatelessWidget {
-  final String label;
-  const _Tag(this.label);
+class _EditSegmented extends StatelessWidget {
+  final List<String> labels;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  const _EditSegmented({required this.labels, required this.selectedIndex, required this.onSelected});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(right: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-      decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(4)),
-      child: Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-    );
-  }
-}
-
-class _ToggleCheck extends StatelessWidget {
-  final String label;
-  final bool value;
-  final bool enabled;
-  final ValueChanged<bool>? onChanged;
-
-  const _ToggleCheck({required this.label, required this.value, this.enabled = true, this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label, style: TextStyle(fontSize: 10, color: enabled ? Colors.grey[700] : Colors.grey[400])),
-        Checkbox(
-          value: value,
-          onChanged: enabled ? (v) => onChanged?.call(v ?? false) : null,
-          visualDensity: VisualDensity.compact,
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-      ],
-    );
-  }
-}
-
-// ── Trick list widget (handles mixed trick/combo slots) ────────────────────────
-
-class _TrickList extends StatelessWidget {
-  final List<ComboTrickDto> tricks;
-  const _TrickList({required this.tricks});
-
-  @override
-  Widget build(BuildContext context) {
-    // Separate into trick rows and combo slots to render correctly
-    final trickSlots = tricks.where((t) => t.type != 'combo').toList();
-    final hasOnlyTricks = tricks.every((t) => t.type != 'combo');
-
-    if (hasOnlyTricks) {
-      return Table(
-        columnWidths: const {
-          0: IntrinsicColumnWidth(),
-          1: FlexColumnWidth(2),
-          2: IntrinsicColumnWidth(),
-          3: IntrinsicColumnWidth(),
-          4: IntrinsicColumnWidth(),
-          5: IntrinsicColumnWidth(),
-        },
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(color: const Color(0xFFE7E6F0), borderRadius: BorderRadius.circular(14)),
+      child: Row(
         children: [
-          TableRow(
-            decoration: BoxDecoration(color: Colors.grey[100]),
-            children: const [
-              _TH('#'),
-              _TH('Name'),
-              _TH('Abbr.'),
-              _TH('Diff'),
-              _TH('Foot'),
-              _TH('NT'),
-            ],
-          ),
-          ...trickSlots.map((t) => TableRow(
-            children: [
-              _TD(t.position.toString()),
-              _TD(t.name ?? ''),
-              _TD(t.abbreviation ?? '', mono: true),
-              _TD(t.difficulty.toString()),
-              _TD(t.strongFoot ? 'SF' : 'WF'),
-              _TD(t.noTouch ? '✓' : '—'),
-            ],
-          )),
+          for (var i = 0; i < labels.length; i++)
+            Expanded(
+              child: GestureDetector(
+                onTap: () => onSelected(i),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                  decoration: BoxDecoration(
+                    color: i == selectedIndex ? Colors.white : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: i == selectedIndex
+                        ? [BoxShadow(color: AppColors.ink.withValues(alpha: 0.12), blurRadius: 3, offset: const Offset(0, 1))]
+                        : null,
+                  ),
+                  child: Text(
+                    labels[i],
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: i == selectedIndex ? AppColors.ink : AppColors.muted,
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
-      );
-    }
-
-    // Mixed: render each slot as a row or expansion tile
-    return Column(
-      children: tricks.map((t) {
-        if (t.type == 'combo') {
-          return ExpansionTile(
-            tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-            leading: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.purple.shade100,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                '${t.position}',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.purple.shade800),
-              ),
-            ),
-            title: Text(
-              t.subComboName ?? 'Sub-combo',
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-            ),
-            subtitle: Text(
-              '${t.subComboTricks?.length ?? 0} tricks',
-              style: const TextStyle(fontSize: 11),
-            ),
-            children: (t.subComboTricks ?? []).map((st) => Padding(
-              padding: const EdgeInsets.fromLTRB(24, 4, 12, 4),
-              child: Row(
-                children: [
-                  SizedBox(width: 20, child: Text('${st.position}', style: const TextStyle(fontSize: 11, color: Colors.grey))),
-                  const SizedBox(width: 8),
-                  Text(st.abbreviation ?? '', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.bold)),
-                  if (st.noTouch) ...[
-                    const SizedBox(width: 3),
-                    Text('(nt)', style: TextStyle(fontSize: 11, color: Colors.indigo.shade400, fontWeight: FontWeight.w500)),
-                  ],
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(st.name ?? '', style: TextStyle(fontSize: 12, color: Colors.grey[600]), overflow: TextOverflow.ellipsis)),
-                  Text('${st.difficulty}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                  const SizedBox(width: 8),
-                  Text(st.strongFoot ? 'SF' : 'WF', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                ],
-              ),
-            )).toList(),
-          );
-        }
-        return ListTile(
-          dense: true,
-          leading: SizedBox(
-            width: 24,
-            child: Text('${t.position}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey), textAlign: TextAlign.center),
-          ),
-          title: Row(
-            children: [
-              Text(t.abbreviation ?? '', style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 12)),
-              const SizedBox(width: 8),
-              Expanded(child: Text(t.name ?? '', style: TextStyle(fontSize: 12, color: Colors.grey[600]), overflow: TextOverflow.ellipsis)),
-            ],
-          ),
-          trailing: Text(
-            '${t.difficulty} · ${t.strongFoot ? 'SF' : 'WF'} · ${t.noTouch ? 'NT' : '—'}',
-            style: const TextStyle(fontSize: 11, color: Colors.grey),
-          ),
-        );
-      }).toList(),
+      ),
     );
   }
 }
 
-class _TH extends StatelessWidget {
-  final String text;
-  const _TH(this.text);
+class _EditPickerRow extends StatelessWidget {
+  final String? abbreviation;
+  final String name;
+  final String meta;
+  final int difficulty;
+  final bool isCombo;
+  final VoidCallback onTap;
+
+  const _EditPickerRow({
+    required this.abbreviation,
+    required this.name,
+    required this.meta,
+    required this.difficulty,
+    required this.isCombo,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: Text(text,
-          style: const TextStyle(
-              fontWeight: FontWeight.w600, fontSize: 12)),
-    );
-  }
-}
-
-class _TD extends StatelessWidget {
-  final String text;
-  final bool mono;
-  const _TD(this.text, {this.mono = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 12,
-          fontFamily: mono ? 'monospace' : null,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: isCombo ? const Color(0xFFF7F5FE) : AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+            decoration: BoxDecoration(
+              border: Border.all(color: isCombo ? const Color(0xFFE5E0FB) : AppColors.line),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: isCombo ? const Color(0xFFEDE9FE) : AppColors.chipBg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: isCombo
+                      ? const Icon(Icons.layers, size: 18, color: AppColors.noTouchText)
+                      : Text(
+                          abbreviation ?? '?',
+                          style: GoogleFonts.jetBrainsMono(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.indigo),
+                        ),
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (meta.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          meta,
+                          style: GoogleFonts.plusJakartaSans(fontSize: 11.5, color: AppColors.muted, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                DifficultyChip(difficulty),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 }
+
+class _EditSlot extends StatelessWidget {
+  final _SlotItem slot;
+  final VoidCallback onRemove;
+  final ValueChanged<bool> onToggleStrongFoot;
+  final ValueChanged<bool> onToggleNoTouch;
+
+  const _EditSlot({
+    required this.slot,
+    required this.onRemove,
+    required this.onToggleStrongFoot,
+    required this.onToggleNoTouch,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: AppColors.indigoTint, borderRadius: BorderRadius.circular(9)),
+            child: Text(
+              '${slot.position}',
+              style: GoogleFonts.jetBrainsMono(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.indigo),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  slot.trickName,
+                  style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  slot.abbreviation,
+                  style: GoogleFonts.jetBrainsMono(fontSize: 11, color: AppColors.muted, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+          _EditFlagToggle(label: 'SF', active: slot.strongFoot, onTap: () => onToggleStrongFoot(!slot.strongFoot)),
+          const SizedBox(width: 6),
+          _EditFlagToggle(
+            label: 'NT',
+            active: slot.noTouch,
+            enabled: slot.crossOver,
+            onTap: slot.crossOver ? () => onToggleNoTouch(!slot.noTouch) : null,
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18, color: AppColors.muted),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            onPressed: onRemove,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EditFlagToggle extends StatelessWidget {
+  final String label;
+  final bool active;
+  final bool enabled;
+  final VoidCallback? onTap;
+
+  const _EditFlagToggle({required this.label, required this.active, this.enabled = true, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = active ? AppColors.indigoTint : Colors.transparent;
+    final fg = !enabled ? AppColors.faint : (active ? AppColors.indigo : AppColors.muted);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(7)),
+        child: Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 10.5, fontWeight: FontWeight.w800, color: fg)),
+      ),
+    );
+  }
+}
+
+class _EditSubComboSlot extends StatelessWidget {
+  final _SlotItem slot;
+  final VoidCallback onRemove;
+
+  const _EditSubComboSlot({required this.slot, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+      decoration: BoxDecoration(
+        color: AppColors.noTouchBg,
+        border: Border.all(color: const Color(0xFFE5E0FB)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: const Color(0xFFEDE9FE), borderRadius: BorderRadius.circular(9)),
+            child: Text(
+              '${slot.position}',
+              style: GoogleFonts.jetBrainsMono(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.noTouchText),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            decoration: BoxDecoration(color: const Color(0xFFEDE9FE), borderRadius: BorderRadius.circular(6)),
+            child: Text(
+              'COMBO',
+              style: GoogleFonts.plusJakartaSans(fontSize: 9.5, fontWeight: FontWeight.w800, color: AppColors.noTouchText, letterSpacing: 0.4),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              slot.subComboName ?? '',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 14),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Text(
+            '${slot.subComboTricks?.length ?? 0} tricks',
+            style: GoogleFonts.plusJakartaSans(fontSize: 11.5, color: AppColors.muted, fontWeight: FontWeight.w600),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18, color: AppColors.muted),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            onPressed: onRemove,
+          ),
+        ],
+      ),
+    );
+  }
+}
+

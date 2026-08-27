@@ -338,7 +338,13 @@
     "changePassword": "Change password",
     "passwordChanged": "Password changed.",
     "passwordMismatch": "New passwords do not match.",
-    "failedChangePassword": "Failed to change password."
+    "failedChangePassword": "Failed to change password.",
+    "dangerZone": "Delete Account",
+    "deleteAccountDescription": "Permanently delete your account, combos, preferences and ratings. This cannot be undone.",
+    "deleteAccountConfirm": "Are you sure you want to permanently delete your account? This cannot be undone.",
+    "deleteAccount": "Delete account",
+    "deletingAccount": "Deleting…",
+    "failedDeleteAccount": "Failed to delete account."
   },
   "userProfile": {
     "notFound": "User not found."
@@ -349,5 +355,59 @@
     "play": "Play",
     "pause": "Pause",
     "hint": "Drag to rotate · Scroll to zoom"
+  },
+  "footer": {
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service"
+  },
+  "legal": {
+    "privacy": {
+      "title": "Privacy Policy",
+      "lastUpdated": "Last updated: August 27, 2026",
+      "intro": "FreestyleCombo (\"we\", \"us\") respects your privacy. This policy explains what information we collect when you use the FreestyleCombo website and mobile app, and how we use it.",
+      "section1Title": "Information We Collect",
+      "section1Body": "Account information: the email address and username you register with, and a securely hashed password (we never store your password in plain text).\n\nContent you create: freestyle football combos, trick sequences, saved preferences, ratings you give to other users' combos, and any trick you submit for review.\n\nWe do not collect location data, contacts, photos, or any device sensor data.",
+      "section2Title": "How We Use Your Information",
+      "section2Body": "To create and secure your account, authenticate you, and keep you signed in.\nTo show you your own combos, preferences, ratings and trick submissions.\nTo publish combos you choose to make public so other users can view and rate them.\nTo generate an optional AI-written description for combos you generate (see \"Third-Party Services\" below).\nTo periodically recalculate how common each trick is, based on aggregate ratings across all users — this never uses information that identifies you individually.",
+      "section3Title": "Third-Party Services",
+      "section3Body": "We use Anthropic's Claude API to write a short description of a combo you generate. Only the trick names and the structure of that combo are sent to Anthropic — never your email, username, or any other account information.",
+      "section4Title": "Sharing Your Information",
+      "section4Body": "Combos you mark as public are visible to other users, along with your username (never your email). Ratings you give are attributed to your account. We do not sell your data, and we do not share it with advertisers.",
+      "section5Title": "Data Retention & Account Deletion",
+      "section5Body": "You can permanently delete your account at any time — from the app (Profile → Delete account) or the website (Account → Delete Account). This immediately and permanently removes your account, combos, preferences, ratings and trick submissions. This action cannot be undone.",
+      "section6Title": "Security",
+      "section6Body": "Passwords are hashed and never stored in plain text. All traffic between the app and our servers is encrypted with HTTPS. Access to administrative functions is restricted to authorized accounts.",
+      "section7Title": "Children's Privacy",
+      "section7Body": "FreestyleCombo is not directed at children under 13, and we do not knowingly collect information from children under 13.",
+      "section8Title": "Changes to This Policy",
+      "section8Body": "We may update this policy from time to time. Material changes will be reflected by updating the \"Last updated\" date above.",
+      "section9Title": "Contact Us",
+      "section9Body": "Questions about this policy? Contact us at support@fscombo.com."
+    },
+    "terms": {
+      "title": "Terms of Service",
+      "lastUpdated": "Last updated: August 27, 2026",
+      "intro": "These Terms of Service (\"Terms\") govern your use of FreestyleCombo. By creating an account or using the app, you agree to these Terms.",
+      "section1Title": "Description of Service",
+      "section1Body": "FreestyleCombo lets you generate, build, save and share freestyle football combos, rate other users' public combos, and submit new tricks for review.",
+      "section2Title": "Accounts",
+      "section2Body": "You must provide accurate information when registering and are responsible for keeping your login credentials confidential. You are responsible for all activity under your account.",
+      "section3Title": "User Content",
+      "section3Body": "You retain ownership of the combos, preferences and trick submissions you create. By marking a combo public, you grant other users the right to view, complete and rate it, and grant us the right to display it within the app. Trick submissions are reviewed by administrators and may be approved or rejected.",
+      "section4Title": "Acceptable Use",
+      "section4Body": "You agree not to impersonate others, submit false or abusive content, attempt to disrupt the service, or use the app for any unlawful purpose.",
+      "section5Title": "Trick Difficulty & AI-Generated Content",
+      "section5Body": "Difficulty ratings, common-level weights and AI-generated combo descriptions are provided for entertainment and reference only. They are community- and algorithm-driven and are not a substitute for professional coaching.",
+      "section6Title": "Physical Activity Disclaimer",
+      "section6Body": "Freestyle football involves physical movement and inherent risk of injury. You are solely responsible for assessing your own ability before attempting any trick or combo shown in the app. Practice at your own risk and within your own limits.",
+      "section7Title": "Termination",
+      "section7Body": "You may delete your account at any time. We may suspend or terminate accounts that violate these Terms.",
+      "section8Title": "Disclaimer & Limitation of Liability",
+      "section8Body": "The app is provided \"as is\" without warranties of any kind. To the fullest extent permitted by law, we are not liable for any indirect, incidental, or consequential damages arising from your use of the app.",
+      "section9Title": "Changes to These Terms",
+      "section9Body": "We may update these Terms from time to time. Continued use of the app after changes take effect constitutes acceptance of the revised Terms.",
+      "section10Title": "Contact Us",
+      "section10Body": "Questions about these Terms? Contact us at support@fscombo.com."
+    }
   }
 }

@@ -1,13 +1,15 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { accountApi, extractError } from '@/lib/api'
-import { setUserName } from '@/lib/auth'
+import { setUserName, clearToken } from '@/lib/auth'
 import { SEO } from '@/components/SEO'
 
 export function AccountPage() {
   const qc = useQueryClient()
   const { t } = useTranslation()
+  const navigate = useNavigate()
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['account-profile'],
@@ -70,6 +72,26 @@ export function AccountPage() {
       return
     }
     changePassword.mutate()
+  }
+
+  // ── Delete Account ───────────────────────────────────────────────────────
+  const [deleteError, setDeleteError] = useState('')
+
+  const deleteAccount = useMutation({
+    mutationFn: () => accountApi.deleteAccount(),
+    onSuccess: () => {
+      clearToken()
+      navigate('/login')
+    },
+    onError: (err) => {
+      setDeleteError(extractError(err, t('account.failedDeleteAccount')))
+    },
+  })
+
+  function handleDeleteAccount() {
+    if (confirm(t('account.deleteAccountConfirm'))) {
+      deleteAccount.mutate()
+    }
   }
 
   if (isLoading) return <p className="p-6 text-sm text-gray-500">{t('common.loading')}</p>
@@ -168,6 +190,21 @@ export function AccountPage() {
             {changePassword.isPending ? t('account.changingPassword') : t('account.changePassword')}
           </button>
         </form>
+      </div>
+
+      {/* Delete Account */}
+      <div className="rounded-lg border border-red-200 bg-white p-5">
+        <h2 className="mb-2 text-lg font-semibold text-red-700">{t('account.dangerZone')}</h2>
+        <p className="mb-4 text-sm text-gray-600">{t('account.deleteAccountDescription')}</p>
+        {deleteError && <p className="mb-3 text-sm text-red-600">{deleteError}</p>}
+        <button
+          type="button"
+          onClick={handleDeleteAccount}
+          disabled={deleteAccount.isPending}
+          className="rounded-md border border-red-600 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+        >
+          {deleteAccount.isPending ? t('account.deletingAccount') : t('account.deleteAccount')}
+        </button>
       </div>
     </div>
   )

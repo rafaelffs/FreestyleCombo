@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
+import '../../theme/app_colors.dart';
+import 'auth_chrome.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -59,91 +62,58 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Sign in'),
-        leading: context.canPop()
-            ? null // default back button
-            : IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => context.go('/combos'),
-              ),
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text('FreestyleCombo',
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                              )),
-                      const SizedBox(height: 8),
-                      Text('Sign in to your account',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.grey[600],
-                              )),
-                      const SizedBox(height: 24),
-                      TextFormField(
-                        controller: _credentialCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Email or Username',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.text,
-                        autocorrect: false,
-                        validator: (v) =>
-                            v == null || v.isEmpty ? 'Required' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _passwordCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Password',
-                          border: OutlineInputBorder(),
-                        ),
-                        obscureText: true,
-                        validator: (v) =>
-                            v == null || v.isEmpty ? 'Required' : null,
-                      ),
-                      if (_error != null) ...[
-                        const SizedBox(height: 12),
-                        Text(_error!,
-                            style: TextStyle(
-                                color: Theme.of(context).colorScheme.error)),
+    return AuthScaffold(
+      headline: 'Master your\nnext ',
+      headlineAccent: 'combo.',
+      subtitle: 'Generate, build and track freestyle football combos. Level up, one trick at a time.',
+      sheet: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AuthField(
+              controller: _credentialCtrl,
+              label: 'Email or username',
+              keyboardType: TextInputType.text,
+              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+            ),
+            const SizedBox(height: 11),
+            AuthField(
+              controller: _passwordCtrl,
+              label: 'Password',
+              obscure: true,
+              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(_error!, style: const TextStyle(color: AppColors.red, fontSize: 13)),
+            ],
+            const SizedBox(height: 18),
+            AuthPrimaryButton(
+              label: 'Log in',
+              loading: _loading,
+              onPressed: _submit,
+            ),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(top: 14),
+              child: Center(
+                child: GestureDetector(
+                  onTap: () => context.go('/register'),
+                  child: Text.rich(
+                    TextSpan(
+                      style: GoogleFonts.plusJakartaSans(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.muted),
+                      children: [
+                        const TextSpan(text: 'New here? '),
+                        TextSpan(text: 'Create account', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: AppColors.indigo)),
                       ],
-                      const SizedBox(height: 24),
-                      FilledButton(
-                        onPressed: _loading ? null : _submit,
-                        child: _loading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Text('Sign in'),
-                      ),
-                      const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: () => context.go('/register'),
-                        child: const Text('No account? Register'),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

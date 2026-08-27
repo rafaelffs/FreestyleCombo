@@ -1,9 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../core/api/api_client.dart';
 import '../core/auth/auth_service.dart';
 import '../core/models/combo.dart';
+import '../theme/app_colors.dart';
 import 'rate_combo_dialog.dart';
+
+/// Formats the trick list as "(ABBR)(nt) (ABBR) (SubCombo)…" — each trick
+/// wrapped in parentheses, with "(nt)" appended right after any no-touch
+/// trick. Returns null when there's nothing to format (caller falls back to
+/// combo.displayText).
+String? _formatSequence(List<ComboTrickDto>? tricks) {
+  if (tricks == null || tricks.isEmpty) return null;
+  final buffer = StringBuffer();
+  for (final t in tricks) {
+    final label = t.type == 'combo' ? (t.subComboName ?? 'Combo') : (t.abbreviation ?? '?');
+    if (buffer.isNotEmpty) buffer.write(' ');
+    buffer.write('($label)');
+    if (t.noTouch) buffer.write('(nt)');
+  }
+  return buffer.toString();
+}
 
 class ComboCard extends StatefulWidget {
   final ComboDto combo;
@@ -119,9 +137,9 @@ class _ComboCardState extends State<ComboCard> {
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (_) => Padding(
+      builder: (sheetContext) => Padding(
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -132,25 +150,54 @@ class _ComboCardState extends State<ComboCard> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: AppColors.line2,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
             const SizedBox(height: 20),
-            Text(title,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            Text(
+              title,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.ink,
+              ),
+            ),
             const SizedBox(height: 10),
-            Text(description, style: TextStyle(color: Colors.grey.shade700, fontSize: 14)),
+            Text(
+              description,
+              style: GoogleFonts.plusJakartaSans(color: AppColors.muted, fontSize: 14),
+            ),
             const SizedBox(height: 24),
-            FilledButton(
-              onPressed: () => Navigator.pop(_, true),
-              child: Text(confirmLabel),
+            SizedBox(
+              height: 52,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.indigo,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                onPressed: () => Navigator.pop(sheetContext, true),
+                child: Text(
+                  confirmLabel,
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+              ),
             ),
             const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: () => Navigator.pop(_, false),
-              child: const Text('Cancel'),
+            SizedBox(
+              height: 52,
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.line2),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                onPressed: () => Navigator.pop(sheetContext, false),
+                child: Text(
+                  'Cancel',
+                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: AppColors.ink),
+                ),
+              ),
             ),
           ],
         ),
@@ -188,288 +235,171 @@ class _ComboCardState extends State<ComboCard> {
     final currentUserId = AuthService.instance.userId;
     final isOwner = combo.ownerId == currentUserId;
     final isAdmin = AuthService.instance.isAdmin;
-    final colorScheme = Theme.of(context).colorScheme;
+    final authed = currentUserId != null;
     final visibilityState = combo.visibility == 'PendingReview'
         ? 'pending'
         : (combo.visibility == 'Public' || combo.isPublic == true)
             ? 'public'
             : 'private';
-    final canActOnVisibility =
-        (isOwner && visibilityState == 'private') ||
+    final canActOnVisibility = (isOwner && visibilityState == 'private') ||
         (isOwner && visibilityState == 'pending') ||
         (isAdmin && visibilityState == 'public');
-    final showGlobe = isOwner || isAdmin;
+    final canRate = widget.showActions && !isOwner && currentUserId != null;
 
-    final authed = AuthService.instance.userId != null;
-
-    return Card(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.line),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.ink.withValues(alpha: 0.18),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+            spreadRadius: -16,
+          ),
+        ],
+      ),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => context.push('/combos/${combo.id}').then((_) => widget.onRefresh?.call()),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            if (authed)
-                              Tooltip(
-                                message: _favoured ? 'Unfavourite' : 'Favourite',
-                                child: SizedBox(
-                                  width: 34,
-                                  height: 34,
-                                  child: OutlinedButton(
-                                    onPressed: _favLoading ? null : _toggleFavourite,
-                                    style: OutlinedButton.styleFrom(
-                                      padding: EdgeInsets.zero,
-                                      minimumSize: const Size(34, 34),
-                                      side: BorderSide(color: Colors.grey.shade300),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      _favoured ? Icons.favorite : Icons.favorite_border,
-                                      color: _favoured ? Colors.pink : Colors.grey,
-                                      size: 18,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            if (authed) ...[
-                              const SizedBox(width: 8),
-                              Tooltip(
-                                message: _completed ? 'Mark as not done' : 'Mark as done',
-                                child: OutlinedButton(
-                                  onPressed: _completedLoading ? null : _toggleCompleted,
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                                    minimumSize: const Size(34, 34),
-                                    side: BorderSide(
-                                      color: _completed ? Colors.green.shade200 : Colors.grey.shade300,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        _completed ? Icons.check_circle : Icons.check_circle_outline,
-                                        color: _completed ? Colors.green : Colors.grey,
-                                        size: 18,
-                                      ),
-                                      if (_completionCount > 0) ...[
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '$_completionCount',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: _completed ? Colors.green : Colors.grey,
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                            if (widget.showActions && !isOwner && currentUserId != null) ...[
-                              const SizedBox(width: 8),
-                              Tooltip(
-                                message: 'Rate this combo',
-                                child: OutlinedButton(
-                                  onPressed: _openRating,
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                                    minimumSize: const Size(34, 34),
-                                    side: BorderSide(color: Colors.grey.shade300),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Stack(
-                                        alignment: Alignment.center,
-                                        children: [
-                                          Icon(Icons.star, color: Colors.grey.shade300, size: 18),
-                                          Icon(Icons.star_half, color: Colors.amber, size: 18),
-                                        ],
-                                      ),
-                                      if (combo.averageRating > 0) ...[
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          combo.averageRating.toStringAsFixed(1),
-                                          style: const TextStyle(fontSize: 11),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                            if (showGlobe) ...[
-                              const SizedBox(width: 8),
-                              Tooltip(
-                                message: visibilityState == 'pending'
-                                    ? (isOwner ? 'Cancel review request' : 'Pending approval')
-                                    : visibilityState == 'public'
-                                        ? (isAdmin ? 'Make private' : 'Public')
-                                        : (isAdmin ? 'Set public' : 'Submit for review'),
-                                child: SizedBox(
-                                  width: 34,
-                                  height: 34,
-                                  child: OutlinedButton(
-                                    onPressed: (_visibilityLoading || !canActOnVisibility)
-                                        ? null
-                                        : () => _handleVisibilityTap(visibilityState),
-                                    style: OutlinedButton.styleFrom(
-                                      padding: EdgeInsets.zero,
-                                      minimumSize: const Size(34, 34),
-                                      side: BorderSide(color: Colors.grey.shade300),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      Icons.public,
-                                      size: 18,
-                                      color: visibilityState == 'pending'
-                                          ? Colors.amber.shade700
-                                          : visibilityState == 'public'
-                                              ? colorScheme.primary
-                                              : Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        if (combo.name != null && combo.name!.isNotEmpty)
-                          Text(
-                            combo.name!,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                            ),
-                          )
-                        else
-                          Text(
-                            combo.displayText,
-                            style: const TextStyle(
-                              fontFamily: 'monospace',
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  _Chip(label: 'Diff: ${combo.totalDifficulty.toInt()}'),
-                ],
-              ),
-              if (combo.ownerUserName != null) ...[
-                const SizedBox(height: 4),
-                Builder(builder: (context) {
-                  final byText = TextSpan(
-                    text: 'by ',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                  );
-                  if (combo.ownerId != null) {
-                    return GestureDetector(
-                      onTap: () => context.push('/users/${combo.ownerId}'),
-                      child: RichText(
-                        text: TextSpan(
-                          children: [
-                            byText,
-                            TextSpan(
-                              text: combo.ownerUserName,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.indigo[600],
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-                  return Text(
-                    'by ${combo.ownerUserName}',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                  );
-                }),
-              ],
-              if (combo.tricks != null && combo.tricks!.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Builder(builder: (context) {
-                  final tricks = combo.tricks!;
-                  final hasMore = tricks.length > _tricksLimit;
-                  final visible = _expanded ? tricks : tricks.take(_tricksLimit).toList();
-                  return Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => context.push('/combos/${combo.id}').then((_) => widget.onRefresh?.call()),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (authed) ...[
+                  Row(
                     children: [
-                      ...visible.map((t) => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(4),
+                      _IconToggle(
+                        icon: _favoured ? Icons.favorite : Icons.favorite_border,
+                        color: _favoured ? AppColors.pink : AppColors.faint,
+                        loading: _favLoading,
+                        tooltip: _favoured ? 'Unfavourite' : 'Favourite',
+                        onTap: _toggleFavourite,
+                      ),
+                      const SizedBox(width: 8),
+                      _IconToggle(
+                        icon: _completed ? Icons.check_circle : Icons.check_circle_outline,
+                        color: _completed ? AppColors.green : AppColors.faint,
+                        loading: _completedLoading,
+                        tooltip: _completed ? 'Mark as not done' : 'Mark as done',
+                        onTap: _toggleCompleted,
+                        label: _completionCount > 0 ? '$_completionCount' : null,
+                      ),
+                      if (canRate) ...[
+                        const SizedBox(width: 8),
+                        _IconToggle(
+                          icon: Icons.star_rounded,
+                          color: AppColors.star,
+                          tooltip: 'Rate this combo',
+                          onTap: () {
+                            _openRating();
+                            return Future.value();
+                          },
+                          label: combo.averageRating > 0
+                              ? combo.averageRating.toStringAsFixed(1)
+                              : null,
                         ),
-                        child: Text(
-                          '${t.position}. ${t.abbreviation}${t.noTouch ? '(nt)' : ''}${!t.strongFoot ? '(wf)' : ''}',
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                      )),
-                      if (hasMore)
-                        GestureDetector(
-                          onTap: () => setState(() => _expanded = !_expanded),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[300],
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              _expanded ? 'Show less' : '+${tricks.length - _tricksLimit} more',
-                              style: const TextStyle(fontSize: 11),
-                            ),
-                          ),
-                        ),
+                      ],
                     ],
-                  );
-                }),
-              ],
-              if (combo.aiDescription != null &&
-                  combo.aiDescription!.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  '"${combo.aiDescription}"',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontStyle: FontStyle.italic,
-                    color: Colors.grey[700],
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  const SizedBox(height: 10),
+                ],
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            (combo.name != null && combo.name!.isNotEmpty)
+                                ? combo.name!
+                                : _formatSequence(combo.tricks) ?? combo.displayText,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: (combo.name != null && combo.name!.isNotEmpty)
+                                ? GoogleFonts.plusJakartaSans(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.3,
+                                    height: 1.2,
+                                    color: AppColors.ink,
+                                  )
+                                : GoogleFonts.jetBrainsMono(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.ink,
+                                  ),
+                          ),
+                          if (combo.ownerUserName != null) ...[
+                            const SizedBox(height: 3),
+                            _OwnerLine(combo: combo),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    _DiffBadge(value: combo.totalDifficulty.toInt()),
+                  ],
+                ),
+                if (combo.tricks != null && combo.tricks!.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  _TrickChips(
+                    tricks: combo.tricks!,
+                    expanded: _expanded,
+                    onToggleExpanded: () => setState(() => _expanded = !_expanded),
+                  ),
+                ],
+                if (combo.aiDescription != null && combo.aiDescription!.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    '"${combo.aiDescription}"',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                      color: AppColors.muted,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                Container(
+                  margin: const EdgeInsets.only(top: 15),
+                  padding: const EdgeInsets.only(top: 14),
+                  decoration: const BoxDecoration(
+                    border: Border(top: BorderSide(color: AppColors.line)),
+                  ),
+                  child: Row(
+                    children: [
+                      if (combo.totalRatings > 0)
+                        _MiniStat(
+                          icon: Icons.star_rounded,
+                          color: AppColors.star,
+                          label: combo.averageRating.toStringAsFixed(1),
+                        ),
+                      if (combo.totalRatings > 0) const SizedBox(width: 12),
+                      _MiniStat(
+                        icon: Icons.check_circle_rounded,
+                        color: AppColors.green,
+                        label: '$_completionCount',
+                      ),
+                      const Spacer(),
+                      _VisibilityTag(
+                        state: visibilityState,
+                        loading: _visibilityLoading,
+                        actionable: canActOnVisibility,
+                        onTap: () => _handleVisibilityTap(visibilityState),
+                      ),
+                    ],
+                  ),
                 ),
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -477,21 +407,308 @@ class _ComboCardState extends State<ComboCard> {
   }
 }
 
-class _Chip extends StatelessWidget {
-  final String label;
-  final Color? color;
+class _OwnerLine extends StatelessWidget {
+  final ComboDto combo;
+  const _OwnerLine({required this.combo});
 
-  const _Chip({required this.label, this.color});
+  @override
+  Widget build(BuildContext context) {
+    final ownerId = combo.ownerId;
+    final byStyle = GoogleFonts.plusJakartaSans(
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      color: AppColors.muted,
+    );
+    final nameStyle = GoogleFonts.plusJakartaSans(
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      color: AppColors.indigo,
+    );
+    final text = RichText(
+      text: TextSpan(
+        children: [
+          TextSpan(text: 'by ', style: byStyle),
+          TextSpan(text: combo.ownerUserName, style: nameStyle),
+        ],
+      ),
+    );
+    return GestureDetector(
+      onTap: () => context.push('/users/$ownerId'),
+      child: text,
+    );
+  }
+}
+
+class _DiffBadge extends StatelessWidget {
+  final int value;
+  const _DiffBadge({required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      width: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       decoration: BoxDecoration(
-        color: color ?? Colors.grey[200],
-        borderRadius: BorderRadius.circular(12),
+        gradient: AppColors.grad,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.violet.withValues(alpha: 0.5),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+            spreadRadius: -6,
+          ),
+        ],
       ),
-      child: Text(label, style: const TextStyle(fontSize: 11)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$value',
+            style: GoogleFonts.jetBrainsMono(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'DIFF',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 8.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+              color: Colors.white.withValues(alpha: 0.85),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TrickChips extends StatelessWidget {
+  final List<ComboTrickDto> tricks;
+  final bool expanded;
+  final VoidCallback onToggleExpanded;
+
+  const _TrickChips({
+    required this.tricks,
+    required this.expanded,
+    required this.onToggleExpanded,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasMore = tricks.length > _tricksLimit;
+    final visible = expanded ? tricks : tricks.take(_tricksLimit).toList();
+
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        for (final t in visible) _buildChip(t),
+        if (hasMore)
+          GestureDetector(
+            onTap: onToggleExpanded,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.ink,
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Text(
+                expanded ? 'Show less' : '+${tricks.length - _tricksLimit}',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildChip(ComboTrickDto t) {
+    final label = t.type == 'combo' ? (t.subComboName ?? 'Combo') : (t.abbreviation ?? '?');
+    final suffix = t.noTouch ? '·nt' : (!t.strongFoot ? '·wf' : '');
+    final isNoTouch = t.noTouch;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: isNoTouch ? AppColors.noTouchBg : AppColors.chipBg,
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: RichText(
+        text: TextSpan(
+          children: [
+            TextSpan(
+              text: '${t.position}. ',
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.faint,
+              ),
+            ),
+            TextSpan(
+              text: '$label$suffix',
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isNoTouch ? AppColors.noTouchText : AppColors.ink2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+
+  const _MiniStat({required this.icon, required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _VisibilityTag extends StatelessWidget {
+  final String state; // private | pending | public
+  final bool loading;
+  final bool actionable;
+  final VoidCallback onTap;
+
+  const _VisibilityTag({
+    required this.state,
+    required this.loading,
+    required this.actionable,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    late Color bg;
+    late Color fg;
+    late String label;
+    switch (state) {
+      case 'public':
+        bg = const Color(0xFFE0EAFE);
+        fg = const Color(0xFF2563EB);
+        label = 'Public';
+      case 'pending':
+        bg = AppColors.amberBg;
+        fg = AppColors.amber;
+        label = 'Pending';
+      default:
+        bg = const Color(0xFFEEEDF4);
+        fg = AppColors.muted;
+        label = 'Private';
+    }
+
+    final tag = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(7)),
+      child: loading
+          ? SizedBox(
+              width: 10,
+              height: 10,
+              child: CircularProgressIndicator(strokeWidth: 1.5, color: fg),
+            )
+          : Text(
+              label.toUpperCase(),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.4,
+                color: fg,
+              ),
+            ),
+    );
+
+    if (!actionable) return tag;
+    return GestureDetector(onTap: loading ? null : onTap, child: tag);
+  }
+}
+
+class _IconToggle extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final bool loading;
+  final String tooltip;
+  final Future<void> Function() onTap;
+  final String? label;
+
+  const _IconToggle({
+    required this.icon,
+    required this.color,
+    required this.tooltip,
+    required this.onTap,
+    this.loading = false,
+    this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: loading ? null : onTap,
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+            padding: EdgeInsets.symmetric(horizontal: label != null ? 8 : 0),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.line2),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 18, color: color),
+                if (label != null) ...[
+                  const SizedBox(width: 4),
+                  Text(
+                    label!,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

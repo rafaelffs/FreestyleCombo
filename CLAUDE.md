@@ -219,7 +219,8 @@ web/src/
     ├── combos/         # CombosPage (tabbed: Public + Mine), CreateComboPage (mode: choose/generate/build),
     │                   # ComboDetailPage (with inline edit for owners), ComboCard, RateComboDialog,
     ├── preferences/    # PreferencesPage
-    └── tricks/         # TricksPage (/tricks, public, inline submit form), AdminSubmissionsPage (/admin/approvals)
+    ├── tricks/         # TricksPage (/tricks, public, inline submit form), AdminSubmissionsPage (/admin/approvals)
+    └── legal/          # PrivacyPage (/privacy), TermsPage (/terms) — static, i18n'd, required for App Store/Play Store review
 ```
 
 Routes: `/combos` (public, tabbed), `/combos/create` (protected, mode selector), `/admin/approvals` (admin only), `/admin/users` (admin only), `/account` (protected), `/users/:id` (public). Old admin routes `/admin/submissions` and `/admin/combo-reviews` redirect to `/admin/approvals`. Create route remains accessible from the "Create new" button inside `/combos`.
@@ -229,6 +230,8 @@ Routes: `/combos` (public, tabbed), `/combos/create` (protected, mode selector),
 `PreferencesPage` shows a list of named preference cards with Edit/Delete per card and a "New preference" button at the top. Create/edit opens an inline form in a new Card. Delete shows a confirm button inline before removing.
 
 `AdminRoute` redirects non-admins to `/combos`. `isAdmin()` decodes the JWT payload (no library, no API call) and checks `ClaimTypes.Role === "Admin"`.
+
+`PrivacyPage` (`/privacy`) and `TermsPage` (`/terms`) are static, i18n'd (`legal.privacy.*` / `legal.terms.*` keys, sections numbered `section{N}Title`/`section{N}Body`), linked from a footer added to `Layout.tsx`. Required by both Apple App Review and Google Play before submission — reachable at `https://www.fscombo.com/privacy` and `/terms`.
 
 ### Web Navigation (post-merge)
 | Link | Route | Visible |
@@ -247,8 +250,9 @@ Navbar right side shows a profile dropdown (username + chevron) when authenticat
 - `GET /api/account/me` — returns `ProfileDto { id, userName, email, isAdmin }` (auth required)
 - `PUT /api/account/me` — update username/email
 - `PUT /api/account/me/password` — change password (requires currentPassword)
+- `DELETE /api/account/me` — self-service account deletion (auth required, no admin needed) — deletes the calling user via `UserManager.DeleteAsync`, same EF-cascade behavior as the admin delete endpoint. Required by Apple App Review Guideline 5.1.1(v) (any app with account creation must offer in-app account deletion).
 - `GET /api/account/{id}` — public profile `PublicProfileDto { id, userName, email }` (no auth)
-- `AccountPage` at `/account` — two sections: edit profile form, change password form
+- `AccountPage` at `/account` — three sections: edit profile form, change password form, and a "Delete Account" danger-zone section (confirm via `window.confirm`, then clears the token and redirects to `/login`)
 - `UserProfilePage` at `/users/:id` — shows username + email with initial avatar
 - "by [username]" on ComboCard links to `/users/{ownerId}`
 
@@ -299,16 +303,36 @@ docker-compose up
 
 ---
 
+## Production Deployment
+
+**Live at `https://www.fscombo.com`** — API + web are in production (see `DeploymentPlan/DEPLOYMENT.md` for the original rollout plan). Mobile is not yet submitted to app stores.
+
+- **Infra**: single Hetzner VPS running Docker Compose (`docker-compose.prod.yml`: API + Postgres, both bound to `127.0.0.1` only) behind a host Nginx (`nginx/nginx.conf`) doing TLS termination (Let's Encrypt) and reverse-proxying `/api/` to the API container; React `web/dist/` is served as static files from `/var/www/freestylecombo`.
+- **CD**: `.github/workflows/deploy.yml` runs after CI succeeds on `main` — builds the API into a Docker image pushed to GHCR, builds the React app, rsyncs both + nginx config to the VPS over SSH, swaps only the API container (DB untouched), reloads Nginx, then verifies `/api/tricks` responds. Secrets: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`.
+- **Mobile release readiness**: `mobile/lib/core/api/api_client.dart`'s `kBaseUrl` points release builds at `https://www.fscombo.com/api` (debug builds still default to localhost — see "API base URL" below). No cleartext/ATS exceptions needed since prod is HTTPS-only.
+- **App Store prerequisites now in place**: production backend reachable over HTTPS, `/privacy` and `/terms` pages live, self-service account deletion (`DELETE /api/account/me`, wired into both `AccountPage` (web) and `account_screen.dart` (mobile)) per Apple Guideline 5.1.1(v), 1024px app icon already in `ios/Runner/Assets.xcassets/AppIcon.appiconset/`.
+- **Still needed before App Store submission** (steps only the account owner can do — enrollment, App Store Connect, signing — see conversation history / ask Claude to help wire up the Xcode project once these exist): confirm Apple Developer Program membership (paid, not just a free personal-team signing identity) and get its Team ID into `ios/Runner.xcodeproj` (`DEVELOPMENT_TEAM`, currently unset under `CODE_SIGN_STYLE = Automatic`); register the `com.rafaelffs.freestyleCombo` App ID and create the app record in App Store Connect; seed a demo/review account on production for App Review; capture App Store screenshots (iPhone 16 Pro Max class = the required 6.9" set); write the App Store Connect listing copy (name/subtitle/description/keywords/age rating/App Privacy questionnaire).
+
+---
+
 ## Mobile — Flutter (Phase 3)
 
 ### Tech stack
-- **Flutter 3.19+** · **Dart 3.3+** · **go_router** (navigation) · **dio** (HTTP) · **shared_preferences** (token storage)
+- **Flutter 3.19+** · **Dart 3.3+** · **go_router** (navigation) · **dio** (HTTP) · **shared_preferences** (token storage) · **google_fonts** (Plus Jakarta Sans + JetBrains Mono, see "Visual design" below)
 - No external state management library — plain `StatefulWidget` + `FutureBuilder`
+
+### Visual design (redesign, post-merge)
+The mobile client follows `design/mobile-redesign/design_spec.md` (visual reference: `design/mobile-redesign/mocks.html`) — indigo/violet gradient system with a lime energy accent, Plus Jakarta Sans UI type, JetBrains Mono for combo/trick notation, radius-24 cards. Both fonts are loaded via `google_fonts` (no bundled font assets). This was a **visual-only** redesign — `core/api/api_client.dart`, all `core/models/`, `core/auth/auth_service.dart`, and `router/app_router.dart` were not touched.
+
+- `lib/theme/app_colors.dart` — `AppColors` class holding every design token (indigo/violet/lime, ink/muted/faint text scale, bg/surface/line, green/amber/red difficulty scale + backgrounds, pink/star/no-touch accents, chip/indigo-tint neutrals, and the `grad` gradient). `main.dart` wires `ThemeData` with `GoogleFonts.plusJakartaSansTextTheme()`, `scaffoldBackgroundColor: AppColors.bg`, and a matching `AppBarTheme`.
+- `lib/widgets/difficulty_chip.dart` — shared `DifficultyChip(int)` widget (green ≤4, amber 5–7, red 8–10, JetBrains Mono numeral). Used on combo cards' trick chips, `combo_detail_screen.dart`'s sequence, `create_combo_screen.dart`'s trick picker, and `tricks_screen.dart` rows.
+- `lib/features/auth/auth_chrome.dart` — shared `AuthScaffold`/`AuthField`/`AuthPrimaryButton` gradient-hero + white-sheet chrome used by both `login_screen.dart` and `register_screen.dart`.
 
 ### Directory structure
 ```
 mobile/lib/
 ├── main.dart
+├── theme/app_colors.dart         # Design tokens (AppColors) — see "Visual design" above
 ├── core/
 │   ├── api/api_client.dart       # Dio client, all API methods, singleton
 │   │                             # _extractMessage checks data['error'] first
@@ -320,56 +344,69 @@ mobile/lib/
 │       ├── user_preference.dart  # UserPreference with toJson/copyWith (allowedRevolutions)
 │       └── trick_submission.dart # TrickSubmissionDto with fromJson
 ├── features/
-│   ├── auth/                     # login_screen.dart (credential field), register_screen.dart
-│   ├── combos/                   # combos_screen.dart (tabbed: Public + Mine),
+│   ├── auth/                     # login_screen.dart / register_screen.dart (gradient hero + sheet,
+│   │                             # via auth_chrome.dart), credential field unchanged
+│   ├── combos/                   # combos_screen.dart (segmented Public/Mine/Favourites),
 │   │                             # create_combo_screen.dart (mode: choose/generate/build),
-│   │                             # combo_detail_screen.dart (with inline edit for owners)
-│   ├── preferences/              # preferences_screen.dart
-│   ├── tricks/                   # tricks_screen.dart (/tricks, public, FAB → submit bottom sheet)
+│   │                             # combo_detail_screen.dart (gradient hero, numbered sequence,
+│   │                             # inline edit for owners)
+│   ├── preferences/              # preferences_screen.dart ("Presets" — preset cards only,
+│   │                             # no account/logout — see account_screen.dart)
+│   ├── tricks/                   # tricks_screen.dart (/tricks, public, appbar "+" → submit bottom sheet)
+│   ├── account/                  # account_screen.dart — full Profile screen (gradient header,
+│   │                             # stats, account links); edit-profile/password moved to a
+│   │                             # pushed `_EditProfileScreen` (Navigator.push, no new route)
 │   └── admin/                    # admin_submissions_screen.dart (/admin/approvals)
 ├── router/app_router.dart        # GoRouter config, auth + admin redirect; initialLocation: /combos
 └── widgets/
-    ├── main_shell.dart           # Bottom nav: Combos, Tricks, Settings (auth), Admin (admin)
-    ├── combo_card.dart           # name display, ownerUserName, fav toggle (icon only, top-left), visibility icon states
+    ├── main_shell.dart           # Bottom nav: Combos, Tricks, center gradient Generate FAB,
+    │                             # Presets + Profile (authed) or Login (unauthed), + Admin (admin)
+    ├── combo_card.dart           # name display, ownerUserName, fav/done/rate icon row, footer stats + visibility tag
+    ├── difficulty_chip.dart      # shared DifficultyChip(int) — see "Visual design" above
     └── rate_combo_dialog.dart    # Star rating AlertDialog
 ```
 
 `AuthService.isAdmin` decodes the JWT on `setCredentials()` and persists the result in SharedPreferences (`fc_is_admin`). `AuthService.userName` extracts `unique_name` claim from JWT and persists in SharedPreferences (`fc_user_name`). Admin routes (`/admin/*`) are redirect-guarded in the router.
 
-`preferences_screen.dart` shows an **Account card** at the top (username + "Edit profile & password" → `/account`), then a list of `_PrefCard` tiles. FAB opens `_PreferenceForm` in a `showModalBottomSheet`.
+`preferences_screen.dart` ("Presets" tab) is now preset cards only (icon, name, Edit, Delete, 3 mono stat tiles: Length/Max diff/No-touch, plus a muted flags caption) — the account card and logout button moved to `account_screen.dart`. FAB moved into an appbar "+" icon button; opens `_PreferenceForm` in a `showModalBottomSheet`.
 
-`account_screen.dart` at `/account` — two cards: edit username/email form, change password form. Calls `AuthService.instance.setUserName()` on successful username update.
+`account_screen.dart` at `/account` is now the "Profile" screen: gradient header (avatar initial, username, Combos/Done/Avg★ stats aggregated client-side from `getMyCombos()` — no new API calls), then "Edit profile & password" / "My combos" / "Log out" / "Delete account" row-links. Edit profile + change password now live in a pushed `_EditProfileScreen` (`Navigator.push`, not a router route). Logout navigates to `/combos` (previously navigated to the non-existent `/public` route from `preferences_screen.dart` — fixed as part of relocating the control). "Delete account" is a destructive-styled `_RowLink` (red icon/text, `AppColors.redBg` chip) that confirms via `AlertDialog`, calls `ApiClient.instance.deleteAccount()` (`DELETE /api/account/me`), then clears auth and goes to `/combos` — required by Apple App Review Guideline 5.1.1(v).
 
-`user_profile_screen.dart` at `/users/:id` — shows username + email with a letter avatar.
+`user_profile_screen.dart` at `/users/:id` — restyled with the same gradient hero pattern as `account_screen.dart` (back button, avatar initial, username, email), scaled down since public profiles carry no stats/actions.
 
-`admin_users_screen.dart` at `/admin/users` — ListView of user tiles with PopupMenuButton: Edit (AlertDialog), Reset password (AlertDialog), Toggle admin role, Delete (confirm dialog).
+`admin_users_screen.dart` at `/admin/users` — ListView of restyled user row cards (avatar tile, ADMIN badge, PopupMenuButton unchanged: Edit/Reset password/Toggle admin/Delete). Edit and reset-password dialogs use the shared `_FormDialog`/`_DialogField` look (rounded 20, indigo confirm button); delete confirmation uses a red `FilledButton`.
 
-`create_combo_screen.dart` generate view: `_usePrefs` switch replaced with a `DropdownButtonFormField<String?>` (null = Custom, value = preferenceId). Loading preferences via `_loadPreferences()` when entering generate mode. When a preference is selected, its values are copied to the state variables and sliders/switches have `onChanged: null` (read-only). Passes `_selectedPrefId` (not `_usePrefs`) to `previewCombo()`.
+`admin_submissions_screen.dart` at `/admin/approvals` — restyled with `_SectionHeader`s ("Combo publication requests" / "Trick submissions"), card-shell items (`_ComboReviewCard`, `_TrickSubmissionCard`) reusing `DifficultyChip` and mono trick chips, and a shared Approve (indigo)/Reject (red outline) row.
+
+`create_combo_screen.dart` generate view: preference selector is now a horizontal row of preset chips (first chip "Custom" = null) instead of a dropdown; selecting a preset still copies its values into state and locks the custom sliders/switches (`onChanged: null`). Sliders are a custom-painted `_AppSlider` (gradient fill track + ringed knob, JetBrains Mono value label) rather than Material `Slider`. A sticky bottom action bar holds the "Generate combo" button (calls `_preview()`, same preview→build-tab flow as before). Toggles use `CupertinoSwitch`. Build-tab slot rows and the picker list are restyled but functionally unchanged. The nested `_EditComboScreen` (combo detail's inline edit) and `_InlineSubmitForm`/`_EditTrickDialog` (tricks screen) got the same slider/toggle/field treatment.
+
+`admin_combo_reviews_screen.dart` is dead code — unreferenced since `/admin/combo-reviews` redirects to `/admin/approvals` and `admin_submissions_screen.dart` already covers combo review approvals itself. Left as-is (not restyled, not deleted) since removing it wasn't requested.
 
 ### Mobile Navigation (post-merge)
-| Index | Label | Route | Auth |
+| Slot | Label | Route | Visible |
 |---|---|---|---|
-| 0 | Combos | `/combos` | No |
-| 1 | Tricks | `/tricks` | No |
-| 2 | Settings | `/preferences` | Yes |
-| 3 | Admin | `/admin/approvals` | Admin only |
+| 1 | Combos | `/combos` | Always |
+| 2 | Tricks | `/tricks` | Always |
+| center | (gradient lightning FAB) | `/combos/create` | Always |
+| 3 | Presets | `/preferences` | Authenticated |
+| 4 | Profile | `/account` | Authenticated |
+| 3 (unauth) | Login | `/login` | Unauthenticated |
+| 5 | Admin (badge = pending approvals count) | `/admin/approvals` | Admin only |
 
-New mobile routes: `/account` (protected), `/users/:id` (public), `/admin/users` (admin only).
+New mobile routes: none added — `/account`, `/users/:id`, `/admin/users` already existed. `combos_screen.dart`'s own FloatingActionButton was removed since the bottom-nav FAB now covers combo creation (the "Create your first combo" empty-state CTA on the Mine tab still exists).
 
 ### combo_card.dart features
-- Shows `combo.name` (bold) above `displayText` when present
-- Shows `combo.ownerUserName` (not ownerEmail)
-- "by [username]" is tappable (GestureDetector → `context.push('/users/${combo.ownerId}')`) when ownerId is set, styled as indigo underline
-- Favourite toggle: `Icons.favorite` / `Icons.favorite_border` (no text label), displayed in a top icon row above combo name — calls `addFavourite`/`removeFavourite`, triggers `onRefresh`
-- Visibility is icon-based near actions (owner only): `Icons.public` only with neutral color for private (click opens confirm modal to submit as public), yellow for pending approval, blue for public
-- No Private/Public text chips on combo cards
-- Delete button removed from cards; deletion is available on `combo_detail_screen.dart` only (owner or admin)
-- Weak-foot tricks shown as `(wf)`
+- Shows `combo.name` (bold, 17/800) above `displayText` (JetBrains Mono) when present, with a gradient `DIFF` badge (top-right) showing `totalDifficulty`
+- Shows `combo.ownerUserName` (not ownerEmail) as an indigo "by [username]" link → `/users/{ownerId}` when set
+- Top icon row (authed only): favourite toggle, done toggle (+ count), rate button (non-owners only, opens `RateComboDialog`) — small bordered square icon buttons
+- Trick chips: `1. ATW` (JetBrains Mono, position in faint), no-touch chips tinted violet; sub-combo chips fall back to `subComboName` if `abbreviation` is null; "+N" overflow chip expands the list inline (existing cap-at-6 logic preserved)
+- Footer row (top hairline border): ★ average rating (if any ratings), ✓ done count, spacer, visibility tag (Public=blue/Pending=amber/Private=grey) — tappable only when `canActOnVisibility`, same confirm-sheet flow as before
+- Weak-foot tricks shown as `·wf`, no-touch as `·nt`
 
 ### Difficulty chip (mobile)
-- `_DiffChip` widget: colored chip — green.shade100/800 (1–4), yellow.shade100/900 (5–7), red.shade100/800 (8–10)
-- Used in `tricks_screen.dart` (trailing) and `build_combo_screen.dart` (trick picker trailing)
-- `tricks_screen.dart` subtitle no longer shows common level (`lvl X`)
+- Shared `DifficultyChip(int)` in `widgets/difficulty_chip.dart` — green/greenBg (1–4), amber/amberBg (5–7), red/redBg (8–10), JetBrains Mono numeral
+- Used in `tricks_screen.dart` rows, `combo_detail_screen.dart` sequence, `create_combo_screen.dart` trick picker, and combo cards' gradient DIFF badge (a separate, larger `_DiffBadge` widget local to `combo_card.dart`)
+- `tricks_screen.dart` subtitle still doesn't show common level (`lvl X`)
 
 ### Setup (Flutter must be installed first)
 ```bash
@@ -382,8 +419,9 @@ flutter pub get
 flutter run
 ```
 
-### API base URL (edit `lib/core/api/api_client.dart`)
-- Android emulator: `http://10.0.2.2:5050/api` (default)
+### API base URL (`lib/core/api/api_client.dart`)
+`kBaseUrl` switches on `kReleaseMode`: release builds (TestFlight/App Store, Play Store) always point at production — `https://www.fscombo.com/api`. Debug builds default to localhost; edit the debug branch when testing against something else:
+- Android emulator: `http://10.0.2.2:5050/api`
 - iOS simulator: `http://localhost:5050/api`
 - Web (Chrome): `http://localhost:5050/api`
 - Physical device: your machine's local IP, e.g. `http://192.168.1.x:5050/api`

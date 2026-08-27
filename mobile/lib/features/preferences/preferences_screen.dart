@@ -1,8 +1,10 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/models/user_preference.dart';
-import 'package:go_router/go_router.dart';
+import '../../theme/app_colors.dart';
 
 class PreferencesScreen extends StatefulWidget {
   const PreferencesScreen({super.key});
@@ -34,16 +36,12 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
     }
   }
 
-  void _logout() {
-    AuthService.instance.clear();
-    context.go('/public');
-  }
-
   void _openForm({UserPreference? existing}) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (_) => _PreferenceForm(
         initial: existing,
         onSaved: (_) {
@@ -58,11 +56,12 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Delete preference'),
         content: Text('Delete "${pref.name}"?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: AppColors.red))),
         ],
       ),
     );
@@ -82,82 +81,79 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: const Text('Preferences'),
+        titleSpacing: 22,
+        title: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Presets'),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      'Your generation profiles',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.muted),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         actions: [
-          TextButton.icon(
-            onPressed: _logout,
-            icon: const Icon(Icons.logout),
-            label: const Text('Logout'),
+          Padding(
+            padding: const EdgeInsets.only(right: 22),
+            child: Material(
+              color: Colors.transparent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(13),
+                onTap: () => _openForm(),
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(gradient: AppColors.grad, borderRadius: BorderRadius.circular(13)),
+                  child: const Icon(Icons.add, size: 20, color: Colors.white),
+                ),
+              ),
+            ),
           ),
         ],
       ),
       body: RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  // ── Account section ────────────────────────────────────
-                  Card(
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.indigo.shade50,
-                        child: Text(
-                          (AuthService.instance.userName ?? 'U')
-                              .substring(0, 1)
-                              .toUpperCase(),
-                          style: TextStyle(color: Colors.indigo.shade700),
-                        ),
-                      ),
-                      title: Text(
-                        AuthService.instance.userName ?? 'My Account',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      subtitle: const Text('Edit profile & password'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.push('/account'),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                  Text('Combo Preferences',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleSmall
-                          ?.copyWith(color: Colors.grey[600])),
-                  const SizedBox(height: 8),
-                  if (_loading)
-                    const Center(child: CircularProgressIndicator())
-                  else if (_error != null)
-                    Text(_error!, style: const TextStyle(color: Colors.red))
-                  else if (_prefs.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 32),
-                      child: Center(
-                          child: Text(
+        color: AppColors.indigo,
+        onRefresh: _load,
+        child: _loading
+            ? const Center(child: CircularProgressIndicator(color: AppColors.indigo))
+            : _error != null
+                ? Center(child: Text(_error!, style: const TextStyle(color: AppColors.red)))
+                : _prefs.isEmpty
+                    ? ListView(
+                        padding: const EdgeInsets.symmetric(vertical: 80),
+                        children: [
+                          Center(
+                            child: Text(
                               'No preferences saved yet.\nTap + to create one.',
                               textAlign: TextAlign.center,
-                              style: TextStyle(color: Colors.grey))),
-                    )
-                  else
-                    ...List.generate(
-                      _prefs.length,
-                      (i) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _PrefCard(
+                              style: GoogleFonts.plusJakartaSans(color: AppColors.muted, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(22, 4, 22, 20),
+                        itemCount: _prefs.length,
+                        itemBuilder: (_, i) => _PrefCard(
                           pref: _prefs[i],
                           onEdit: () => _openForm(existing: _prefs[i]),
                           onDelete: () => _delete(_prefs[i]),
                         ),
                       ),
-                    ),
-                ],
-              ),
-            ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openForm(),
-        child: const Icon(Icons.add),
       ),
     );
   }
@@ -174,28 +170,102 @@ class _PrefCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stats = 'Length ${pref.comboLength} · Diff ≤${pref.maxDifficulty} · SF ${pref.strongFootPercentage}% · NT ${pref.noTouchPercentage}%';
-    final flags = '${pref.includeCrossOver ? "CO ✓" : "CO ✗"} · ${pref.includeKnee ? "Knee ✓" : "Knee ✗"} · Max consec NT ${pref.maxConsecutiveNoTouch}';
+    final flags = '${pref.includeCrossOver ? "Cross-overs" : "No cross-overs"} · '
+        '${pref.includeKnee ? "Knee tricks" : "No knee tricks"} · '
+        'Max consec. NT ${pref.maxConsecutiveNoTouch}';
 
-    return Card(
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        title: Text(pref.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 2),
-            Text(stats, style: const TextStyle(fontSize: 12)),
-            Text(flags, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(icon: const Icon(Icons.edit_outlined, size: 20), onPressed: onEdit, tooltip: 'Edit'),
-            IconButton(icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red), onPressed: onDelete, tooltip: 'Delete'),
-          ],
-        ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 13),
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(color: AppColors.ink.withValues(alpha: 0.08), blurRadius: 24, offset: const Offset(0, 8), spreadRadius: -18),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: const BoxDecoration(gradient: AppColors.grad, shape: BoxShape.circle),
+                child: const Icon(Icons.tune, size: 18, color: Colors.white),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Text(
+                  pref.name,
+                  style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              TextButton(
+                onPressed: onEdit,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.indigo,
+                  minimumSize: Size.zero,
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                ),
+                child: const Text('Edit', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, size: 19, color: AppColors.muted),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: onDelete,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(child: _PStat(value: '${pref.comboLength}', label: 'Length')),
+              const SizedBox(width: 8),
+              Expanded(child: _PStat(value: '${pref.maxDifficulty}', label: 'Max diff')),
+              const SizedBox(width: 8),
+              Expanded(child: _PStat(value: '${pref.noTouchPercentage}%', label: 'No-touch')),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            flags,
+            style: GoogleFonts.plusJakartaSans(fontSize: 11, color: AppColors.faint, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PStat extends StatelessWidget {
+  final String value;
+  final String label;
+  const _PStat({required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(color: AppColors.chipBg, borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: GoogleFonts.jetBrainsMono(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            label.toUpperCase(),
+            style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.4, color: AppColors.muted),
+          ),
+        ],
       ),
     );
   }
@@ -288,55 +358,71 @@ class _PreferenceFormState extends State<_PreferenceForm> {
     final isEdit = widget.initial != null;
     return Padding(
       padding: EdgeInsets.only(
-        left: 16, right: 16, top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        left: 22, right: 22, top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
       ),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: AppColors.line2, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 18),
             Text(
               isEdit ? 'Edit preference' : 'New preference',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             TextField(
               controller: _nameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Name *',
-                hintText: 'e.g. NT Combinations',
-                border: OutlineInputBorder(),
-              ),
+              style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
               maxLength: 100,
-            ),
-            const SizedBox(height: 8),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  children: [
-                    _SliderRow(label: 'Combo length: $_comboLength', value: _comboLength.toDouble(), min: 1, max: 100, divisions: 99, onChanged: (v) => setState(() => _comboLength = v.round())),
-                    _SliderRow(label: 'Max difficulty: $_maxDifficulty', value: _maxDifficulty.toDouble(), min: 1, max: 10, divisions: 9, onChanged: (v) => setState(() => _maxDifficulty = v.round())),
-                    _SliderRow(label: 'Strong foot: $_strongFootPct%', value: _strongFootPct.toDouble(), min: 0, max: 100, divisions: 10, onChanged: (v) => setState(() => _strongFootPct = v.round())),
-                    _SliderRow(label: 'No-touch: $_noTouchPct%', value: _noTouchPct.toDouble(), min: 0, max: 100, divisions: 10, onChanged: (v) => setState(() => _noTouchPct = v.round())),
-                    _SliderRow(label: 'Max consecutive NT: $_maxConsecNoTouch', value: _maxConsecNoTouch.toDouble(), min: 0, max: 30, divisions: 30, onChanged: (v) => setState(() => _maxConsecNoTouch = v.round())),
-                    SwitchListTile(title: const Text('Include crossover'), value: _includeCrossOver, onChanged: (v) => setState(() => _includeCrossOver = v), contentPadding: EdgeInsets.zero),
-                    SwitchListTile(title: const Text('Include knee'), value: _includeKnee, onChanged: (v) => setState(() => _includeKnee = v), contentPadding: EdgeInsets.zero),
-                  ],
-                ),
+              decoration: InputDecoration(
+                labelText: 'Name',
+                hintText: 'e.g. NT Combinations',
+                filled: true,
+                fillColor: AppColors.chipBg,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.line2)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.line2)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.indigo, width: 1.5)),
               ),
             ),
+            const SizedBox(height: 6),
+            _PrefSlider(label: 'Combo length', value: _comboLength.toDouble(), min: 1, max: 100, onChanged: (v) => setState(() => _comboLength = v.round())),
+            const SizedBox(height: 18),
+            _PrefSlider(label: 'Max difficulty', value: _maxDifficulty.toDouble(), min: 1, max: 10, formatValue: (v) => '${v.round()} / 10', onChanged: (v) => setState(() => _maxDifficulty = v.round())),
+            const SizedBox(height: 18),
+            _PrefSlider(label: 'Strong foot', value: _strongFootPct.toDouble(), min: 0, max: 100, formatValue: (v) => '${v.round()}%', onChanged: (v) => setState(() => _strongFootPct = v.round())),
+            const SizedBox(height: 18),
+            _PrefSlider(label: 'No-touch', value: _noTouchPct.toDouble(), min: 0, max: 100, formatValue: (v) => '${v.round()}%', onChanged: (v) => setState(() => _noTouchPct = v.round())),
+            const SizedBox(height: 18),
+            _PrefSlider(label: 'Max consecutive no-touch', value: _maxConsecNoTouch.toDouble(), min: 0, max: 30, onChanged: (v) => setState(() => _maxConsecNoTouch = v.round())),
+            const SizedBox(height: 18),
+            _PrefToggle(label: 'Include cross-overs', value: _includeCrossOver, onChanged: (v) => setState(() => _includeCrossOver = v)),
+            const SizedBox(height: 11),
+            _PrefToggle(label: 'Include knee tricks', value: _includeKnee, onChanged: (v) => setState(() => _includeKnee = v)),
             if (_error != null) ...[
-              const SizedBox(height: 8),
-              Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 13)),
+              const SizedBox(height: 12),
+              Text(_error!, style: const TextStyle(color: AppColors.red, fontSize: 13)),
             ],
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _saving ? null : _save,
-              child: _saving
-                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : Text(isEdit ? 'Save changes' : 'Create preference'),
+            const SizedBox(height: 20),
+            SizedBox(
+              height: 52,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.indigo,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                onPressed: _saving ? null : _save,
+                child: _saving
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Text(isEdit ? 'Save changes' : 'Create preference', style: const TextStyle(fontWeight: FontWeight.w800)),
+              ),
             ),
             const SizedBox(height: 8),
             TextButton(
@@ -350,31 +436,124 @@ class _PreferenceFormState extends State<_PreferenceForm> {
   }
 }
 
-class _SliderRow extends StatelessWidget {
+class _PrefSlider extends StatelessWidget {
   final String label;
   final double value;
   final double min;
   final double max;
-  final int? divisions;
   final ValueChanged<double> onChanged;
+  final String Function(double)? formatValue;
 
-  const _SliderRow({
+  const _PrefSlider({
     required this.label,
     required this.value,
     required this.min,
     required this.max,
-    this.divisions,
     required this.onChanged,
+    this.formatValue,
   });
+
+  void _handle(Offset local, double width) {
+    if (width <= 0) return;
+    final pct = (local.dx / width).clamp(0.0, 1.0);
+    onChanged(min + pct * (max - min));
+  }
 
   @override
   Widget build(BuildContext context) {
+    final pct = ((value - min) / (max - min)).clamp(0.0, 1.0);
+    final valueLabel = formatValue != null ? formatValue!(value) : value.round().toString();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13)),
-        Slider(value: value, min: min, max: max, divisions: divisions, onChanged: onChanged),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink)),
+            Text(valueLabel, style: GoogleFonts.jetBrainsMono(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.indigo)),
+          ],
+        ),
+        const SizedBox(height: 11),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            return GestureDetector(
+              onTapDown: (d) => _handle(d.localPosition, width),
+              onHorizontalDragUpdate: (d) => _handle(d.localPosition, width),
+              child: SizedBox(
+                height: 24,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      top: 8, left: 0, right: 0,
+                      child: Container(height: 8, decoration: BoxDecoration(color: const Color(0xFFE4E3EF), borderRadius: BorderRadius.circular(5))),
+                    ),
+                    Positioned(
+                      top: 8, left: 0,
+                      child: Container(
+                        width: (pct * width).clamp(0.0, width),
+                        height: 8,
+                        decoration: BoxDecoration(gradient: AppColors.grad, borderRadius: BorderRadius.circular(5)),
+                      ),
+                    ),
+                    Positioned(
+                      left: (pct * width - 12).clamp(0.0, width - 24 < 0 ? 0.0 : width - 24),
+                      top: 0,
+                      child: Container(
+                        width: 24, height: 24,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          border: Border.all(color: AppColors.indigo, width: 4),
+                          boxShadow: const [BoxShadow(color: Color(0x40141221), blurRadius: 8, offset: Offset(0, 3))],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
       ],
+    );
+  }
+}
+
+class _PrefToggle extends StatelessWidget {
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _PrefToggle({required this.label, required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => onChanged(!value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border.all(color: AppColors.line),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink)),
+              IgnorePointer(
+                child: CupertinoSwitch(value: value, activeTrackColor: AppColors.indigo, onChanged: onChanged),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

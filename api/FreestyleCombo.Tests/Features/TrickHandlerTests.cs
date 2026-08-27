@@ -1,6 +1,7 @@
 using FluentAssertions;
 using FreestyleCombo.API.Features.Tricks.CreateTrick;
 using FreestyleCombo.API.Features.Tricks.DeleteTrick;
+using FreestyleCombo.API.Features.Tricks.GetTrickById;
 using FreestyleCombo.API.Features.Tricks.UpdateTrick;
 using FreestyleCombo.Core.Entities;
 using FreestyleCombo.Core.Interfaces;
@@ -66,5 +67,37 @@ public class TrickHandlerTests
             .Handle(new DeleteTrickCommand(id), CancellationToken.None);
 
         _repo.Verify(r => r.DeleteAsync(id, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetTrickById_ExistingTrick_ReturnsAllFields()
+    {
+        var trick = TrickFaker.Create(name: "Test", difficulty: 4, commonLevel: 6);
+        trick.CreatedBy = "admin";
+        trick.DateCreated = new DateOnly(2026, 4, 1);
+        trick.Notes = "note";
+        _repo.Setup(r => r.GetByIdAsync(trick.Id, It.IsAny<CancellationToken>())).ReturnsAsync(trick);
+
+        var result = await new GetTrickByIdHandler(_repo.Object)
+            .Handle(new GetTrickByIdQuery(trick.Id), CancellationToken.None);
+
+        result.Id.Should().Be(trick.Id);
+        result.Name.Should().Be("Test");
+        result.CommonLevel.Should().Be(6);
+        result.CreatedBy.Should().Be("admin");
+        result.DateCreated.Should().Be(new DateOnly(2026, 4, 1));
+        result.Notes.Should().Be("note");
+    }
+
+    [Fact]
+    public async Task GetTrickById_NotFound_ThrowsKeyNotFoundException()
+    {
+        var id = Guid.NewGuid();
+        _repo.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync((Trick?)null);
+
+        Func<Task> act = () => new GetTrickByIdHandler(_repo.Object)
+            .Handle(new GetTrickByIdQuery(id), CancellationToken.None);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
     }
 }

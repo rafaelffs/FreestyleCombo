@@ -1,9 +1,15 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
+import '../../theme/app_colors.dart';
+import '../../widgets/difficulty_chip.dart';
 
 enum _SortKey { abbreviation, name, revolution, difficulty }
+
+enum _TypeFilter { all, tricks, combos }
 
 class TricksScreen extends StatefulWidget {
   const TricksScreen({super.key});
@@ -26,6 +32,7 @@ class _TricksScreenState extends State<TricksScreen> {
   int? _minDiff;
   int? _maxDiff;
   Set<double> _selectedRevs = {};
+  _TypeFilter _typeFilter = _TypeFilter.all;
 
   // Sort
   _SortKey _sortKey = _SortKey.abbreviation;
@@ -58,14 +65,18 @@ class _TricksScreenState extends State<TricksScreen> {
   Future<void> _deleteTrick(TrickItem trick) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete trick?'),
-        content: Text('Delete "${trick.name}"? This will fail if used in any combo.'),
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Delete trick?', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: AppColors.ink)),
+        content: Text(
+          'Delete "${trick.name}"? This will fail if used in any combo.',
+          style: GoogleFonts.plusJakartaSans(color: AppColors.ink2, fontSize: 14),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: AppColors.red, fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -86,14 +97,18 @@ class _TricksScreenState extends State<TricksScreen> {
   Future<void> _removeReusable(ComboItem combo) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Remove reusable flag?'),
-        content: Text('Remove "${combo.name}" from the reusable combos list?'),
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Remove reusable flag?', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: AppColors.ink)),
+        content: Text(
+          'Remove "${combo.name}" from the reusable combos list?',
+          style: GoogleFonts.plusJakartaSans(color: AppColors.ink2, fontSize: 14),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Remove', style: TextStyle(color: Colors.red)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remove', style: TextStyle(color: AppColors.red, fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -116,7 +131,7 @@ class _TricksScreenState extends State<TricksScreen> {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (_) => _InlineSubmitForm(
         onSubmitted: () {
@@ -150,18 +165,30 @@ class _TricksScreenState extends State<TricksScreen> {
     final revOptions = _revOptions;
     showModalBottomSheet<void>(
       context: context,
+      backgroundColor: AppColors.bg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox(height: 12),
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(color: AppColors.line2, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                padding: const EdgeInsets.fromLTRB(22, 16, 14, 8),
                 child: Row(
                   children: [
-                    const Text('Filter by Revolutions',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text(
+                      'Filter by revolutions',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+                    ),
                     const Spacer(),
                     if (_selectedRevs.isNotEmpty)
                       TextButton(
@@ -169,27 +196,26 @@ class _TricksScreenState extends State<TricksScreen> {
                           setState(() => _selectedRevs = {});
                           setSt(() {});
                         },
-                        child: const Text('Clear'),
+                        child: Text('Clear', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, color: AppColors.indigo)),
                       ),
                   ],
                 ),
               ),
-              const Divider(height: 1),
               Flexible(
                 child: ListView(
                   shrinkWrap: true,
+                  padding: const EdgeInsets.symmetric(horizontal: 22),
                   children: revOptions.map((rev) {
                     final selected = _selectedRevs.contains(rev);
-                    return CheckboxListTile(
-                      dense: true,
-                      title: Text('${rev % 1 == 0 ? rev.toInt() : rev} rev${rev == 1 ? '' : 's'}'),
-                      value: selected,
-                      onChanged: (v) {
+                    return _RevOption(
+                      label: '${rev % 1 == 0 ? rev.toInt() : rev} rev${rev == 1 ? '' : 's'}',
+                      selected: selected,
+                      onTap: () {
                         setState(() {
-                          if (v == true) {
-                            _selectedRevs = {..._selectedRevs, rev};
-                          } else {
+                          if (selected) {
                             _selectedRevs = _selectedRevs.where((r) => r != rev).toSet();
+                          } else {
+                            _selectedRevs = {..._selectedRevs, rev};
                           }
                         });
                         setSt(() {});
@@ -199,12 +225,17 @@ class _TricksScreenState extends State<TricksScreen> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(22, 14, 22, 20),
                 child: SizedBox(
                   width: double.infinity,
+                  height: 52,
                   child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.indigo,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
                     onPressed: () => Navigator.pop(ctx),
-                    child: const Text('Done'),
+                    child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w800)),
                   ),
                 ),
               ),
@@ -219,6 +250,7 @@ class _TricksScreenState extends State<TricksScreen> {
     final q = _search.toLowerCase();
     var list = _items.where((item) {
       if (item is TrickItem) {
+        if (_typeFilter == _TypeFilter.combos) return false;
         if (q.isNotEmpty &&
             !item.name.toLowerCase().contains(q) &&
             !item.abbreviation.toLowerCase().contains(q)) return false;
@@ -227,6 +259,7 @@ class _TricksScreenState extends State<TricksScreen> {
         if (_selectedRevs.isNotEmpty && !_selectedRevs.contains(item.revolution)) return false;
         return true;
       } else if (item is ComboItem) {
+        if (_typeFilter == _TypeFilter.tricks) return false;
         // Combos: only filter by search on name, ignore diff/rev filters
         if (q.isNotEmpty && !item.name.toLowerCase().contains(q)) return false;
         return true;
@@ -275,30 +308,27 @@ class _TricksScreenState extends State<TricksScreen> {
       onTap: () => _setSort(key),
       child: Container(
         margin: const EdgeInsets.only(right: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: active ? Colors.indigo.shade600 : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: active ? Colors.indigo.shade600 : Colors.grey.shade300,
-          ),
+          color: active ? AppColors.indigo : AppColors.chipBg,
+          borderRadius: BorderRadius.circular(11),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: active ? Colors.white : Colors.grey.shade700,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: active ? Colors.white : AppColors.ink2,
               ),
             ),
             if (active) ...[
-              const SizedBox(width: 3),
+              const SizedBox(width: 4),
               Icon(
                 _sortAsc ? Icons.arrow_upward : Icons.arrow_downward,
-                size: 11,
+                size: 12,
                 color: Colors.white,
               ),
             ],
@@ -308,56 +338,92 @@ class _TricksScreenState extends State<TricksScreen> {
     );
   }
 
+  Widget _typeChip(_TypeFilter type, String label) {
+    final active = _typeFilter == type;
+    return GestureDetector(
+      onTap: () => setState(() => _typeFilter = type),
+      child: Container(
+        margin: const EdgeInsets.only(right: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: active ? AppColors.indigo : AppColors.chipBg,
+          borderRadius: BorderRadius.circular(11),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+            color: active ? Colors.white : AppColors.ink2,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTrickTile(TrickItem t, bool admin) {
-    return ListTile(
-      dense: true,
-      title: Row(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
         children: [
-          Text(
-            t.abbreviation,
-            style: const TextStyle(
-              fontFamily: 'monospace',
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
+          Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: AppColors.chipBg, borderRadius: BorderRadius.circular(12)),
+            child: Text(
+              t.abbreviation,
+              style: GoogleFonts.jetBrainsMono(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.indigo),
+            ),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  t.name,
+                  style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Text(
+                      '${t.revolution % 1 == 0 ? t.revolution.toInt() : t.revolution} rev',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 11.5, color: AppColors.muted, fontWeight: FontWeight.w600),
+                    ),
+                    if (t.crossOver) ...[
+                      Text(' · ', style: GoogleFonts.plusJakartaSans(fontSize: 11.5, color: AppColors.muted)),
+                      Text('crossover', style: GoogleFonts.plusJakartaSans(fontSize: 11.5, color: AppColors.muted, fontWeight: FontWeight.w600)),
+                    ],
+                    if (t.knee) ...[
+                      Text(' · ', style: GoogleFonts.plusJakartaSans(fontSize: 11.5, color: AppColors.muted)),
+                      Text('knee', style: GoogleFonts.plusJakartaSans(fontSize: 11.5, color: AppColors.muted, fontWeight: FontWeight.w600)),
+                    ],
+                  ],
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              t.name,
-              style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.normal),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-      subtitle: Text(
-        '${t.revolution % 1 == 0 ? t.revolution.toInt() : t.revolution} revs',
-        style: const TextStyle(fontSize: 11),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _DiffChip(difficulty: t.difficulty),
-          const SizedBox(width: 4),
-          if (t.crossOver)
-            const _Tag(label: 'CO', color: Colors.indigo),
-          if (t.knee)
-            const _Tag(label: 'K', color: Colors.teal),
+          DifficultyChip(t.difficulty),
           if (admin) ...[
-            const SizedBox(width: 4),
+            const SizedBox(width: 6),
             IconButton(
-              icon: const Icon(Icons.edit_outlined, size: 18),
+              icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.muted),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
               onPressed: () => _openEdit(t),
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline,
-                  size: 18, color: Colors.red),
+              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
               onPressed: () => _deleteTrick(t),
@@ -370,96 +436,111 @@ class _TricksScreenState extends State<TricksScreen> {
 
   Widget _buildComboTile(ComboItem c, bool admin) {
     final expanded = _expandedCombos.contains(c.id);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ListTile(
-          dense: true,
-          tileColor: Colors.purple.shade50,
-          title: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  c.name,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  overflow: TextOverflow.ellipsis,
-                ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F5FE),
+        border: Border.all(color: const Color(0xFFE5E0FB)),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () {
+              setState(() {
+                if (expanded) {
+                  _expandedCombos.remove(c.id);
+                } else {
+                  _expandedCombos.add(c.id);
+                }
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: const Color(0xFFEDE9FE), borderRadius: BorderRadius.circular(12)),
+                    child: const Icon(Icons.layers, size: 18, color: AppColors.noTouchText),
+                  ),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                c.name,
+                                style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w800, color: AppColors.ink),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(color: const Color(0xFFEDE9FE), borderRadius: BorderRadius.circular(6)),
+                              child: Text(
+                                'COMBO',
+                                style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.noTouchText),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${c.trickCount} tricks',
+                          style: GoogleFonts.plusJakartaSans(fontSize: 11.5, color: AppColors.muted, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  DifficultyChip(c.totalDifficulty.toInt()),
+                  if (admin)
+                    IconButton(
+                      icon: const Icon(Icons.link_off, size: 18, color: AppColors.red),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Remove reusable',
+                      onPressed: () => _removeReusable(c),
+                    ),
+                  Icon(
+                    expanded ? Icons.expand_less : Icons.expand_more,
+                    size: 20,
+                    color: AppColors.noTouchText,
+                  ),
+                ],
               ),
-              const SizedBox(width: 6),
-              _ComboChip(),
-            ],
-          ),
-          subtitle: Text(
-            '${c.trickCount} tricks · difficulty ${c.totalDifficulty.toInt()}',
-            style: const TextStyle(fontSize: 11),
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (admin)
-                IconButton(
-                  icon: const Icon(Icons.link_off, size: 18, color: Colors.red),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  tooltip: 'Remove reusable',
-                  onPressed: () => _removeReusable(c),
-                ),
-              IconButton(
-                icon: Icon(
-                  expanded ? Icons.expand_less : Icons.expand_more,
-                  size: 20,
-                  color: Colors.purple.shade700,
-                ),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                onPressed: () {
-                  setState(() {
-                    if (expanded) {
-                      _expandedCombos.remove(c.id);
-                    } else {
-                      _expandedCombos.add(c.id);
-                    }
-                  });
-                },
-              ),
-            ],
-          ),
-        ),
-        if (expanded)
-          Container(
-            color: Colors.purple.shade50.withValues(alpha: 0.5),
-            child: Column(
-              children: c.tricks.map((t) => Padding(
-                padding: const EdgeInsets.fromLTRB(24, 4, 16, 4),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 20,
-                      child: Text(
-                        '${t.position}',
-                        style: const TextStyle(fontSize: 11, color: Colors.grey),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      t.abbreviation ?? '',
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        t.name ?? '',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    _DiffChip(difficulty: t.difficulty),
-                  ],
-                ),
-              )).toList(),
             ),
           ),
-      ],
+          if (expanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(15, 0, 15, 13),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: c.tricks.map((t) {
+                  final suffix = t.noTouch ? '·nt' : (!t.strongFoot ? '·wf' : '');
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(9)),
+                    child: Text(
+                      '${t.position}. ${t.abbreviation ?? ''}$suffix',
+                      style: GoogleFonts.jetBrainsMono(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.ink2),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -474,35 +555,67 @@ class _TricksScreenState extends State<TricksScreen> {
             ? '${_selectedRevs.first % 1 == 0 ? _selectedRevs.first.toInt() : _selectedRevs.first} rev'
             : 'Revs (${_selectedRevs.length})';
 
+    final comboCount = _items.whereType<ComboItem>().length;
+    final trickCount = _items.whereType<TrickItem>().length;
+
     return Scaffold(
+      backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: const Text('Tricks'),
+        titleSpacing: 22,
+        title: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Tricks'),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      '$trickCount tricks · $comboCount combos',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.muted),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+          Padding(
+            padding: EdgeInsets.only(right: authed ? 8 : 22),
+            child: _CircleIconButton(icon: Icons.refresh, onTap: _load),
+          ),
+          if (authed)
+            Padding(
+              padding: const EdgeInsets.only(right: 22),
+              child: _CircleIconButton(icon: Icons.add, gradient: true, onTap: _openSubmit),
+            ),
         ],
       ),
-      floatingActionButton: authed
-          ? FloatingActionButton.extended(
-              onPressed: _openSubmit,
-              icon: const Icon(Icons.add),
-              label: const Text('Submit Trick'),
-            )
-          : null,
       body: Column(
         children: [
           // Search bar
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+            padding: const EdgeInsets.fromLTRB(22, 12, 22, 12),
             child: TextField(
               controller: _searchCtrl,
+              style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
               decoration: InputDecoration(
-                hintText: 'Search by name or abbreviation…',
-                prefixIcon: const Icon(Icons.search),
-                border: const OutlineInputBorder(),
-                isDense: true,
+                hintText: 'Search tricks…',
+                hintStyle: GoogleFonts.plusJakartaSans(color: AppColors.faint, fontWeight: FontWeight.w600),
+                prefixIcon: const Icon(Icons.search, color: AppColors.faint),
+                filled: true,
+                fillColor: AppColors.surface,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.line2)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.line2)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.indigo, width: 1.5)),
                 suffixIcon: _search.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear),
+                        icon: const Icon(Icons.clear, color: AppColors.faint),
                         onPressed: () {
                           _searchCtrl.clear();
                           setState(() => _search = '');
@@ -516,79 +629,73 @@ class _TricksScreenState extends State<TricksScreen> {
 
           // Filters row
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+            padding: const EdgeInsets.fromLTRB(22, 0, 22, 10),
             child: Row(
               children: [
-                // Min diff
                 SizedBox(
-                  width: 72,
+                  width: 78,
                   child: TextField(
-                    decoration: const InputDecoration(
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.ink),
+                    decoration: InputDecoration(
                       labelText: 'Min diff',
-                      border: OutlineInputBorder(),
                       isDense: true,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      filled: true,
+                      fillColor: AppColors.surface,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.line2)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.line2)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.indigo, width: 1.5)),
                     ),
                     keyboardType: TextInputType.number,
-                    onChanged: (v) => setState(
-                        () => _minDiff = int.tryParse(v)),
+                    onChanged: (v) => setState(() => _minDiff = int.tryParse(v)),
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Max diff
                 SizedBox(
-                  width: 72,
+                  width: 78,
                   child: TextField(
-                    decoration: const InputDecoration(
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.ink),
+                    decoration: InputDecoration(
                       labelText: 'Max diff',
-                      border: OutlineInputBorder(),
                       isDense: true,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      filled: true,
+                      fillColor: AppColors.surface,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.line2)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.line2)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.indigo, width: 1.5)),
                     ),
                     keyboardType: TextInputType.number,
-                    onChanged: (v) => setState(
-                        () => _maxDiff = int.tryParse(v)),
+                    onChanged: (v) => setState(() => _maxDiff = int.tryParse(v)),
                   ),
                 ),
                 const SizedBox(width: 8),
                 // Revolutions filter chip
-                GestureDetector(
-                  onTap: _showRevFilter,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: _selectedRevs.isNotEmpty
-                          ? Colors.indigo.shade50
-                          : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: _selectedRevs.isNotEmpty
-                            ? Colors.indigo.shade300
-                            : Colors.grey.shade300,
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _showRevFilter,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                      decoration: BoxDecoration(
+                        color: _selectedRevs.isNotEmpty ? AppColors.indigoTint : AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _selectedRevs.isNotEmpty ? const Color(0xFFC7CCF7) : AppColors.line2),
                       ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          revsLabel,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: _selectedRevs.isNotEmpty
-                                ? Colors.indigo.shade700
-                                : Colors.grey.shade700,
-                            fontWeight: _selectedRevs.isNotEmpty
-                                ? FontWeight.w600
-                                : FontWeight.normal,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            revsLabel,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: _selectedRevs.isNotEmpty ? AppColors.indigo : AppColors.ink2,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(Icons.expand_more,
-                            size: 14,
-                            color: _selectedRevs.isNotEmpty
-                                ? Colors.indigo.shade700
-                                : Colors.grey.shade600),
-                      ],
+                          const SizedBox(width: 4),
+                          Icon(Icons.expand_more, size: 16, color: _selectedRevs.isNotEmpty ? AppColors.indigo : AppColors.muted),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -596,12 +703,27 @@ class _TricksScreenState extends State<TricksScreen> {
             ),
           ),
 
-          // Sort chips
+          // Type filter chips
           SizedBox(
-            height: 36,
+            height: 34,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+              padding: const EdgeInsets.fromLTRB(22, 0, 22, 4),
+              children: [
+                _typeChip(_TypeFilter.all, 'All'),
+                _typeChip(_TypeFilter.tricks, 'Tricks'),
+                _typeChip(_TypeFilter.combos, 'Combos'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+
+          // Sort chips
+          SizedBox(
+            height: 34,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(22, 0, 22, 4),
               children: [
                 _sortChip(_SortKey.abbreviation, 'Abbrev'),
                 _sortChip(_SortKey.name, 'Name'),
@@ -613,21 +735,23 @@ class _TricksScreenState extends State<TricksScreen> {
 
           if (_error != null)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(_error!, style: const TextStyle(color: Colors.red)),
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              child: Text(_error!, style: const TextStyle(color: AppColors.red)),
             ),
+
+          const SizedBox(height: 8),
 
           // Tricks/combos list
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(child: CircularProgressIndicator(color: AppColors.indigo))
                 : filtered.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Text('No tricks found.',
-                            style: TextStyle(color: Colors.grey)))
-                    : ListView.separated(
+                            style: GoogleFonts.plusJakartaSans(color: AppColors.muted, fontWeight: FontWeight.w600)))
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
                         itemCount: filtered.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
                         itemBuilder: (context, i) {
                           final item = filtered[i];
                           if (item is TrickItem) {
@@ -647,73 +771,79 @@ class _TricksScreenState extends State<TricksScreen> {
 
 // ── Shared widgets ─────────────────────────────────────────────────────────────
 
-class _DiffChip extends StatelessWidget {
-  final int difficulty;
-  const _DiffChip({required this.difficulty});
-
-  @override
-  Widget build(BuildContext context) {
-    Color bg;
-    Color fg;
-    if (difficulty <= 4) {
-      bg = Colors.green.shade100;
-      fg = Colors.green.shade800;
-    } else if (difficulty <= 7) {
-      bg = Colors.yellow.shade100;
-      fg = Colors.yellow.shade900;
-    } else {
-      bg = Colors.red.shade100;
-      fg = Colors.red.shade800;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
-      child: Text(
-        '$difficulty',
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: fg),
-      ),
-    );
-  }
-}
-
-class _Tag extends StatelessWidget {
+class _RevOption extends StatelessWidget {
   final String label;
-  final Color color;
-  const _Tag({required this.label, required this.color});
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _RevOption({required this.label, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(right: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(4),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.indigoTint : AppColors.surface,
+            border: Border.all(color: selected ? const Color(0xFFC7CCF7) : AppColors.line),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? AppColors.indigo : AppColors.ink,
+                  ),
+                ),
+              ),
+              Icon(
+                selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                size: 20,
+                color: selected ? AppColors.indigo : AppColors.faint,
+              ),
+            ],
+          ),
+        ),
       ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 10, color: color, fontWeight: FontWeight.bold)),
     );
   }
 }
 
-class _ComboChip extends StatelessWidget {
-  const _ComboChip();
+class _CircleIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool gradient;
+
+  const _CircleIconButton({required this.icon, required this.onTap, this.gradient = false});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.purple.shade100,
-        borderRadius: BorderRadius.circular(4),
+    return Material(
+      color: gradient ? Colors.transparent : AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(13),
+        side: gradient ? BorderSide.none : const BorderSide(color: AppColors.line2),
       ),
-      child: Text(
-        'combo',
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          color: Colors.purple.shade800,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(13),
+        onTap: onTap,
+        child: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            gradient: gradient ? AppColors.grad : null,
+            borderRadius: BorderRadius.circular(13),
+          ),
+          child: Icon(icon, size: 20, color: gradient ? Colors.white : AppColors.ink2),
         ),
       ),
     );
@@ -776,7 +906,7 @@ class _InlineSubmitFormState extends State<_InlineSubmitForm> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
-      padding: EdgeInsets.fromLTRB(24, 16, 24, 24 + bottomInset),
+      padding: EdgeInsets.fromLTRB(22, 16, 22, 24 + bottomInset),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -785,104 +915,229 @@ class _InlineSubmitFormState extends State<_InlineSubmitForm> {
             child: Container(
               width: 40,
               height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
+              decoration: BoxDecoration(color: AppColors.line2, borderRadius: BorderRadius.circular(2)),
             ),
           ),
-          const SizedBox(height: 16),
-          const Text('Submit a Trick',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
+          Text('Submit a trick', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink)),
+          const SizedBox(height: 18),
           Row(
             children: [
               SizedBox(
-                width: 120,
-                child: TextField(
+                width: 110,
+                child: _SubmitField(
                   controller: _abbrevCtrl,
-                  decoration: const InputDecoration(
-                      labelText: 'Abbreviation', hintText: 'e.g. CO'),
+                  label: 'Abbreviation',
+                  hint: 'e.g. CO',
                   textCapitalization: TextCapitalization.characters,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: TextField(
+                child: _SubmitField(
                   controller: _nameCtrl,
-                  decoration: const InputDecoration(
-                      labelText: 'Name', hintText: 'e.g. Crossover'),
+                  label: 'Name',
+                  hint: 'e.g. Crossover',
                   textCapitalization: TextCapitalization.words,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Row(children: [
-            const Text('Revs', style: TextStyle(fontSize: 12)),
-            const SizedBox(width: 8),
-            Text(_revolution.toStringAsFixed(1),
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 12)),
-            Expanded(
-              child: Slider(
-                value: _revolution,
-                min: 0.5,
-                max: 4,
-                divisions: 7,
-                onChanged: (v) => setState(() => _revolution = v),
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Text('Diff', style: TextStyle(fontSize: 12)),
-            const SizedBox(width: 8),
-            Text('$_difficulty',
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 12)),
-            Expanded(
-              child: Slider(
-                value: _difficulty.toDouble(),
-                min: 1,
-                max: 10,
-                divisions: 9,
-                onChanged: (v) => setState(() => _difficulty = v.round()),
-              ),
-            ),
-          ]),
-          Row(
-            children: [
-              Switch(
-                  value: _crossOver,
-                  onChanged: (v) => setState(() => _crossOver = v)),
-              const Text('CO', style: TextStyle(fontSize: 12)),
-              const SizedBox(width: 16),
-              Switch(
-                  value: _knee,
-                  onChanged: (v) => setState(() => _knee = v)),
-              const Text('Knee', style: TextStyle(fontSize: 12)),
-            ],
+          const SizedBox(height: 20),
+          _SubmitSlider(
+            label: 'Revolutions',
+            value: _revolution,
+            min: 0.5,
+            max: 4,
+            formatValue: (v) => v.toStringAsFixed(1),
+            onChanged: (v) => setState(() => _revolution = (v * 2).round() / 2),
           ),
+          const SizedBox(height: 18),
+          _SubmitSlider(
+            label: 'Difficulty',
+            value: _difficulty.toDouble(),
+            min: 1,
+            max: 10,
+            onChanged: (v) => setState(() => _difficulty = v.round()),
+          ),
+          const SizedBox(height: 18),
+          _SubmitToggle(label: 'Cross-over', value: _crossOver, onChanged: (v) => setState(() => _crossOver = v)),
+          const SizedBox(height: 11),
+          _SubmitToggle(label: 'Knee trick', value: _knee, onChanged: (v) => setState(() => _knee = v)),
           if (_error != null) ...[
-            const SizedBox(height: 8),
-            Text(_error!,
-                style: const TextStyle(color: Colors.red, fontSize: 12)),
+            const SizedBox(height: 12),
+            Text(_error!, style: const TextStyle(color: AppColors.red, fontSize: 12)),
           ],
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: _loading ? null : _submit,
-            child: _loading
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Submit'),
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 52,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.indigo,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              onPressed: _loading ? null : _submit,
+              child: _loading
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Submit', style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
           ),
           const SizedBox(height: 8),
-          OutlinedButton(
+          TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SubmitField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final TextCapitalization textCapitalization;
+
+  const _SubmitField({required this.controller, required this.label, required this.hint, required this.textCapitalization});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      textCapitalization: textCapitalization,
+      style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        filled: true,
+        fillColor: AppColors.chipBg,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: AppColors.line2)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: AppColors.line2)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: AppColors.indigo, width: 1.5)),
+      ),
+    );
+  }
+}
+
+class _SubmitSlider extends StatelessWidget {
+  final String label;
+  final double value;
+  final double min;
+  final double max;
+  final ValueChanged<double> onChanged;
+  final String Function(double)? formatValue;
+
+  const _SubmitSlider({
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.onChanged,
+    this.formatValue,
+  });
+
+  void _handle(Offset local, double width) {
+    if (width <= 0) return;
+    final pct = (local.dx / width).clamp(0.0, 1.0);
+    onChanged(min + pct * (max - min));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = ((value - min) / (max - min)).clamp(0.0, 1.0);
+    final valueLabel = formatValue != null ? formatValue!(value) : value.round().toString();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink)),
+            Text(valueLabel, style: GoogleFonts.jetBrainsMono(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.indigo)),
+          ],
+        ),
+        const SizedBox(height: 11),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            return GestureDetector(
+              onTapDown: (d) => _handle(d.localPosition, width),
+              onHorizontalDragUpdate: (d) => _handle(d.localPosition, width),
+              child: SizedBox(
+                height: 24,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      top: 8, left: 0, right: 0,
+                      child: Container(height: 8, decoration: BoxDecoration(color: const Color(0xFFE4E3EF), borderRadius: BorderRadius.circular(5))),
+                    ),
+                    Positioned(
+                      top: 8, left: 0,
+                      child: Container(
+                        width: (pct * width).clamp(0.0, width),
+                        height: 8,
+                        decoration: BoxDecoration(gradient: AppColors.grad, borderRadius: BorderRadius.circular(5)),
+                      ),
+                    ),
+                    Positioned(
+                      left: (pct * width - 12).clamp(0.0, width - 24 < 0 ? 0.0 : width - 24),
+                      top: 0,
+                      child: Container(
+                        width: 24, height: 24,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          border: Border.all(color: AppColors.indigo, width: 4),
+                          boxShadow: const [BoxShadow(color: Color(0x40141221), blurRadius: 8, offset: Offset(0, 3))],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _SubmitToggle extends StatelessWidget {
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _SubmitToggle({required this.label, required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => onChanged(!value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border.all(color: AppColors.line),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink)),
+              IgnorePointer(
+                child: CupertinoSwitch(value: value, activeTrackColor: AppColors.indigo, onChanged: onChanged),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -905,11 +1160,44 @@ class _EditTrickDialogState extends State<_EditTrickDialog> {
   late final _nameCtrl = TextEditingController(text: widget.trick.name);
   late double _revolution = widget.trick.revolution;
   late int _difficulty = widget.trick.difficulty;
-  late int _commonLevel = widget.trick.commonLevel;
   late bool _crossOver = widget.trick.crossOver;
   late bool _knee = widget.trick.knee;
-  bool _loading = false;
+
+  // The trick list this dialog is opened from never carries commonLevel (or
+  // createdBy/dateCreated/notes — see combo.dart), and PUT /api/tricks/{id} is
+  // a full field-by-field replace, so we fetch the real current record first
+  // rather than risk silently wiping fields we can't see from here.
+  bool _loadingDetail = true;
+  String? _detailError;
+  TrickDto? _detail;
+  int _commonLevel = 1;
+
+  bool _saving = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDetail();
+  }
+
+  Future<void> _loadDetail() async {
+    try {
+      final detail = await ApiClient.instance.getTrickById(widget.trick.id);
+      if (!mounted) return;
+      setState(() {
+        _detail = detail;
+        _commonLevel = detail.commonLevel;
+        _loadingDetail = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _detailError = e.toString().replaceFirst('Exception: ', '');
+        _loadingDetail = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -919,7 +1207,9 @@ class _EditTrickDialogState extends State<_EditTrickDialog> {
   }
 
   Future<void> _save() async {
-    setState(() { _loading = true; _error = null; });
+    final detail = _detail;
+    if (detail == null) return;
+    setState(() { _saving = true; _error = null; });
     try {
       final updated = TrickDto(
         id: widget.trick.id,
@@ -930,6 +1220,10 @@ class _EditTrickDialogState extends State<_EditTrickDialog> {
         revolution: _revolution,
         difficulty: _difficulty,
         commonLevel: _commonLevel,
+        isTransition: detail.isTransition,
+        createdBy: detail.createdBy,
+        dateCreated: detail.dateCreated,
+        notes: detail.notes,
       );
       await ApiClient.instance.updateTrick(widget.trick.id, updated);
       widget.onSaved();
@@ -937,92 +1231,114 @@ class _EditTrickDialogState extends State<_EditTrickDialog> {
     } catch (e) {
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => _saving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Edit Trick'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _abbrevCtrl,
-              decoration: const InputDecoration(labelText: 'Abbreviation'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _nameCtrl,
-              decoration: const InputDecoration(labelText: 'Name'),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                    child: _NumField(
-                        label: 'Revs',
-                        value: _revolution,
-                        min: 0.5,
-                        max: 10,
-                        onChanged: (v) => setState(() => _revolution = v))),
-                const SizedBox(width: 8),
-                Expanded(
-                    child: _NumField(
-                        label: 'Difficulty',
-                        value: _difficulty.toDouble(),
-                        min: 1,
-                        max: 10,
-                        onChanged: (v) => setState(() => _difficulty = v.round()))),
-                const SizedBox(width: 8),
-                Expanded(
-                    child: _NumField(
-                        label: 'Level',
-                        value: _commonLevel.toDouble(),
-                        min: 1,
-                        max: 10,
-                        onChanged: (v) => setState(() => _commonLevel = v.round()))),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Checkbox(
-                    value: _crossOver,
-                    onChanged: (v) =>
-                        setState(() => _crossOver = v ?? false)),
-                const Text('CrossOver'),
-                const SizedBox(width: 16),
-                Checkbox(
-                    value: _knee,
-                    onChanged: (v) =>
-                        setState(() => _knee = v ?? false)),
-                const Text('Knee'),
-              ],
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              Text(_error!, style: const TextStyle(color: Colors.red)),
-            ],
-          ],
-        ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Text('Edit trick', style: GoogleFonts.plusJakartaSans(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.ink)),
+      content: SizedBox(
+        width: 320,
+        child: _loadingDetail
+            ? const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: CircularProgressIndicator(color: AppColors.indigo)),
+              )
+            : _detailError != null
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(_detailError!, style: const TextStyle(color: AppColors.red)),
+                  )
+                : SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _EditDialogField(label: 'Abbreviation', controller: _abbrevCtrl),
+                        const SizedBox(height: 10),
+                        _EditDialogField(label: 'Name', controller: _nameCtrl),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                                child: _NumField(
+                                    label: 'Revs',
+                                    value: _revolution,
+                                    min: 0.5,
+                                    max: 10,
+                                    onChanged: (v) => setState(() => _revolution = v))),
+                            const SizedBox(width: 8),
+                            Expanded(
+                                child: _NumField(
+                                    label: 'Difficulty',
+                                    value: _difficulty.toDouble(),
+                                    min: 1,
+                                    max: 10,
+                                    onChanged: (v) => setState(() => _difficulty = v.round()))),
+                            const SizedBox(width: 8),
+                            Expanded(
+                                child: _NumField(
+                                    label: 'Level',
+                                    value: _commonLevel.toDouble(),
+                                    min: 1,
+                                    max: 10,
+                                    onChanged: (v) => setState(() => _commonLevel = v.round()))),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        _SubmitToggle(label: 'Cross-over', value: _crossOver, onChanged: (v) => setState(() => _crossOver = v)),
+                        const SizedBox(height: 8),
+                        _SubmitToggle(label: 'Knee trick', value: _knee, onChanged: (v) => setState(() => _knee = v)),
+                        if (_error != null) ...[
+                          const SizedBox(height: 10),
+                          Text(_error!, style: const TextStyle(color: AppColors.red)),
+                        ],
+                      ],
+                    ),
+                  ),
       ),
       actions: [
         TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel')),
         FilledButton(
-          onPressed: _loading ? null : _save,
-          child: _loading
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.indigo,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          onPressed: (_saving || _detail == null) ? null : _save,
+          child: _saving
               ? const SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('Save'),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Text('Save', style: TextStyle(fontWeight: FontWeight.w800)),
         ),
       ],
+    );
+  }
+}
+
+class _EditDialogField extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  const _EditDialogField({required this.label, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: AppColors.chipBg,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: AppColors.line2)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: AppColors.line2)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: AppColors.indigo, width: 1.5)),
+      ),
     );
   }
 }
@@ -1046,7 +1362,16 @@ class _NumField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: TextEditingController(text: value.toString()),
-      decoration: InputDecoration(labelText: label),
+      style: GoogleFonts.plusJakartaSans(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.ink),
+      decoration: InputDecoration(
+        labelText: label,
+        isDense: true,
+        filled: true,
+        fillColor: AppColors.chipBg,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(11), borderSide: const BorderSide(color: AppColors.line2)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(11), borderSide: const BorderSide(color: AppColors.line2)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(11), borderSide: const BorderSide(color: AppColors.indigo, width: 1.5)),
+      ),
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       onChanged: (v) {
         final parsed = double.tryParse(v);

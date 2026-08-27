@@ -1,5 +1,6 @@
 using FreestyleCombo.API.Features.Tricks.CreateTrick;
 using FreestyleCombo.API.Features.Tricks.DeleteTrick;
+using FreestyleCombo.API.Features.Tricks.GetTrickById;
 using FreestyleCombo.API.Features.Tricks.GetTricks;
 using FreestyleCombo.API.Features.Tricks.UpdateTrick;
 using MediatR;
@@ -25,6 +26,16 @@ public class TricksController : ControllerBase
         CancellationToken ct)
     {
         var result = await _mediator.Send(new GetTricksQuery(crossOver, knee, maxDifficulty), ct);
+        return Ok(result);
+    }
+
+    [HttpGet("{id:guid}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(TrickDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetTrickById(Guid id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetTrickByIdQuery(id), ct);
         return Ok(result);
     }
 

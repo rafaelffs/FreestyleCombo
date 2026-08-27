@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
+import '../../theme/app_colors.dart';
+import 'auth_chrome.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -67,106 +70,71 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create account'),
-        leading: context.canPop()
-            ? null
-            : IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => context.go('/combos'),
-              ),
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text('Get started',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      Text('Create your FreestyleCombo account',
-                          style: TextStyle(color: Colors.grey[600])),
-                      const SizedBox(height: 24),
-                      TextFormField(
-                        controller: _emailCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Email',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                        autocorrect: false,
-                        validator: (v) =>
-                            v == null || v.isEmpty ? 'Required' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _userNameCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Username',
-                          border: OutlineInputBorder(),
-                        ),
-                        autocorrect: false,
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Required';
-                          if (v.length < 3) return 'At least 3 characters';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _passwordCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Password',
-                          border: OutlineInputBorder(),
-                        ),
-                        obscureText: true,
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Required';
-                          if (v.length < 6) return 'At least 6 characters';
-                          return null;
-                        },
-                      ),
-                      if (_error != null) ...[
-                        const SizedBox(height: 12),
-                        Text(_error!,
-                            style: TextStyle(
-                                color: Theme.of(context).colorScheme.error)),
+    return AuthScaffold(
+      headline: 'Create your\nfree ',
+      headlineAccent: 'account.',
+      subtitle: 'Save your combos, rate others, and track your progress as you level up.',
+      sheet: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AuthField(
+              controller: _emailCtrl,
+              label: 'Email',
+              keyboardType: TextInputType.emailAddress,
+              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+            ),
+            const SizedBox(height: 11),
+            AuthField(
+              controller: _userNameCtrl,
+              label: 'Username',
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Required';
+                if (v.length < 3) return 'At least 3 characters';
+                return null;
+              },
+            ),
+            const SizedBox(height: 11),
+            AuthField(
+              controller: _passwordCtrl,
+              label: 'Password',
+              obscure: true,
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Required';
+                if (v.length < 6) return 'At least 6 characters';
+                return null;
+              },
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(_error!, style: const TextStyle(color: AppColors.red, fontSize: 13)),
+            ],
+            const SizedBox(height: 18),
+            AuthPrimaryButton(
+              label: 'Create account',
+              loading: _loading,
+              onPressed: _submit,
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 14),
+              child: Center(
+                child: GestureDetector(
+                  onTap: () => context.go('/login'),
+                  child: Text.rich(
+                    TextSpan(
+                      style: GoogleFonts.plusJakartaSans(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.muted),
+                      children: [
+                        const TextSpan(text: 'Already have an account? '),
+                        TextSpan(text: 'Sign in', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: AppColors.indigo)),
                       ],
-                      const SizedBox(height: 24),
-                      FilledButton(
-                        onPressed: _loading ? null : _submit,
-                        child: _loading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Text('Create account'),
-                      ),
-                      const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: () => context.go('/login'),
-                        child: const Text('Already have an account? Sign in'),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

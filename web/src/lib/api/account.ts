@@ -28,6 +28,7 @@ export const accountApi = {
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
     api.put('/account/me/password', data),
   getPublicProfile: (id: string) => api.get<PublicProfileDto>(`/account/${id}`),
+  deleteAccount: () => api.delete('/account/me'),
 }
 
 export const adminApi = {

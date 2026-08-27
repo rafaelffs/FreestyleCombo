@@ -43,4 +43,13 @@ public class AccountController(IMediator mediator) : ControllerBase
         await mediator.Send(command, ct);
         return NoContent();
     }
+
+    [HttpDelete("me")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DeleteAccount(CancellationToken ct)
+    {
+        await mediator.Send(new DeleteAccountCommand(), ct);
+        return NoContent();
+    }
 }

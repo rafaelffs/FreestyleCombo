@@ -7,6 +7,12 @@ class TrickDto {
   final double revolution;
   final int difficulty;
   final int commonLevel;
+  final bool isTransition;
+  // Round-tripped but not edited by any mobile UI — kept so PUT /api/tricks/{id}
+  // (a full field-by-field replace) doesn't silently wipe them on every save.
+  final String? createdBy;
+  final String? dateCreated;
+  final String? notes;
 
   const TrickDto({
     required this.id,
@@ -17,6 +23,10 @@ class TrickDto {
     required this.revolution,
     required this.difficulty,
     required this.commonLevel,
+    this.isTransition = false,
+    this.createdBy,
+    this.dateCreated,
+    this.notes,
   });
 
   factory TrickDto.fromJson(Map<String, dynamic> j) => TrickDto(
@@ -28,6 +38,10 @@ class TrickDto {
         revolution: (j['revolution'] as num).toDouble(),
         difficulty: j['difficulty'] as int,
         commonLevel: j['commonLevel'] as int,
+        isTransition: j['isTransition'] as bool? ?? false,
+        createdBy: j['createdBy'] as String?,
+        dateCreated: j['dateCreated'] as String?,
+        notes: j['notes'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -38,6 +52,9 @@ class TrickDto {
         'revolution': revolution,
         'difficulty': difficulty,
         'commonLevel': commonLevel,
+        'createdBy': createdBy,
+        'dateCreated': dateCreated,
+        'notes': notes,
       };
 }
 
@@ -57,7 +74,10 @@ class TrickItem extends TrickListItem {
   final bool knee;
   final double revolution;
   final int difficulty;
-  final int commonLevel;
+  // GET /api/tricks (the unified trick+combo list) never includes commonLevel —
+  // it's an internal weighting knob, not shown in any trick list UI. Null here
+  // means "unknown", not zero — do not send a fabricated value back to the API.
+  final int? commonLevel;
   final bool isTransition;
 
   TrickItem({
@@ -68,7 +88,7 @@ class TrickItem extends TrickListItem {
     required this.knee,
     required this.revolution,
     required this.difficulty,
-    required this.commonLevel,
+    this.commonLevel,
     this.isTransition = false,
   });
 
@@ -80,7 +100,7 @@ class TrickItem extends TrickListItem {
         knee: j['knee'] as bool,
         revolution: (j['revolution'] as num).toDouble(),
         difficulty: j['difficulty'] as int,
-        commonLevel: j['commonLevel'] as int,
+        commonLevel: j['commonLevel'] as int?,
         isTransition: j['isTransition'] as bool? ?? false,
       );
 }
