@@ -70,34 +70,23 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
         if (pool.Count == 0)
             throw new InvalidOperationException("No tricks match your preferences.");
 
-        // Step 2 — Split into sub-pools
+        // Step 2 — Split slot count by strong/weak foot percentage. Which foot
+        // performs a trick is independent of whether the trick itself is a
+        // CrossOver move (an intrinsic Trick property) — both slot kinds draw
+        // from the same pool.
         var warnings = new List<string>();
-        var strongPool = pool.Where(t => !t.CrossOver).ToList();
-        var weakPool = pool.Where(t => t.CrossOver).ToList();
-
         var strongSlots = (int)Math.Round(comboLength * strongFootPct / 100.0);
         var weakSlots = comboLength - strongSlots;
-
-        if (strongPool.Count == 0)
-        {
-            warnings.Add("No strong-foot tricks available; using weak-foot pool for all slots.");
-            strongPool = weakPool;
-        }
-        if (weakPool.Count == 0)
-        {
-            warnings.Add("No weak-foot tricks available; using strong-foot pool for all slots.");
-            weakPool = strongPool;
-        }
 
         // Step 3 — Weighted random selection
         var rng = new Random();
         var slots = new List<(Trick Trick, bool StrongFoot)>();
 
         for (int i = 0; i < strongSlots; i++)
-            slots.Add((WeightedPick(strongPool, rng), true));
+            slots.Add((WeightedPick(pool, rng), true));
 
         for (int i = 0; i < weakSlots; i++)
-            slots.Add((WeightedPick(weakPool, rng), false));
+            slots.Add((WeightedPick(pool, rng), false));
 
         // Step 4 — Sequence (constraint-aware ordering + transition trick insertion)
         slots = ComboSequencer.Sequence(slots, rng, transitionTrick);
