@@ -5,6 +5,7 @@ import '../../core/api/api_client.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/combo_card.dart' show TrickNameDisplay;
 import '../../widgets/difficulty_chip.dart';
 
 enum _SortKey { abbreviation, name, revolution, difficulty }
@@ -361,6 +362,27 @@ class _TricksScreenState extends State<TricksScreen> {
     );
   }
 
+  Widget _nameFormatChip(String label, bool active) {
+    return GestureDetector(
+      onTap: () => setState(() => TrickNameDisplay.showFullName = label == 'Full name'),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: active ? AppColors.indigo : AppColors.chipBg,
+          borderRadius: BorderRadius.circular(11),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: active ? Colors.white : AppColors.ink2,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTrickTile(TrickItem t, bool admin) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -375,11 +397,15 @@ class _TricksScreenState extends State<TricksScreen> {
           Container(
             width: 40,
             height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
             alignment: Alignment.center,
             decoration: BoxDecoration(color: AppColors.chipBg, borderRadius: BorderRadius.circular(12)),
             child: Text(
               t.abbreviation,
-              style: GoogleFonts.jetBrainsMono(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.indigo),
+              style: GoogleFonts.jetBrainsMono(fontSize: 8.5, height: 1.15, fontWeight: FontWeight.w800, color: AppColors.indigo),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 13),
@@ -388,7 +414,7 @@ class _TricksScreenState extends State<TricksScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  t.name,
+                  TrickNameDisplay.label(isTransition: t.isTransition, name: t.name, abbreviation: t.abbreviation),
                   style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -704,15 +730,26 @@ class _TricksScreenState extends State<TricksScreen> {
           ),
 
           // Type filter chips
-          SizedBox(
-            height: 34,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(22, 0, 22, 4),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 0, 22, 4),
+            child: Row(
               children: [
-                _typeChip(_TypeFilter.all, 'All'),
-                _typeChip(_TypeFilter.tricks, 'Tricks'),
-                _typeChip(_TypeFilter.combos, 'Combos'),
+                Expanded(
+                  child: SizedBox(
+                    height: 34,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        _typeChip(_TypeFilter.all, 'All'),
+                        _typeChip(_TypeFilter.tricks, 'Tricks'),
+                        _typeChip(_TypeFilter.combos, 'Combos'),
+                      ],
+                    ),
+                  ),
+                ),
+                _nameFormatChip('Full name', TrickNameDisplay.showFullName),
+                const SizedBox(width: 6),
+                _nameFormatChip('Abbr.', !TrickNameDisplay.showFullName),
               ],
             ),
           ),

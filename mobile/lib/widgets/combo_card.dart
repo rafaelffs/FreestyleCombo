@@ -7,6 +7,23 @@ import '../core/models/combo.dart';
 import '../theme/app_colors.dart';
 import 'rate_combo_dialog.dart';
 
+/// Whether combo trick sequences (card titles, chips) show full trick names
+/// instead of abbreviations. A plain static flag, matching this app's
+/// existing manual-singleton pattern — toggled from the combos list header,
+/// read fresh on every ComboCard build.
+class TrickNameDisplay {
+  TrickNameDisplay._();
+  static bool showFullName = false;
+
+  /// A transition trick (e.g. "Combo") is a short connector label, not a
+  /// move worth expanding — it always shows its abbreviation, regardless of
+  /// the full-name/abbreviation toggle.
+  static String label({required bool isTransition, required String? name, required String? abbreviation}) {
+    if (isTransition) return abbreviation ?? name ?? '?';
+    return (showFullName ? name : abbreviation) ?? '?';
+  }
+}
+
 /// Formats the trick list as "(ABBR)(nt) (ABBR) (SubCombo)…" — each trick
 /// wrapped in parentheses, with "(nt)" appended right after any no-touch
 /// trick. Returns null when there's nothing to format (caller falls back to
@@ -15,7 +32,9 @@ String? _formatSequence(List<ComboTrickDto>? tricks) {
   if (tricks == null || tricks.isEmpty) return null;
   final buffer = StringBuffer();
   for (final t in tricks) {
-    final label = t.type == 'combo' ? (t.subComboName ?? 'Combo') : (t.abbreviation ?? '?');
+    final label = t.type == 'combo'
+        ? (t.subComboName ?? 'Combo')
+        : TrickNameDisplay.label(isTransition: t.isTransition, name: t.name, abbreviation: t.abbreviation);
     if (buffer.isNotEmpty) buffer.write(' ');
     buffer.write('($label)');
     if (t.noTouch) buffer.write('(nt)');
@@ -533,6 +552,9 @@ class _TrickChips extends StatelessWidget {
   }
 
   Widget _buildChip(ComboTrickDto t) {
+    // Always abbreviated — this dense per-trick chip row stays compact
+    // regardless of the full-name/abbreviation toggle, which only affects
+    // the card's headline sequence (_formatSequence).
     final label = t.type == 'combo' ? (t.subComboName ?? 'Combo') : (t.abbreviation ?? '?');
     final suffix = t.noTouch ? '·nt' : (!t.strongFoot ? '·wf' : '');
     final isNoTouch = t.noTouch;

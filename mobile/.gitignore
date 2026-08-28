@@ -43,3 +43,16 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# fastlane / code signing — never commit API keys, certs, or private keys.
+# cert/sigh default to writing these at the working directory root, not
+# under fastlane/, so these patterns are unscoped (repo-root relative).
+fastlane/report.xml
+fastlane/.env*
+*.p8
+*.p12
+*.cer
+*.certSigningRequest
+*.mobileprovision
+*.ipa
+*.dSYM.zip

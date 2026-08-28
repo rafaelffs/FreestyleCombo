@@ -5,6 +5,7 @@ import '../../core/api/api_client.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/combo_card.dart' show TrickNameDisplay;
 import '../../widgets/difficulty_chip.dart';
 import '../../widgets/rate_combo_dialog.dart';
 
@@ -305,7 +306,9 @@ String? _formatSequence(List<ComboTrickDto>? tricks) {
   if (tricks == null || tricks.isEmpty) return null;
   final buffer = StringBuffer();
   for (final t in tricks) {
-    final label = t.type == 'combo' ? (t.subComboName ?? 'Combo') : (t.abbreviation ?? '?');
+    final label = t.type == 'combo'
+        ? (t.subComboName ?? 'Combo')
+        : TrickNameDisplay.label(isTransition: t.isTransition, name: t.name, abbreviation: t.abbreviation);
     if (buffer.isNotEmpty) buffer.write(' ');
     buffer.write('($label)');
     if (t.noTouch) buffer.write('(nt)');

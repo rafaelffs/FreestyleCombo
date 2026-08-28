@@ -157,6 +157,27 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
         ],
       );
 
+  Widget _nameFormatChip(String label, bool active) {
+    return GestureDetector(
+      onTap: () => setState(() => TrickNameDisplay.showFullName = label == 'Full name'),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: active ? AppColors.indigo : AppColors.chipBg,
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: active ? Colors.white : AppColors.ink2,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _listView(List<ComboDto> items, bool showActions, VoidCallback onRefresh) =>
       RefreshIndicator(
         color: AppColors.indigo,
@@ -236,11 +257,22 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(22, 4, 22, 14),
+              padding: const EdgeInsets.fromLTRB(22, 4, 22, 8),
               child: _Segmented(
                 labels: segments,
                 selectedIndex: _tabController.index,
                 onSelected: (i) => _tabController.animateTo(i),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 0, 22, 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  _nameFormatChip('Full name', TrickNameDisplay.showFullName),
+                  const SizedBox(width: 6),
+                  _nameFormatChip('Abbr.', !TrickNameDisplay.showFullName),
+                ],
               ),
             ),
             Expanded(

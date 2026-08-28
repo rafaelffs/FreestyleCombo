@@ -89,6 +89,7 @@ builder.Services.AddScoped<IComboEnhancerService, ComboEnhancerService>();
 builder.Services.AddScoped<ComboRatingAggregator>();
 builder.Services.AddScoped<FeedbackLearningService>();
 builder.Services.AddScoped<WeightAdjustmentJob>();
+builder.Services.AddHttpClient<IEmailService, ResendEmailService>();
 
 // Hangfire
 var connStr = builder.Configuration.GetConnectionString("DefaultConnection")!;

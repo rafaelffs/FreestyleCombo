@@ -5,6 +5,7 @@ import { AdminRoute } from '@/components/layout/AdminRoute'
 import { LandingPage } from '@/features/home/LandingPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
+import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage'
 import { CombosPage } from '@/features/combos/CombosPage'
 import { CreateComboPage } from '@/features/combos/CreateComboPage'
 import { ComboDetailPage } from '@/features/combos/ComboDetailPage'
@@ -26,6 +27,7 @@ export default function App() {
           {/* Public */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/combos" element={<CombosPage />} />
           <Route path="/combos/:id" element={<ComboDetailPage />} />
           <Route path="/tricks" element={<TricksPage />} />

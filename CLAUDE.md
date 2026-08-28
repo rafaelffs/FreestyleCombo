@@ -99,6 +99,13 @@ All combo DTOs (`GenerateComboResponse`, `PublicComboDto`, `MyComboDto`, `ComboD
 ### Login with username or email
 `LoginCommand` field renamed `Email` → `Credential`. Handler tries `FindByEmailAsync` first, then `FindByNameAsync`. Validator uses `NotEmpty` + `MaximumLength(256)` only (no `EmailAddress()` rule).
 
+### Forgot / reset password
+`AppUser` has `PasswordResetCodeHash` (string?) and `PasswordResetCodeExpiresAt` (DateTime?) — a short-lived, SHA-256-hashed 6-digit numeric code, not an ASP.NET Identity token (chosen so the same flow works on mobile without deep-linking).
+- `POST /api/auth/forgot-password { email }` — always 204, never reveals whether the email exists. If a user matches, generates a 6-digit code, hashes it, sets a 15-minute expiry, and emails it via `IEmailService`.
+- `POST /api/auth/reset-password { email, code, newPassword }` — validates the code (hash match + not expired), then `RemovePasswordAsync` + `AddPasswordAsync`, then clears the code fields. 400 on any mismatch/expiry (`InvalidOperationException` → error middleware).
+- `IEmailService` / `ResendEmailService` live in `FreestyleCombo.AI/Services/` (same pattern as `IComboEnhancerService`) — POSTs to the Resend REST API directly (no SDK dependency). If `Resend:ApiKey` isn't configured, it logs a warning and no-ops instead of throwing — forgot-password still returns 204, the code is just never delivered. `Resend:FromAddress` defaults to `FreestyleCombo <onboarding@resend.dev>`.
+- Web: `/forgot-password` (`ForgotPasswordPage`, two-step: request code → enter code + new password), linked from `LoginPage`. Mobile: `/forgot-password` (`ForgotPasswordScreen`, same two-step flow via `AuthScaffold`), linked from `LoginScreen`.
+
 ### Error format
 API middleware always returns `{ "error": "..." }`. Web uses `extractError(err, fallback)` helper from `lib/api.ts`. Mobile `_extractMessage` checks `data['error']` first, then `data['message']`, then `data['title']`.
 
@@ -459,7 +466,7 @@ cd api
 dotnet test
 ```
 
-196 unit tests covering: combo generation/build/preview, combo visibility and deletion permissions, combo query/update handlers, pending combo review mapping, favourites/completions, auth login/register flows, account/admin handler flows, trick CRUD handlers, preference CRUD handlers, trick submission review flows, query handlers (tricks/preferences/ratings/pending approvals/submissions), revolution boundary validation (trick create/update/submission, preference and combo override allowed revolutions, preview override validation, rating score bounds), weight adjustment job/aggregator behavior, reusable combo repository methods, GetTricks unified response, SetReusable endpoint, BuildCombo/UpdateCombo sub-combo slot support, DeleteCombo sub-combo guard, and reusable combo visibility guard (cannot be set non-public).
+199 unit tests covering: combo generation/build/preview, combo visibility and deletion permissions, combo query/update handlers, pending combo review mapping, favourites/completions, auth login/register flows, account/admin handler flows, trick CRUD handlers, preference CRUD handlers, trick submission review flows, query handlers (tricks/preferences/ratings/pending approvals/submissions), revolution boundary validation (trick create/update/submission, preference and combo override allowed revolutions, preview override validation, rating score bounds), weight adjustment job/aggregator behavior, reusable combo repository methods, GetTricks unified response, SetReusable endpoint, BuildCombo/UpdateCombo sub-combo slot support, DeleteCombo sub-combo guard, and reusable combo visibility guard (cannot be set non-public).
 
 ---
 
@@ -472,6 +479,8 @@ dotnet test
 | `JwtSettings__Issuer` | docker-compose / appsettings | `FreestyleComboAPI` |
 | `JwtSettings__Audience` | docker-compose / appsettings | `FreestyleComboApp` |
 | `Anthropic__ApiKey` | docker-compose / appsettings | Claude API key |
+| `Resend__ApiKey` | docker-compose / appsettings | Resend API key for forgot-password emails — omit to no-op (logs a warning) instead of sending |
+| `Resend__FromAddress` | docker-compose / appsettings | Optional — defaults to `FreestyleCombo <onboarding@resend.dev>` |
 
 ---
 

@@ -1,5 +1,7 @@
+using FreestyleCombo.API.Features.Auth.ForgotPassword;
 using FreestyleCombo.API.Features.Auth.Login;
 using FreestyleCombo.API.Features.Auth.Register;
+using FreestyleCombo.API.Features.Auth.ResetPassword;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -27,5 +29,21 @@ public class AuthController : ControllerBase
     {
         var result = await _mediator.Send(command, ct);
         return Ok(result);
+    }
+
+    [HttpPost("forgot-password")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordCommand command, CancellationToken ct)
+    {
+        await _mediator.Send(command, ct);
+        return NoContent();
+    }
+
+    [HttpPost("reset-password")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordCommand command, CancellationToken ct)
+    {
+        await _mediator.Send(command, ct);
+        return NoContent();
     }
 }

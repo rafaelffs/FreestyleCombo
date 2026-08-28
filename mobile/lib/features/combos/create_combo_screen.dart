@@ -7,6 +7,7 @@ import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
 import '../../core/models/user_preference.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/combo_card.dart' show TrickNameDisplay;
 import '../../widgets/difficulty_chip.dart';
 import 'unsaved_combo_guard.dart';
 
@@ -98,6 +99,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
 
   // ── Shared name field ──────────────────────────────────────────────────────
   final _nameCtrl = TextEditingController();
+  final _nameFocus = FocusNode();
 
   // ── Generate state ─────────────────────────────────────────────────────────
   List<UserPreference> _savedPrefs = [];
@@ -130,6 +132,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   void dispose() {
     UnsavedComboGuard.clear();
     _nameCtrl.dispose();
+    _nameFocus.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -227,9 +230,16 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     // No-touch is valid only if the *preceding* trick is a CrossOver move
     // (matches the server's rule) — the trick being added has no say in it.
     final allowNoTouch = _slots.isNotEmpty && _slots.last.allowsNoTouchOnNext;
+    final infoParts = [
+      '${trick.revolution} rev${trick.revolution == 1 ? '' : 's'}',
+      'difficulty ${trick.difficulty}',
+      if (trick.commonLevel != null) 'common ${trick.commonLevel}',
+      if (trick.crossOver) 'crossover',
+    ];
     final choice = await _showAddOptionsSheet(
       title: trick.name,
       allowNoTouch: allowNoTouch,
+      info: infoParts.join(' · '),
     );
     if (choice == null) return;
     setState(() {
@@ -264,6 +274,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   Future<_AddOptionsChoice?> _showAddOptionsSheet({
     required String title,
     required bool allowNoTouch,
+    String? info,
   }) {
     var strongFoot = true;
     var noTouch = false;
@@ -297,6 +308,17 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                     fontWeight: FontWeight.w800,
                     color: AppColors.ink),
               ),
+              if (info != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  info,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.muted),
+                ),
+              ],
               const SizedBox(height: 22),
               _FieldLabel('Foot'),
               const SizedBox(height: 10),
@@ -380,8 +402,42 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     }
   }
 
+  Future<bool> _confirmSaveWithoutName() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Save without a name?',
+            style: GoogleFonts.plusJakartaSans(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.ink)),
+        content: Text(
+          "You haven't given this combo a name. Save it anyway?",
+          style: GoogleFonts.plusJakartaSans(color: AppColors.ink2, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Add a name'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Save anyway', style: GoogleFonts.plusJakartaSans(color: AppColors.indigo, fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
+  }
+
   Future<void> _save() async {
     if (_slots.isEmpty) return;
+
+    if (_nameCtrl.text.trim().isEmpty) {
+      final proceed = await _confirmSaveWithoutName();
+      if (!proceed) {
+        if (mounted) FocusScope.of(context).requestFocus(_nameFocus);
+        return;
+      }
+    }
 
     if (!AuthService.instance.isAuthenticated) {
       final name = _nameCtrl.text.trim();
@@ -706,7 +762,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                 _FieldLabel('Combo name'),
                 const SizedBox(height: 8),
                 _AppTextField(
-                    controller: _nameCtrl, hint: 'e.g. My signature combo'),
+                    controller: _nameCtrl, hint: 'e.g. My signature combo', focusNode: _nameFocus),
                 if (authed) ...[
                   const SizedBox(height: 22),
                   _FieldLabel('Base preset'),
@@ -847,6 +903,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
           child: _AppTextField(
             controller: _nameCtrl,
             hint: 'Combo name (optional)',
+            focusNode: _nameFocus,
           ),
         ),
         if (_previewWarnings.isNotEmpty)
@@ -884,7 +941,18 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
             onSelected: (i) => setState(() => _buildTab = i),
           ),
         ),
-        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 10, 22, 0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              _nameFormatChip('Full name', TrickNameDisplay.showFullName),
+              const SizedBox(width: 6),
+              _nameFormatChip('Abbr.', !TrickNameDisplay.showFullName),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
         Expanded(
           child: IndexedStack(
             index: _buildTab,
@@ -979,6 +1047,27 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _nameFormatChip(String label, bool active) {
+    return GestureDetector(
+      onTap: () => setState(() => TrickNameDisplay.showFullName = label == 'Full name'),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: active ? AppColors.indigo : AppColors.chipBg,
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: active ? Colors.white : AppColors.ink2,
+          ),
+        ),
       ),
     );
   }
@@ -1111,6 +1200,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                   key: ObjectKey(s),
                   index: i,
                   slot: s,
+                  showAbbrev: !TrickNameDisplay.showFullName,
                   noTouchAllowed: noTouchAllowed,
                   onRemove: () => _removeSlot(i),
                   onToggleStrongFoot: (v) => setState(() => s.strongFoot = v),
@@ -1320,6 +1410,7 @@ class _SubComboSlotTile extends StatelessWidget {
 class _SlotTile extends StatelessWidget {
   final int index;
   final _SlotItem slot;
+  final bool showAbbrev;
   final bool noTouchAllowed;
   final VoidCallback onRemove;
   final ValueChanged<bool> onToggleStrongFoot;
@@ -1329,6 +1420,7 @@ class _SlotTile extends StatelessWidget {
     super.key,
     required this.index,
     required this.slot,
+    required this.showAbbrev,
     required this.noTouchAllowed,
     required this.onRemove,
     required this.onToggleStrongFoot,
@@ -1370,26 +1462,33 @@ class _SlotTile extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              slot.trickName ?? '',
+              slot.isTransition
+                  ? (slot.abbreviation ?? '')
+                  : ((showAbbrev ? slot.abbreviation : slot.trickName) ?? ''),
               style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppColors.ink),
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          _SlotFlagToggle(
-            label: 'SF',
-            active: slot.strongFoot,
-            onTap: () => onToggleStrongFoot(!slot.strongFoot),
-          ),
-          const SizedBox(width: 6),
-          _SlotFlagToggle(
-            label: 'NT',
-            active: slot.noTouch,
-            enabled: noTouchAllowed,
-            onTap: noTouchAllowed ? () => onToggleNoTouch(!slot.noTouch) : null,
-          ),
+          // A transition trick (e.g. "Combo") is a connector, not a move —
+          // strong/weak foot and no-touch don't apply to it.
+          if (!slot.isTransition) ...[
+            _SlotFlagToggle(
+              label: 'SF',
+              active: slot.strongFoot,
+              onTap: () => onToggleStrongFoot(!slot.strongFoot),
+            ),
+            const SizedBox(width: 6),
+            _SlotFlagToggle(
+              label: 'NT',
+              active: slot.noTouch,
+              enabled: noTouchAllowed,
+              onTap: noTouchAllowed ? () => onToggleNoTouch(!slot.noTouch) : null,
+            ),
+          ],
           IconButton(
             icon: const Icon(Icons.close, size: 18, color: AppColors.muted),
             padding: EdgeInsets.zero,
@@ -1465,6 +1564,7 @@ class _PickerTrickRow extends StatelessWidget {
                 Container(
                   width: 40,
                   height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                       color: AppColors.chipBg,
@@ -1472,9 +1572,13 @@ class _PickerTrickRow extends StatelessWidget {
                   child: Text(
                     item.abbreviation,
                     style: GoogleFonts.jetBrainsMono(
-                        fontSize: 12,
+                        fontSize: 8.5,
+                        height: 1.15,
                         fontWeight: FontWeight.w800,
                         color: AppColors.indigo),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const SizedBox(width: 13),
@@ -1483,7 +1587,7 @@ class _PickerTrickRow extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        item.name,
+                        TrickNameDisplay.label(isTransition: item.isTransition, name: item.name, abbreviation: item.abbreviation),
                         style: GoogleFonts.plusJakartaSans(
                             fontSize: 14.5,
                             fontWeight: FontWeight.w700,
@@ -1648,7 +1752,8 @@ class _FieldLabel extends StatelessWidget {
 class _AppTextField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
-  const _AppTextField({required this.controller, required this.hint});
+  final FocusNode? focusNode;
+  const _AppTextField({required this.controller, required this.hint, this.focusNode});
 
   @override
   Widget build(BuildContext context) {
@@ -1664,6 +1769,7 @@ class _AppTextField extends StatelessWidget {
       ),
       child: TextField(
         controller: controller,
+        focusNode: focusNode,
         style: GoogleFonts.plusJakartaSans(
             fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
         decoration: InputDecoration(

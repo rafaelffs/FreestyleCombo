@@ -85,6 +85,20 @@ class _LoginScreenState extends State<LoginScreen> {
               obscure: true,
               validator: (v) => v == null || v.isEmpty ? 'Required' : null,
             ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: GestureDetector(
+                  onTap: () => context.push('/forgot-password'),
+                  child: Text(
+                    'Forgot password?',
+                    style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.indigo),
+                  ),
+                ),
+              ),
+            ),
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(_error!, style: const TextStyle(color: AppColors.red, fontSize: 13)),

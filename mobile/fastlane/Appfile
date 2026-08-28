@@ -1,0 +1,2 @@
+app_identifier("com.rafaelffs.freestyleCombo")
+apple_id(ENV["FASTLANE_APPLE_ID"] || "ffs.rafael@hotmail.com")

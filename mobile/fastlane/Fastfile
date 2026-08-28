@@ -1,0 +1,207 @@
+require "shellwords"
+
+default_platform(:ios)
+
+platform :ios do
+  private_lane :auth do
+    app_store_connect_api_key(
+      key_id: ENV.fetch("ASC_KEY_ID"),
+      issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+      key_filepath: ENV.fetch("ASC_KEY_FILEPATH"),
+      duration: 1200,
+      in_house: false
+    )
+  end
+
+  desc "List uploaded TestFlight builds and their processing state"
+  lane :check_builds do
+    auth
+    app = Spaceship::ConnectAPI::App.find("com.rafaelffs.freestyleCombo")
+    builds = Spaceship::ConnectAPI::Build.all(app_id: app.id, sort: "-uploadedDate")
+    if builds.empty?
+      UI.important("No builds found via API at all.")
+    else
+      builds.each do |b|
+        compliance = b.missing_export_compliance? rescue "unknown"
+        UI.message("Build #{b.version} (#{b.id}) — processingState=#{b.processing_state} — uploadedDate=#{b.uploaded_date} — expired=#{b.expired} — missingExportCompliance=#{compliance}")
+      end
+    end
+
+    groups = app.get_beta_groups
+    if groups.empty?
+      UI.important("No TestFlight groups exist yet — no Internal Testing group has been created.")
+    else
+      testers = app.get_beta_testers
+      groups.each do |g|
+        UI.message("Group '#{g.name}' (internal=#{g.is_internal_group})")
+      end
+      UI.message("All testers on this app: #{testers.map(&:email).join(', ')}")
+    end
+  end
+
+  desc "Create an Internal Testing group with access to all builds and add yourself as a tester"
+  lane :setup_internal_testing do |options|
+    auth
+    app = Spaceship::ConnectAPI::App.find("com.rafaelffs.freestyleCombo")
+    email = options[:email] || ENV.fetch("TESTFLIGHT_TESTER_EMAIL")
+
+    groups = app.get_beta_groups
+    group = groups.find { |g| g.is_internal_group }
+    if group.nil?
+      # Not using Spaceship::ConnectAPI.create_beta_group: it unconditionally
+      # sends publicLinkLimitEnabled, which the API rejects outright for
+      # internal groups ("Public link limit cannot be applied to internal
+      # group") — so this posts the same request with that field omitted.
+      body = {
+        data: {
+          attributes: {
+            name: "Internal Testers",
+            isInternalGroup: true,
+            hasAccessToAllBuilds: true
+          },
+          relationships: { app: { data: { id: app.id, type: "apps" } } },
+          type: "betaGroups"
+        }
+      }
+      resp = Spaceship::ConnectAPI.test_flight_request_client.post("v1/betaGroups", body)
+      group_id = resp.body["data"]["id"]
+      UI.success("Created internal testing group #{group_id}")
+    else
+      group_id = group.id
+      UI.important("Internal testing group already exists (#{group_id}) — reusing")
+    end
+
+    existing_tester = app.get_beta_testers(filter: { email: email }).first
+    if existing_tester
+      UI.important("#{email} is already a beta tester — skipping add")
+    else
+      Spaceship::ConnectAPI.post_beta_tester_assignment(
+        beta_group_ids: [group_id],
+        attributes: { email: email }
+      )
+      UI.success("Added #{email} to Internal Testers")
+    end
+  end
+
+  desc "Answer 'no non-exempt encryption' for every build missing export compliance"
+  lane :clear_export_compliance do
+    auth
+    app = Spaceship::ConnectAPI::App.find("com.rafaelffs.freestyleCombo")
+    builds = Spaceship::ConnectAPI::Build.all(app_id: app.id, sort: "-uploadedDate")
+    builds.each do |b|
+      next unless (b.missing_export_compliance? rescue false)
+      b.update(attributes: { usesNonExemptEncryption: false })
+      UI.success("Cleared export compliance for build #{b.version} (#{b.id})")
+    end
+  end
+
+  desc "Check whether the Bundle ID / app record already exist"
+  lane :check_app do
+    auth
+    bid = Spaceship::ConnectAPI::BundleId.find("com.rafaelffs.freestyleCombo")
+    UI.message(bid ? "BundleId found: id=#{bid.id} name=#{bid.name} platform=#{bid.platform}" : "BundleId NOT found")
+    app = Spaceship::ConnectAPI::App.find("com.rafaelffs.freestyleCombo")
+    UI.message(app ? "App found: id=#{app.id} name=#{app.name}" : "App NOT found")
+  end
+
+  desc "Register the Bundle ID and create the App Store Connect app record"
+  lane :create_app do
+    auth
+
+    identifier = "com.rafaelffs.freestyleCombo"
+    existing = Spaceship::ConnectAPI::BundleId.find(identifier)
+    if existing.nil?
+      Spaceship::ConnectAPI::BundleId.create(name: "FreestyleCombo", platform: "IOS", identifier: identifier)
+      UI.success("Registered Bundle ID #{identifier}")
+    else
+      UI.important("Bundle ID #{identifier} already registered — skipping")
+    end
+
+    existing_app = Spaceship::ConnectAPI::App.find(identifier)
+    if existing_app
+      UI.important("App record for #{identifier} already exists (#{existing_app.id}) — skipping")
+    else
+      app = Spaceship::ConnectAPI::App.create(
+        name: "FreestyleCombo",
+        version_string: "1.0",
+        sku: "freestylecombo-ios",
+        primary_locale: "en-US",
+        bundle_id: identifier,
+        platforms: ["IOS"]
+      )
+      UI.success("Created App Store Connect app record: #{app.id}")
+    end
+  end
+
+  CI_KEYCHAIN_NAME = "freestylecombo-ci.keychain-db"
+
+  # A dedicated, throwaway signing keychain — not the login keychain — so
+  # codesign never needs the Mac's actual login/keychain password (which
+  # may be unknown/forgotten). Password is only ever used locally to
+  # unlock this one keychain non-interactively.
+  private_lane :ensure_ci_keychain do
+    password = ENV.fetch("CI_KEYCHAIN_PASSWORD", "freestylecombo-ci-local")
+    keychain_path = File.expand_path("~/Library/Keychains/#{CI_KEYCHAIN_NAME}")
+
+    unless File.exist?(keychain_path)
+      create_keychain(
+        name: CI_KEYCHAIN_NAME,
+        password: password,
+        default_keychain: false,
+        unlock: true,
+        timeout: 3600,
+        add_to_search_list: true
+      )
+    end
+    unlock_keychain(path: keychain_path, password: password, set_default: false, add_to_search_list: true)
+
+    # Without this, codesign fails with the cryptic errSecInternalComponent
+    # (or silently prompts for a password that doesn't exist, since it's
+    # trying to interactively confirm ACL access) — this grants codesign
+    # non-interactive access to every key in this keychain, once.
+    sh("security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k #{password.shellescape} #{keychain_path.shellescape}")
+  end
+
+  desc "Create a distribution certificate + App Store provisioning profile"
+  lane :setup_signing do
+    auth
+    ensure_ci_keychain
+    password = ENV.fetch("CI_KEYCHAIN_PASSWORD", "freestylecombo-ci-local")
+    keychain_path = File.expand_path("~/Library/Keychains/#{CI_KEYCHAIN_NAME}")
+
+    # Never let cert/sigh drop private keys/profiles inside the repo.
+    signing_dir = File.expand_path("~/.appstoreconnect/freestylecombo-signing")
+    FileUtils.mkdir_p(signing_dir)
+    cert(output_path: signing_dir, keychain_path: keychain_path, keychain_password: password)
+    sigh(app_identifier: "com.rafaelffs.freestyleCombo", output_path: signing_dir)
+  end
+
+  IPA_PATH = "build/ios/ipa/freestyle_combo.ipa"
+
+  desc "Build the release IPA"
+  lane :build do
+    ensure_ci_keychain
+    # Scoped to the Runner target only (not Pods/RunnerTests, which don't
+    # sign at all) — a blanket xcargs override was forcing the App Store
+    # profile onto CocoaPods library targets too, which Xcode rejects.
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "ios/Runner.xcodeproj",
+      code_sign_identity: "Apple Distribution",
+      team_id: "6K8AXR83Y3",
+      profile_name: "com.rafaelffs.freestyleCombo AppStore",
+      targets: ["Runner"]
+    )
+    # `flutter build ipa` (not gym/build_app) — gym calls xcodebuild archive
+    # directly and does NOT regenerate ios/Flutter/Generated.xcconfig, so it
+    # silently reuses a stale FLUTTER_BUILD_NUMBER from pubspec.yaml and
+    # every upload after the first gets rejected as a duplicate version.
+    sh("flutter build ipa --release")
+  end
+
+  desc "Upload the latest build to TestFlight"
+  lane :beta do
+    auth
+    upload_to_testflight(ipa: IPA_PATH, skip_waiting_for_build_processing: true)
+  end
+end
