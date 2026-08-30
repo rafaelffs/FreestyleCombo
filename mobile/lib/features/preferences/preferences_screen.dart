@@ -293,8 +293,7 @@ class _PreferenceFormState extends State<_PreferenceForm> {
   int _maxConsecNoTouch = 2;
   bool _includeCrossOver = true;
   bool _includeKnee = true;
-  bool _limitHighRevTricks = false;
-  int _maxHighRevTricks = 2;
+  int _maxHighRevTricks = 1;
   bool _saving = false;
   String? _error;
 
@@ -311,10 +310,7 @@ class _PreferenceFormState extends State<_PreferenceForm> {
       _maxConsecNoTouch = p.maxConsecutiveNoTouch;
       _includeCrossOver = p.includeCrossOver;
       _includeKnee = p.includeKnee;
-      if (p.maxHighRevolutionTricks != null) {
-        _limitHighRevTricks = true;
-        _maxHighRevTricks = p.maxHighRevolutionTricks!;
-      }
+      _maxHighRevTricks = p.maxHighRevolutionTricks ?? 1;
     }
   }
 
@@ -344,7 +340,7 @@ class _PreferenceFormState extends State<_PreferenceForm> {
         includeCrossOver: _includeCrossOver,
         includeKnee: _includeKnee,
         allowedRevolutions: widget.initial?.allowedRevolutions ?? [],
-        maxHighRevolutionTricks: _limitHighRevTricks ? _maxHighRevTricks : null,
+        maxHighRevolutionTricks: _maxHighRevTricks,
       );
 
       UserPreference saved;
@@ -411,11 +407,7 @@ class _PreferenceFormState extends State<_PreferenceForm> {
             const SizedBox(height: 18),
             _PrefSlider(label: 'Max consecutive no-touch', value: _maxConsecNoTouch.toDouble(), min: 0, max: 30, onChanged: (v) => setState(() => _maxConsecNoTouch = v.round())),
             const SizedBox(height: 18),
-            _PrefToggle(label: 'Limit 3+ rev tricks', value: _limitHighRevTricks, onChanged: (v) => setState(() => _limitHighRevTricks = v)),
-            if (_limitHighRevTricks) ...[
-              const SizedBox(height: 18),
-              _PrefSlider(label: 'Max 3+ rev tricks', value: _maxHighRevTricks.toDouble(), min: 0, max: 20, onChanged: (v) => setState(() => _maxHighRevTricks = v.round())),
-            ],
+            _PrefSlider(label: 'Max 3+ rev tricks', value: _maxHighRevTricks.toDouble(), min: 1, max: 15, onChanged: (v) => setState(() => _maxHighRevTricks = v.round())),
             const SizedBox(height: 18),
             _PrefToggle(label: 'Include cross-overs', value: _includeCrossOver, onChanged: (v) => setState(() => _includeCrossOver = v)),
             const SizedBox(height: 11),

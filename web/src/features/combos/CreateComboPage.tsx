@@ -26,6 +26,7 @@ const GENERATE_DEFAULTS: GenerateComboOverrides = {
   maxConsecutiveNoTouch: 2,
   includeCrossOver: true,
   includeKnee: true,
+  maxHighRevolutionTricks: 1,
 }
 
 interface TrickSlotItem extends BuildComboTrickItem {
@@ -415,12 +416,11 @@ export function CreateComboPage() {
               <div className="space-y-1">
                 <Label>{t('create.maxHighRevTricks')}</Label>
                 <Input
-                  type="number" min={0} max={100}
-                  placeholder={t('create.maxHighRevTricksPlaceholder')}
-                  value={(selectedPref ? selectedPref.maxHighRevolutionTricks : overrides.maxHighRevolutionTricks) ?? ''}
+                  type="number" min={1} max={15}
+                  value={(selectedPref ? selectedPref.maxHighRevolutionTricks : overrides.maxHighRevolutionTricks) ?? 1}
                   readOnly={!!selectedPref}
                   disabled={!!selectedPref}
-                  onChange={(e) => updateOverride('maxHighRevolutionTricks', e.target.value === '' ? null : Number(e.target.value))}
+                  onChange={(e) => updateOverride('maxHighRevolutionTricks', Math.min(15, Math.max(1, Number(e.target.value))))}
                   className={selectedPref ? 'bg-gray-50 text-gray-500' : ''}
                 />
               </div>

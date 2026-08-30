@@ -122,7 +122,7 @@ Users can have **multiple named preferences** (1:many). No limit on count. Futur
 `PreferenceDto` includes `Id`, `Name`, and all settings fields. Request body: `PreferenceRequest` with `Name` (required, max 100) + all settings fields with defaults.  
 Validation: `Name` NotEmpty MaxLength(100), same field limits as before. `AllowedRevolutions` items must be between `0.5` and `4.0`.
 
-`MaxHighRevolutionTricks` (`int?`, null = no limit) caps how many tricks with **3+ revolutions** can appear in one generated/previewed combo — the hardest, rarest moves. Same field on `UserPreference` and `GenerateComboOverrides` (resolved `Overrides ?? SavedPref ?? null`). Web: number input (empty = no limit) in both the preference form and the generate-mode custom-overrides panel. Mobile: a toggle ("Limit 3+ rev tricks") that reveals a 0–20 slider when on, in both the preference form and generate-mode custom overrides.
+`MaxHighRevolutionTricks` (`int?`, 1–15, default `1`) caps how many tricks with **3+ revolutions** can appear in one generated/previewed combo — the hardest, rarest moves. No "unlimited" option — always a concrete value in the UI (the field stays nullable server-side only for pre-existing rows saved before this validation range existed). Same field on `UserPreference` and `GenerateComboOverrides` (resolved `Overrides ?? SavedPref ?? null`). Web: number input (min 1, max 15) in both the preference form and the generate-mode custom-overrides panel. Mobile: a plain slider (min 1, max 15, default 1) in both the preference form and generate-mode custom overrides — no separate enable/disable toggle.
 
 ### Trick Submission API (`/api/trick-submissions`)
 | Method | Route | Auth | Description |
@@ -172,7 +172,7 @@ AddSecurityRequirement(_ => new OpenApiSecurityRequirement {
 | `NoTouchPercentage` | 0 | 100 | all validators + UIs |
 | `Revolution` | 0.5 | **4** | Trick create/update/submission validators |
 | `AllowedRevolutions[]` | 0.5 | **4** | Preference + combo override validators |
-| `MaxHighRevolutionTricks` | 0 | **100** | `GenerateComboValidator`, `PreviewComboValidator`, `CreatePreferenceValidator`, `UpdatePreferencesValidator` — nullable, only validated `.When(HasValue)` |
+| `MaxHighRevolutionTricks` | **1** | **15** | `GenerateComboValidator`, `PreviewComboValidator`, `CreatePreferenceValidator`, `UpdatePreferencesValidator` — nullable, only validated `.When(HasValue)`; UI always sends a value (default 1) |
 
 ### Combo generation algorithm
 **Preview** (steps 1–5, `POST /api/combos/preview`): no AI, no DB save — returns trick list + warnings.  

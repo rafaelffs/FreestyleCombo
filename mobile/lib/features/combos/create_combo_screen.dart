@@ -111,8 +111,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   int _maxConsecNoTouch = 2;
   bool _includeCrossOver = true;
   bool _includeKnee = true;
-  bool _limitHighRevTricks = false;
-  int _maxHighRevTricks = 2;
+  int _maxHighRevTricks = 1;
   bool _genLoading = false;
   String? _genError;
   List<String> _previewWarnings = [];
@@ -167,7 +166,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
               maxConsecutiveNoTouch: _maxConsecNoTouch,
               includeCrossOver: _includeCrossOver,
               includeKnee: _includeKnee,
-              maxHighRevolutionTricks: _limitHighRevTricks ? _maxHighRevTricks : null,
+              maxHighRevolutionTricks: _maxHighRevTricks,
             );
       final result =
           await ApiClient.instance.previewCombo(_selectedPrefId, overrides);
@@ -794,8 +793,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                               _maxConsecNoTouch = p.maxConsecutiveNoTouch;
                               _includeCrossOver = p.includeCrossOver;
                               _includeKnee = p.includeKnee;
-                              _limitHighRevTricks = p.maxHighRevolutionTricks != null;
-                              _maxHighRevTricks = p.maxHighRevolutionTricks ?? _maxHighRevTricks;
+                              _maxHighRevTricks = p.maxHighRevolutionTricks ?? 1;
                             }),
                           ),
                         ],
@@ -857,25 +855,15 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                       : (v) => setState(() => _maxConsecNoTouch = v.round()),
                 ),
                 const SizedBox(height: 20),
-                _ToggleRow(
-                  label: 'Limit 3+ rev tricks',
-                  value: _limitHighRevTricks,
+                _AppSlider(
+                  label: 'Max 3+ rev tricks',
+                  value: _maxHighRevTricks.toDouble(),
+                  min: 1,
+                  max: 15,
                   onChanged: locked
                       ? null
-                      : (v) => setState(() => _limitHighRevTricks = v),
+                      : (v) => setState(() => _maxHighRevTricks = v.round()),
                 ),
-                if (_limitHighRevTricks) ...[
-                  const SizedBox(height: 20),
-                  _AppSlider(
-                    label: 'Max 3+ rev tricks',
-                    value: _maxHighRevTricks.toDouble(),
-                    min: 0,
-                    max: 20,
-                    onChanged: locked
-                        ? null
-                        : (v) => setState(() => _maxHighRevTricks = v.round()),
-                  ),
-                ],
                 const SizedBox(height: 20),
                 _ToggleRow(
                   label: 'Include cross-overs',

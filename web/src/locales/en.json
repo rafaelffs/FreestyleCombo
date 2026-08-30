@@ -140,7 +140,6 @@
     "noTouchPct": "No-Touch %",
     "maxConsecutiveNT": "Max Consecutive NT",
     "maxHighRevTricks": "Max 3+ Rev Tricks",
-    "maxHighRevTricksPlaceholder": "No limit",
     "includeCrossover": "Include Crossover",
     "includeKnee": "Include Knee",
     "lockedPref": "Fields are locked to the \"{{name}}\" preference. Select \"Custom\" to edit.",
@@ -338,7 +337,6 @@
     "kneeLabel": "Knee",
     "maxConsecLabel": "Max consec NT",
     "maxHighRevTricks": "Max 3+ Rev Tricks",
-    "maxHighRevTricksPlaceholder": "No limit",
     "maxHighRevLabel": "Max 3+ rev"
   },
   "account": {

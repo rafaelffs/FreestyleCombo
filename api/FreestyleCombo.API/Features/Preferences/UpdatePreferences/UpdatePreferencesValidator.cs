@@ -13,6 +13,6 @@ public class UpdatePreferencesValidator : AbstractValidator<UpdatePreferencesCom
         RuleFor(x => x.NoTouchPercentage).InclusiveBetween(0, 100);
         RuleFor(x => x.MaxConsecutiveNoTouch).InclusiveBetween(0, 30);
         RuleForEach(x => x.AllowedRevolutions).InclusiveBetween(0.5m, 4m);
-        RuleFor(x => x.MaxHighRevolutionTricks).InclusiveBetween(0, 100).When(x => x.MaxHighRevolutionTricks.HasValue);
+        RuleFor(x => x.MaxHighRevolutionTricks).InclusiveBetween(1, 15).When(x => x.MaxHighRevolutionTricks.HasValue);
     }
 }

@@ -17,7 +17,7 @@ const DEFAULTS: PreferencePayload = {
   includeCrossOver: true,
   includeKnee: true,
   allowedRevolutions: [],
-  maxHighRevolutionTricks: null,
+  maxHighRevolutionTricks: 1,
 }
 
 function PreferenceForm({
@@ -84,11 +84,10 @@ function PreferenceForm({
           <Label>{t('preferences.maxHighRevTricks')}</Label>
           <Input
             type="number"
-            min={0}
-            max={100}
-            placeholder={t('preferences.maxHighRevTricksPlaceholder')}
-            value={form.maxHighRevolutionTricks ?? ''}
-            onChange={(e) => update('maxHighRevolutionTricks', e.target.value === '' ? null : Number(e.target.value))}
+            min={1}
+            max={15}
+            value={form.maxHighRevolutionTricks ?? 1}
+            onChange={(e) => update('maxHighRevolutionTricks', Math.min(15, Math.max(1, Number(e.target.value))))}
           />
         </div>
       </div>
@@ -155,7 +154,7 @@ function PreferenceCard({
         </CardHeader>
         <CardContent>
           <PreferenceForm
-            initial={{ name: pref.name, comboLength: pref.comboLength, maxDifficulty: pref.maxDifficulty, strongFootPercentage: pref.strongFootPercentage, noTouchPercentage: pref.noTouchPercentage, maxConsecutiveNoTouch: pref.maxConsecutiveNoTouch, includeCrossOver: pref.includeCrossOver, includeKnee: pref.includeKnee, allowedRevolutions: pref.allowedRevolutions, maxHighRevolutionTricks: pref.maxHighRevolutionTricks }}
+            initial={{ name: pref.name, comboLength: pref.comboLength, maxDifficulty: pref.maxDifficulty, strongFootPercentage: pref.strongFootPercentage, noTouchPercentage: pref.noTouchPercentage, maxConsecutiveNoTouch: pref.maxConsecutiveNoTouch, includeCrossOver: pref.includeCrossOver, includeKnee: pref.includeKnee, allowedRevolutions: pref.allowedRevolutions, maxHighRevolutionTricks: pref.maxHighRevolutionTricks ?? 1 }}
             onSave={(p) => updateMutation.mutate(p)}
             onCancel={() => setEditing(false)}
             isPending={updateMutation.isPending}

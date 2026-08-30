@@ -140,7 +140,6 @@
     "noTouchPct": "% No Touch",
     "maxConsecutiveNT": "NT Consecutivos Máx",
     "maxHighRevTricks": "Máx tricks 3+ giros",
-    "maxHighRevTricksPlaceholder": "Sem limite",
     "includeCrossover": "Incluir Crossover",
     "includeKnee": "Incluir Joelho",
     "lockedPref": "Campos bloqueados pela preferência \"{{name}}\". Selecione \"Personalizado\" para editar.",
@@ -338,7 +337,6 @@
     "kneeLabel": "Joelho",
     "maxConsecLabel": "NT consec máx",
     "maxHighRevTricks": "Máx tricks 3+ giros",
-    "maxHighRevTricksPlaceholder": "Sem limite",
     "maxHighRevLabel": "Máx 3+ giros"
   },
   "account": {

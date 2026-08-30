@@ -12,7 +12,7 @@ public class PreviewComboValidator : AbstractValidator<PreviewComboCommand>
         });
         When(x => x.Overrides?.MaxHighRevolutionTricks != null, () =>
         {
-            RuleFor(x => x.Overrides!.MaxHighRevolutionTricks!.Value).InclusiveBetween(0, 100);
+            RuleFor(x => x.Overrides!.MaxHighRevolutionTricks!.Value).InclusiveBetween(1, 15);
         });
     }
 }
