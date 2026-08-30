@@ -15,6 +15,14 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 ## iOS
 
+### ios check_metadata
+
+```sh
+[bundle exec] fastlane ios check_metadata
+```
+
+Print current App Store Connect listing metadata for verification
+
 ### ios check_builds
 
 ```sh
@@ -78,6 +86,14 @@ Build the release IPA
 ```
 
 Upload the latest build to TestFlight
+
+### ios upload_metadata
+
+```sh
+[bundle exec] fastlane ios upload_metadata
+```
+
+Push App Store listing metadata + screenshots and attach a build. Does NOT submit for review.
 
 ----
 

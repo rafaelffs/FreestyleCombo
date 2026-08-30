@@ -18,6 +18,7 @@ import { UserProfilePage } from '@/features/users/UserProfilePage'
 import { AdminUsersPage } from '@/features/admin/AdminUsersPage'
 import { PrivacyPage } from '@/features/legal/PrivacyPage'
 import { TermsPage } from '@/features/legal/TermsPage'
+import { SupportPage } from '@/features/legal/SupportPage'
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/combos/create" element={<CreateComboPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
+          <Route path="/support" element={<SupportPage />} />
 
           {/* Protected */}
           <Route element={<ProtectedRoute />}>

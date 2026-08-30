@@ -15,6 +15,7 @@ export function Layout() {
         <div className="flex flex-wrap justify-center gap-4 border-t border-gray-200 pt-6 text-xs text-gray-500">
           <Link to="/privacy" className="hover:text-indigo-600">{t('footer.privacy')}</Link>
           <Link to="/terms" className="hover:text-indigo-600">{t('footer.terms')}</Link>
+          <Link to="/support" className="hover:text-indigo-600">{t('footer.support')}</Link>
         </div>
       </footer>
     </div>

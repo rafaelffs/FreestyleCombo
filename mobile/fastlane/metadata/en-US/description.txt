@@ -1,0 +1,16 @@
+FSCombo helps freestyle footballers build, save, and share trick combos.
+
+Generate a combo instantly with custom settings — combo length, difficulty, foot split, no-touch percentage, and which tricks are allowed — or build one manually, trick by trick, from a searchable library of 90+ moves.
+
+Save your favorite settings as presets so you never have to reconfigure them twice. Browse combos other players have shared publicly, rate them, and favorite the ones you want to practice again. Track your own progress with a profile that shows your combos, completions, and average rating.
+
+Whether you're warming up, choreographing a routine, or just exploring what's possible with your feet, FSCombo keeps your freestyle practice organized.
+
+Features:
+• Auto-generate combos with fine-grained controls
+• Build combos manually from a full trick library
+• Save named presets for instant reuse
+• Restrict generation to a specific set of tricks
+• Browse and rate public combos from the community
+• Track completions and favorites
+• Submit new tricks for review

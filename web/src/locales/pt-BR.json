@@ -385,7 +385,8 @@
   },
   "footer": {
     "privacy": "Política de Privacidade",
-    "terms": "Termos de Serviço"
+    "terms": "Termos de Serviço",
+    "support": "Suporte"
   },
   "legal": {
     "privacy": {
@@ -435,6 +436,17 @@
       "section9Body": "Podemos atualizar estes Termos periodicamente. O uso continuado do aplicativo após a entrada em vigor das alterações constitui aceitação dos Termos revisados.",
       "section10Title": "Fale Conosco",
       "section10Body": "Dúvidas sobre estes Termos? Entre em contato em support@fscombo.com."
+    },
+    "support": {
+      "title": "Suporte",
+      "intro": "Precisa de ajuda com o FreestyleCombo? Entre em contato e responderemos em breve.",
+      "emailCta": "Enviar e-mail para {{email}}",
+      "faq1Question": "Como redefino minha senha?",
+      "faq1Answer": "Na tela de login, toque em \"Esqueci minha senha\", informe seu e-mail e siga o código enviado para definir uma nova senha.",
+      "faq2Question": "Como excluo minha conta?",
+      "faq2Answer": "Acesse Conta (ou Perfil no app), abra Configurações avançadas e toque em Excluir conta. Isso remove permanentemente sua conta e combos.",
+      "faq3Question": "Como os combos se tornam públicos?",
+      "faq3Answer": "Ao enviar um combo como público, ele é revisado por um administrador antes de aparecer na lista pública. Isso mantém a biblioteca compartilhada organizada."
     }
   }
 }

@@ -385,7 +385,8 @@
   },
   "footer": {
     "privacy": "Privacy Policy",
-    "terms": "Terms of Service"
+    "terms": "Terms of Service",
+    "support": "Support"
   },
   "legal": {
     "privacy": {
@@ -435,6 +436,17 @@
       "section9Body": "We may update these Terms from time to time. Continued use of the app after changes take effect constitutes acceptance of the revised Terms.",
       "section10Title": "Contact Us",
       "section10Body": "Questions about these Terms? Contact us at support@fscombo.com."
+    },
+    "support": {
+      "title": "Support",
+      "intro": "Need help with FreestyleCombo? Reach out and we'll get back to you.",
+      "emailCta": "Email {{email}}",
+      "faq1Question": "How do I reset my password?",
+      "faq1Answer": "On the login screen, tap \"Forgot password\", enter your email, and follow the code we send you to set a new password.",
+      "faq2Question": "How do I delete my account?",
+      "faq2Answer": "Go to Account (or Profile on mobile), open Advanced settings, and tap Delete account. This permanently removes your account and combos.",
+      "faq3Question": "How do combos become public?",
+      "faq3Answer": "When you submit a combo as public, it's reviewed by an admin before it appears in the public list. This keeps the shared library clean."
     }
   }
 }

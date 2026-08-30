@@ -13,6 +13,23 @@ platform :ios do
     )
   end
 
+  desc "Print current App Store Connect listing metadata for verification"
+  lane :check_metadata do
+    auth
+    app = Spaceship::ConnectAPI::App.find("com.rafaelffs.freestyleCombo")
+
+    info = app.fetch_edit_app_info
+    if info
+      UI.message("AppInfo state=#{info.app_store_state}")
+      info.get_app_info_localizations.each do |loc|
+        next unless loc.locale == "en-US"
+        UI.message("  [#{loc.locale}] name=#{loc.name.inspect} subtitle=#{loc.subtitle.inspect}")
+      end
+    else
+      UI.important("No editable app info found")
+    end
+  end
+
   desc "List uploaded TestFlight builds and their processing state"
   lane :check_builds do
     auth
@@ -209,5 +226,30 @@ platform :ios do
   lane :beta do
     auth
     upload_to_testflight(ipa: built_ipa_path, skip_waiting_for_build_processing: true)
+  end
+
+  desc "Push App Store listing metadata + screenshots and attach a build. Does NOT submit for review."
+  lane :upload_metadata do |options|
+    auth
+    deliver(
+      app_version: options[:app_version] || "1.0.0",
+      build_number: options[:build_number],
+      skip_binary_upload: true,
+      skip_screenshots: false,
+      overwrite_screenshots: true,
+      submit_for_review: false,
+      automatic_release: false,
+      force: true,
+      run_precheck_before_submit: false,
+      app_review_information: {
+        first_name: "Rafael",
+        last_name: "Fashola",
+        phone_number: "+34601474653",
+        email_address: "ffs.rafael@gmail.com",
+        demo_user: "applereview",
+        demo_password: "AppReview2026!",
+        notes: "Demo account provided for full app testing. No special setup required."
+      }
+    )
   end
 end
