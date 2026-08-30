@@ -252,4 +252,68 @@ platform :ios do
       }
     )
   end
+
+  desc "Delete all screenshots from the en-US App Store version localization"
+  lane :clear_screenshots do
+    auth
+    app = Spaceship::ConnectAPI::App.find("com.rafaelffs.freestyleCombo")
+    info = app.fetch_edit_app_info
+    version = info.app.fetch_edit_app_store_version rescue nil
+    version ||= app.get_app_store_versions(filter: { appStoreState: "PREPARE_FOR_SUBMISSION" }).first
+    version.get_app_store_version_localizations.each do |loc|
+      next unless loc.locale == "en-US"
+      loc.get_app_screenshot_sets.each do |set|
+        set.app_screenshots.each do |shot|
+          shot.delete!
+          UI.message("Deleted #{shot.file_name}")
+        end
+      end
+    end
+  end
+
+  desc "Remove duplicate screenshots (deliver's upload retry sometimes double-uploads), keeping one per filename"
+  lane :dedupe_screenshots do
+    auth
+    app = Spaceship::ConnectAPI::App.find("com.rafaelffs.freestyleCombo")
+    info = app.fetch_edit_app_info
+    version = info.app.fetch_edit_app_store_version rescue nil
+    version ||= app.get_app_store_versions(filter: { appStoreState: "PREPARE_FOR_SUBMISSION" }).first
+    version.get_app_store_version_localizations.each do |loc|
+      next unless loc.locale == "en-US"
+      loc.get_app_screenshot_sets.each do |set|
+        seen = {}
+        set.app_screenshots.each do |shot|
+          if seen[shot.file_name]
+            shot.delete!
+            UI.message("Deleted duplicate #{shot.file_name}")
+          else
+            seen[shot.file_name] = true
+          end
+        end
+      end
+    end
+  end
+
+  desc "Check whether screenshots are actually attached to the App Store version"
+  lane :check_screenshots do
+    auth
+    app = Spaceship::ConnectAPI::App.find("com.rafaelffs.freestyleCombo")
+    info = app.fetch_edit_app_info
+    version = info.app.fetch_edit_app_store_version rescue nil
+    version ||= app.get_app_store_versions(filter: { appStoreState: "PREPARE_FOR_SUBMISSION" }).first
+    if version.nil?
+      UI.important("No editable App Store version found")
+    else
+      UI.message("Version #{version.version_string}")
+      version.get_app_store_version_localizations.each do |loc|
+        next unless loc.locale == "en-US"
+        sets = loc.get_app_screenshot_sets
+        sets.each do |set|
+          shots = set.app_screenshots
+          UI.message("  screenshot set #{set.screenshot_display_type}: #{shots.size} screenshot(s)")
+          shots.each { |s| UI.message("    - #{s.file_name} state=#{s.asset_delivery_state}") }
+        end
+      end
+    end
+  end
 end

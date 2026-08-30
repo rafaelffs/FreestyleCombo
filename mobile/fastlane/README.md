@@ -95,6 +95,30 @@ Upload the latest build to TestFlight
 
 Push App Store listing metadata + screenshots and attach a build. Does NOT submit for review.
 
+### ios clear_screenshots
+
+```sh
+[bundle exec] fastlane ios clear_screenshots
+```
+
+Delete all screenshots from the en-US App Store version localization
+
+### ios dedupe_screenshots
+
+```sh
+[bundle exec] fastlane ios dedupe_screenshots
+```
+
+Remove duplicate screenshots (deliver's upload retry sometimes double-uploads), keeping one per filename
+
+### ios check_screenshots
+
+```sh
+[bundle exec] fastlane ios check_screenshots
+```
+
+Check whether screenshots are actually attached to the App Store version
+
 ----
 
 This README.md is auto-generated and will be re-generated every time [_fastlane_](https://fastlane.tools) is run.
