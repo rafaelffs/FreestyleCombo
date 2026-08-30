@@ -412,6 +412,18 @@ export function CreateComboPage() {
                   className={selectedPref ? 'bg-gray-50 text-gray-500' : ''}
                 />
               </div>
+              <div className="space-y-1">
+                <Label>{t('create.maxHighRevTricks')}</Label>
+                <Input
+                  type="number" min={0} max={100}
+                  placeholder={t('create.maxHighRevTricksPlaceholder')}
+                  value={(selectedPref ? selectedPref.maxHighRevolutionTricks : overrides.maxHighRevolutionTricks) ?? ''}
+                  readOnly={!!selectedPref}
+                  disabled={!!selectedPref}
+                  onChange={(e) => updateOverride('maxHighRevolutionTricks', e.target.value === '' ? null : Number(e.target.value))}
+                  className={selectedPref ? 'bg-gray-50 text-gray-500' : ''}
+                />
+              </div>
               <div className="flex flex-col gap-2 pt-1">
                 <div className="flex items-center gap-2">
                   <input

@@ -14,5 +14,6 @@ public record UpdatePreferencesCommand(
     int MaxConsecutiveNoTouch,
     bool IncludeCrossOver,
     bool IncludeKnee,
-    List<decimal> AllowedRevolutions
+    List<decimal> AllowedRevolutions,
+    int? MaxHighRevolutionTricks
 ) : IRequest<PreferenceDto>;

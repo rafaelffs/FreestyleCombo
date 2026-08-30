@@ -12,6 +12,7 @@ export interface UserPreference {
   includeCrossOver: boolean
   includeKnee: boolean
   allowedRevolutions: number[]
+  maxHighRevolutionTricks: number | null
 }
 
 export type PreferencePayload = Omit<UserPreference, 'id' | 'userId'>

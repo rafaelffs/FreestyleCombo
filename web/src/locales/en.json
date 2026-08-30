@@ -139,6 +139,8 @@
     "strongFootPct": "Strong Foot %",
     "noTouchPct": "No-Touch %",
     "maxConsecutiveNT": "Max Consecutive NT",
+    "maxHighRevTricks": "Max 3+ Rev Tricks",
+    "maxHighRevTricksPlaceholder": "No limit",
     "includeCrossover": "Include Crossover",
     "includeKnee": "Include Knee",
     "lockedPref": "Fields are locked to the \"{{name}}\" preference. Select \"Custom\" to edit.",
@@ -334,7 +336,10 @@
     "confirmDelete": "Confirm",
     "stats": "Length {{length}} · Diff ≤{{maxDiff}} · SF {{sf}}% · NT {{nt}}%",
     "kneeLabel": "Knee",
-    "maxConsecLabel": "Max consec NT"
+    "maxConsecLabel": "Max consec NT",
+    "maxHighRevTricks": "Max 3+ Rev Tricks",
+    "maxHighRevTricksPlaceholder": "No limit",
+    "maxHighRevLabel": "Max 3+ rev"
   },
   "account": {
     "pageTitle": "My Account",
@@ -356,6 +361,7 @@
     "passwordChanged": "Password changed.",
     "passwordMismatch": "New passwords do not match.",
     "failedChangePassword": "Failed to change password.",
+    "advancedSettings": "Advanced settings",
     "dangerZone": "Delete Account",
     "deleteAccountDescription": "Permanently delete your account, combos, preferences and ratings. This cannot be undone.",
     "deleteAccountConfirm": "Are you sure you want to permanently delete your account? This cannot be undone.",

@@ -21,6 +21,7 @@ class _AccountScreenState extends State<AccountScreen> {
   int _comboCount = 0;
   int _doneCount = 0;
   double? _avgRating;
+  bool _advancedOpen = false;
 
   @override
   void initState() {
@@ -154,12 +155,22 @@ class _AccountScreenState extends State<AccountScreen> {
                           ),
                           const SizedBox(height: 10),
                           _RowLink(
-                            icon: Icons.delete_outline,
-                            label: 'Delete account',
+                            icon: Icons.tune,
+                            label: 'Advanced settings',
                             showChevron: false,
-                            destructive: true,
-                            onTap: _confirmDeleteAccount,
+                            trailingIcon: _advancedOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                            onTap: () => setState(() => _advancedOpen = !_advancedOpen),
                           ),
+                          if (_advancedOpen) ...[
+                            const SizedBox(height: 10),
+                            _RowLink(
+                              icon: Icons.delete_outline,
+                              label: 'Delete account',
+                              showChevron: false,
+                              destructive: true,
+                              onTap: _confirmDeleteAccount,
+                            ),
+                          ],
                         ]),
                       ),
                     ),
@@ -298,6 +309,7 @@ class _RowLink extends StatelessWidget {
   final VoidCallback onTap;
   final bool showChevron;
   final bool destructive;
+  final IconData? trailingIcon;
 
   const _RowLink({
     required this.icon,
@@ -305,6 +317,7 @@ class _RowLink extends StatelessWidget {
     required this.onTap,
     this.showChevron = true,
     this.destructive = false,
+    this.trailingIcon,
   });
 
   @override
@@ -331,7 +344,10 @@ class _RowLink extends StatelessWidget {
               Expanded(
                 child: Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: destructive ? tint : AppColors.ink)),
               ),
-              if (showChevron) const Icon(Icons.chevron_right, size: 18, color: AppColors.faint),
+              if (trailingIcon != null)
+                Icon(trailingIcon, size: 20, color: AppColors.faint)
+              else if (showChevron)
+                const Icon(Icons.chevron_right, size: 18, color: AppColors.faint),
             ],
           ),
         ),

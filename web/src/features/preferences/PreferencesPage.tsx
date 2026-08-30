@@ -17,6 +17,7 @@ const DEFAULTS: PreferencePayload = {
   includeCrossOver: true,
   includeKnee: true,
   allowedRevolutions: [],
+  maxHighRevolutionTricks: null,
 }
 
 function PreferenceForm({
@@ -78,6 +79,17 @@ function PreferenceForm({
         <div className="space-y-1">
           <Label>{t('preferences.maxConsecutiveNT')}</Label>
           <Input type="number" min={0} max={30} value={form.maxConsecutiveNoTouch} onChange={(e) => update('maxConsecutiveNoTouch', Number(e.target.value))} />
+        </div>
+        <div className="space-y-1">
+          <Label>{t('preferences.maxHighRevTricks')}</Label>
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            placeholder={t('preferences.maxHighRevTricksPlaceholder')}
+            value={form.maxHighRevolutionTricks ?? ''}
+            onChange={(e) => update('maxHighRevolutionTricks', e.target.value === '' ? null : Number(e.target.value))}
+          />
         </div>
       </div>
 
@@ -143,7 +155,7 @@ function PreferenceCard({
         </CardHeader>
         <CardContent>
           <PreferenceForm
-            initial={{ name: pref.name, comboLength: pref.comboLength, maxDifficulty: pref.maxDifficulty, strongFootPercentage: pref.strongFootPercentage, noTouchPercentage: pref.noTouchPercentage, maxConsecutiveNoTouch: pref.maxConsecutiveNoTouch, includeCrossOver: pref.includeCrossOver, includeKnee: pref.includeKnee, allowedRevolutions: pref.allowedRevolutions }}
+            initial={{ name: pref.name, comboLength: pref.comboLength, maxDifficulty: pref.maxDifficulty, strongFootPercentage: pref.strongFootPercentage, noTouchPercentage: pref.noTouchPercentage, maxConsecutiveNoTouch: pref.maxConsecutiveNoTouch, includeCrossOver: pref.includeCrossOver, includeKnee: pref.includeKnee, allowedRevolutions: pref.allowedRevolutions, maxHighRevolutionTricks: pref.maxHighRevolutionTricks }}
             onSave={(p) => updateMutation.mutate(p)}
             onCancel={() => setEditing(false)}
             isPending={updateMutation.isPending}
@@ -162,6 +174,7 @@ function PreferenceCard({
           <p className="mt-0.5 text-xs text-gray-500">{stats}</p>
           <p className="mt-0.5 text-xs text-gray-400">
             {pref.includeCrossOver ? 'CO ✓' : 'CO ✗'} · {pref.includeKnee ? `${t('preferences.kneeLabel')} ✓` : `${t('preferences.kneeLabel')} ✗`} · {t('preferences.maxConsecLabel')} {pref.maxConsecutiveNoTouch}
+            {pref.maxHighRevolutionTricks != null && <> · {t('preferences.maxHighRevLabel')} {pref.maxHighRevolutionTricks}</>}
           </p>
         </div>
         <div className="flex shrink-0 gap-2">

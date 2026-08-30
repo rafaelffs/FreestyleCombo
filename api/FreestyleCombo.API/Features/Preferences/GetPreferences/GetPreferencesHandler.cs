@@ -24,7 +24,8 @@ public class GetPreferencesHandler : IRequestHandler<GetPreferencesQuery, List<P
             MaxConsecutiveNoTouch = p.MaxConsecutiveNoTouch,
             IncludeCrossOver = p.IncludeCrossOver,
             IncludeKnee = p.IncludeKnee,
-            AllowedRevolutions = p.AllowedRevolutions
+            AllowedRevolutions = p.AllowedRevolutions,
+            MaxHighRevolutionTricks = p.MaxHighRevolutionTricks
         }).ToList();
     }
 }

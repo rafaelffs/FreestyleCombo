@@ -18,4 +18,5 @@ public class GenerateComboOverrides
     public bool? IncludeCrossOver { get; set; }
     public bool? IncludeKnee { get; set; }
     public List<decimal>? AllowedRevolutions { get; set; }
+    public int? MaxHighRevolutionTricks { get; set; }
 }

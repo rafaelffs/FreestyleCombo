@@ -122,6 +122,8 @@ Users can have **multiple named preferences** (1:many). No limit on count. Futur
 `PreferenceDto` includes `Id`, `Name`, and all settings fields. Request body: `PreferenceRequest` with `Name` (required, max 100) + all settings fields with defaults.  
 Validation: `Name` NotEmpty MaxLength(100), same field limits as before. `AllowedRevolutions` items must be between `0.5` and `4.0`.
 
+`MaxHighRevolutionTricks` (`int?`, null = no limit) caps how many tricks with **3+ revolutions** can appear in one generated/previewed combo — the hardest, rarest moves. Same field on `UserPreference` and `GenerateComboOverrides` (resolved `Overrides ?? SavedPref ?? null`). Web: number input (empty = no limit) in both the preference form and the generate-mode custom-overrides panel. Mobile: a toggle ("Limit 3+ rev tricks") that reveals a 0–20 slider when on, in both the preference form and generate-mode custom overrides.
+
 ### Trick Submission API (`/api/trick-submissions`)
 | Method | Route | Auth | Description |
 |---|---|---|---|
@@ -170,14 +172,16 @@ AddSecurityRequirement(_ => new OpenApiSecurityRequirement {
 | `NoTouchPercentage` | 0 | 100 | all validators + UIs |
 | `Revolution` | 0.5 | **4** | Trick create/update/submission validators |
 | `AllowedRevolutions[]` | 0.5 | **4** | Preference + combo override validators |
+| `MaxHighRevolutionTricks` | 0 | **100** | `GenerateComboValidator`, `PreviewComboValidator`, `CreatePreferenceValidator`, `UpdatePreferencesValidator` — nullable, only validated `.When(HasValue)` |
 
 ### Combo generation algorithm
 **Preview** (steps 1–5, `POST /api/combos/preview`): no AI, no DB save — returns trick list + warnings.  
 **Generate** (all 6 steps, `POST /api/combos/generate`): saves to DB, calls AI for description.
 
 1. Filter trick pool (MaxDifficulty, IncludeCrossOver, IncludeKnee, AllowedRevolutions)
-2. Split slots: StrongFoot % → strong slots, rest → weak slots
+2. Split slot *count* by StrongFoot % (which foot performs a trick is independent of the trick's own CrossOver property — both slot kinds draw from the same pool; see `git log` on `GenerateComboHandler.cs` if this looks like it should be a pool split, it deliberately isn't)
 3. Weighted random pick (weight = `CommonLevel`); fill by position
+3.5. If `MaxHighRevolutionTricks` is set, cap tricks with `Revolution >= 3`: randomly re-roll excess ones from the sub-pool of tricks with `Revolution < 3` (adds a warning instead if that sub-pool is empty)
 4. Shuffle positions
 5. Annotate NoTouch — only CrossOver tricks, respecting NoTouchPercentage & MaxConsecutiveNoTouch
 6. (Generate only) Call `IComboEnhancerService.EnhanceAsync()` → Claude AI description → save combo

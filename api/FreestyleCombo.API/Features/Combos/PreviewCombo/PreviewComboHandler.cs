@@ -47,6 +47,7 @@ public class PreviewComboHandler : IRequestHandler<PreviewComboCommand, PreviewC
         var includeCrossOver = request.Overrides?.IncludeCrossOver ?? savedPref?.IncludeCrossOver ?? true;
         var includeKnee = request.Overrides?.IncludeKnee ?? savedPref?.IncludeKnee ?? true;
         var allowedRevolutions = request.Overrides?.AllowedRevolutions ?? savedPref?.AllowedRevolutions ?? [];
+        var maxHighRevolutionTricks = request.Overrides?.MaxHighRevolutionTricks ?? savedPref?.MaxHighRevolutionTricks;
 
         // Step 1 — Filter trick pool (exclude transition tricks from random selection)
         var allTricks = await _trickRepo.GetAllAsync(ct: cancellationToken);
@@ -77,6 +78,32 @@ public class PreviewComboHandler : IRequestHandler<PreviewComboCommand, PreviewC
 
         for (int i = 0; i < weakSlots; i++)
             slots.Add((WeightedPick(pool, rng), false));
+
+        // Step 3.5 — Cap tricks with 3+ revolutions (the hardest, rarest moves)
+        const decimal highRevThreshold = 3m;
+        if (maxHighRevolutionTricks.HasValue)
+        {
+            var lowRevPool = pool.Where(t => t.Revolution < highRevThreshold).ToList();
+            var highRevIndices = slots
+                .Select((s, idx) => (s.Trick, idx))
+                .Where(x => x.Trick.Revolution >= highRevThreshold)
+                .Select(x => x.idx)
+                .ToList();
+
+            if (highRevIndices.Count > maxHighRevolutionTricks.Value)
+            {
+                if (lowRevPool.Count == 0)
+                {
+                    warnings.Add($"Could not enforce max {maxHighRevolutionTricks.Value} tricks with 3+ revolutions — no lower-revolution tricks match your other preferences.");
+                }
+                else
+                {
+                    var toReplace = highRevIndices.OrderBy(_ => rng.Next()).Skip(maxHighRevolutionTricks.Value);
+                    foreach (var idx in toReplace)
+                        slots[idx] = (WeightedPick(lowRevPool, rng), slots[idx].StrongFoot);
+                }
+            }
+        }
 
         // Step 4 — Sequence (constraint-aware ordering + transition trick insertion)
         slots = ComboSequencer.Sequence(slots, rng, transitionTrick);

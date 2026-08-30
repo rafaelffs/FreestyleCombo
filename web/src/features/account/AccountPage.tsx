@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { accountApi, extractError } from '@/lib/api'
 import { setUserName, clearToken } from '@/lib/auth'
 import { SEO } from '@/components/SEO'
@@ -75,6 +76,7 @@ export function AccountPage() {
   }
 
   // ── Delete Account ───────────────────────────────────────────────────────
+  const [advancedOpen, setAdvancedOpen] = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
   const deleteAccount = useMutation({
@@ -192,19 +194,36 @@ export function AccountPage() {
         </form>
       </div>
 
-      {/* Delete Account */}
-      <div className="rounded-lg border border-red-200 bg-white p-5">
-        <h2 className="mb-2 text-lg font-semibold text-red-700">{t('account.dangerZone')}</h2>
-        <p className="mb-4 text-sm text-gray-600">{t('account.deleteAccountDescription')}</p>
-        {deleteError && <p className="mb-3 text-sm text-red-600">{deleteError}</p>}
+      {/* Advanced settings */}
+      <div className="rounded-lg border border-gray-200 bg-white p-5">
         <button
           type="button"
-          onClick={handleDeleteAccount}
-          disabled={deleteAccount.isPending}
-          className="rounded-md border border-red-600 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+          onClick={() => setAdvancedOpen((open) => !open)}
+          className="flex w-full items-center justify-between text-left"
+          aria-expanded={advancedOpen}
         >
-          {deleteAccount.isPending ? t('account.deletingAccount') : t('account.deleteAccount')}
+          <h2 className="text-lg font-semibold text-gray-800">{t('account.advancedSettings')}</h2>
+          {advancedOpen ? (
+            <ChevronUp className="h-5 w-5 text-gray-500" />
+          ) : (
+            <ChevronDown className="h-5 w-5 text-gray-500" />
+          )}
         </button>
+        {advancedOpen && (
+          <div className="mt-4 border-t border-red-200 pt-4">
+            <h3 className="mb-2 text-sm font-semibold text-red-700">{t('account.dangerZone')}</h3>
+            <p className="mb-4 text-sm text-gray-600">{t('account.deleteAccountDescription')}</p>
+            {deleteError && <p className="mb-3 text-sm text-red-600">{deleteError}</p>}
+            <button
+              type="button"
+              onClick={handleDeleteAccount}
+              disabled={deleteAccount.isPending}
+              className="rounded-md border border-red-600 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+            >
+              {deleteAccount.isPending ? t('account.deletingAccount') : t('account.deleteAccount')}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

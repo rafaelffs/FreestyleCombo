@@ -54,7 +54,8 @@ public class RevolutionValidationTests
             2,
             true,
             true,
-            [1m, 4.5m]));
+            [1m, 4.5m],
+            null));
 
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName.StartsWith("AllowedRevolutions"));
@@ -75,7 +76,8 @@ public class RevolutionValidationTests
             2,
             true,
             true,
-            [1m, 4m]));
+            [1m, 4m],
+            null));
 
         result.IsValid.Should().BeTrue();
     }

@@ -10,5 +10,9 @@ public class PreviewComboValidator : AbstractValidator<PreviewComboCommand>
         {
             RuleForEach(x => x.Overrides!.AllowedRevolutions!).InclusiveBetween(0.5m, 4m);
         });
+        When(x => x.Overrides?.MaxHighRevolutionTricks != null, () =>
+        {
+            RuleFor(x => x.Overrides!.MaxHighRevolutionTricks!.Value).InclusiveBetween(0, 100);
+        });
     }
 }

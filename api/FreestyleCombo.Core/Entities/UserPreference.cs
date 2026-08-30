@@ -14,5 +14,9 @@ public class UserPreference
     public bool IncludeKnee { get; set; } = true;
     public List<decimal> AllowedRevolutions { get; set; } = [];
 
+    // Caps how many tricks with 3+ revolutions (the hardest, rarest moves)
+    // can appear in one generated combo. Null means no cap.
+    public int? MaxHighRevolutionTricks { get; set; }
+
     public AppUser User { get; set; } = null!;
 }

@@ -303,37 +303,89 @@ class _TricksScreenState extends State<TricksScreen> {
     });
   }
 
-  Widget _sortChip(_SortKey key, String label) {
-    final active = _sortKey == key;
-    return GestureDetector(
-      onTap: () => _setSort(key),
-      child: Container(
-        margin: const EdgeInsets.only(right: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: active ? AppColors.indigo : AppColors.chipBg,
-          borderRadius: BorderRadius.circular(11),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w700,
-                color: active ? Colors.white : AppColors.ink2,
+  static const _sortLabels = {
+    _SortKey.abbreviation: 'Abbrev',
+    _SortKey.name: 'Name',
+    _SortKey.difficulty: 'Diff',
+    _SortKey.revolution: 'Revs',
+  };
+
+  void _showSortSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.bg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 12),
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(color: AppColors.line2, borderRadius: BorderRadius.circular(2)),
+                ),
               ),
-            ),
-            if (active) ...[
-              const SizedBox(width: 4),
-              Icon(
-                _sortAsc ? Icons.arrow_upward : Icons.arrow_downward,
-                size: 12,
-                color: Colors.white,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 16, 22, 8),
+                child: Text(
+                  'Sort by',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
+                child: Column(
+                  children: _sortLabels.entries.map((e) {
+                    final selected = _sortKey == e.key;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () {
+                            _setSort(e.key);
+                            setSt(() {});
+                            Navigator.pop(ctx);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                            decoration: BoxDecoration(
+                              color: selected ? AppColors.indigoTint : AppColors.surface,
+                              border: Border.all(color: selected ? const Color(0xFFC7CCF7) : AppColors.line),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    e.value,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: selected ? AppColors.indigo : AppColors.ink,
+                                    ),
+                                  ),
+                                ),
+                                if (selected)
+                                  Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 18, color: AppColors.indigo)
+                                else
+                                  const Icon(Icons.circle_outlined, size: 20, color: AppColors.faint),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -740,7 +792,7 @@ class _TricksScreenState extends State<TricksScreen> {
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
-                        _typeChip(_TypeFilter.all, 'All'),
+        _typeChip(_TypeFilter.all, 'All'),
                         _typeChip(_TypeFilter.tricks, 'Tricks'),
                         _typeChip(_TypeFilter.combos, 'Combos'),
                       ],
@@ -750,25 +802,19 @@ class _TricksScreenState extends State<TricksScreen> {
                 _nameFormatChip('Full name', TrickNameDisplay.showFullName),
                 const SizedBox(width: 6),
                 _nameFormatChip('Abbr.', !TrickNameDisplay.showFullName),
+                const SizedBox(width: 6),
+                GestureDetector(
+                  onTap: _showSortSheet,
+                  child: Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(color: AppColors.chipBg, borderRadius: BorderRadius.circular(11)),
+                    child: const Icon(Icons.tune, size: 18, color: AppColors.ink2),
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 6),
-
-          // Sort chips
-          SizedBox(
-            height: 34,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(22, 0, 22, 4),
-              children: [
-                _sortChip(_SortKey.abbreviation, 'Abbrev'),
-                _sortChip(_SortKey.name, 'Name'),
-                _sortChip(_SortKey.difficulty, 'Diff'),
-                _sortChip(_SortKey.revolution, 'Revs'),
-              ],
-            ),
-          ),
 
           if (_error != null)
             Padding(

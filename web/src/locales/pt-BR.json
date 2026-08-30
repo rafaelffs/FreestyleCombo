@@ -139,6 +139,8 @@
     "strongFootPct": "% Strong Foot",
     "noTouchPct": "% No Touch",
     "maxConsecutiveNT": "NT Consecutivos Máx",
+    "maxHighRevTricks": "Máx tricks 3+ giros",
+    "maxHighRevTricksPlaceholder": "Sem limite",
     "includeCrossover": "Incluir Crossover",
     "includeKnee": "Incluir Joelho",
     "lockedPref": "Campos bloqueados pela preferência \"{{name}}\". Selecione \"Personalizado\" para editar.",
@@ -334,7 +336,10 @@
     "confirmDelete": "Confirmar",
     "stats": "Tamanho {{length}} · Dif ≤{{maxDiff}} · SF {{sf}}% · NT {{nt}}%",
     "kneeLabel": "Joelho",
-    "maxConsecLabel": "NT consec máx"
+    "maxConsecLabel": "NT consec máx",
+    "maxHighRevTricks": "Máx tricks 3+ giros",
+    "maxHighRevTricksPlaceholder": "Sem limite",
+    "maxHighRevLabel": "Máx 3+ giros"
   },
   "account": {
     "pageTitle": "Minha Conta",
@@ -356,6 +361,7 @@
     "passwordChanged": "Senha alterada.",
     "passwordMismatch": "As novas senhas não coincidem.",
     "failedChangePassword": "Falha ao alterar senha.",
+    "advancedSettings": "Configurações avançadas",
     "dangerZone": "Excluir Conta",
     "deleteAccountDescription": "Exclui permanentemente sua conta, combos, preferências e avaliações. Essa ação não pode ser desfeita.",
     "deleteAccountConfirm": "Tem certeza de que deseja excluir sua conta permanentemente? Essa ação não pode ser desfeita.",
