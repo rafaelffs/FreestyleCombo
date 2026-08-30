@@ -58,6 +58,7 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
         var includeKnee = request.Overrides?.IncludeKnee ?? savedPref?.IncludeKnee ?? true;
         var allowedRevolutions = request.Overrides?.AllowedRevolutions ?? savedPref?.AllowedRevolutions ?? [];
         var maxHighRevolutionTricks = request.Overrides?.MaxHighRevolutionTricks ?? savedPref?.MaxHighRevolutionTricks;
+        var allowedTrickIds = request.Overrides?.AllowedTrickIds ?? savedPref?.AllowedTrickIds ?? [];
 
         // Step 1 — Filter trick pool (exclude transition tricks from random selection)
         var allTricks = await _trickRepo.GetAllAsync(ct: cancellationToken);
@@ -67,6 +68,7 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
         if (!includeCrossOver) pool = pool.Where(t => !t.CrossOver).ToList();
         if (!includeKnee) pool = pool.Where(t => !t.Knee).ToList();
         if (allowedRevolutions.Count > 0) pool = pool.Where(t => allowedRevolutions.Contains(t.Revolution)).ToList();
+        if (allowedTrickIds.Count > 0) pool = pool.Where(t => allowedTrickIds.Contains(t.Id)).ToList();
 
         if (pool.Count == 0)
             throw new InvalidOperationException("No tricks match your preferences.");

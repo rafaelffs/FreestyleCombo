@@ -18,5 +18,9 @@ public class UserPreference
     // can appear in one generated combo. Null means no cap.
     public int? MaxHighRevolutionTricks { get; set; }
 
+    // Restricts generation to only these tricks. Empty means no restriction
+    // (the full trick pool, subject to the other filters, is eligible).
+    public List<Guid> AllowedTrickIds { get; set; } = [];
+
     public AppUser User { get; set; } = null!;
 }

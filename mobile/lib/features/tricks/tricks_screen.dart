@@ -680,6 +680,8 @@ class _TricksScreenState extends State<TricksScreen> {
             padding: const EdgeInsets.fromLTRB(22, 12, 22, 12),
             child: TextField(
               controller: _searchCtrl,
+              autocorrect: false,
+              enableSuggestions: false,
               style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
               decoration: InputDecoration(
                 hintText: 'Search tricks…',

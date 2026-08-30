@@ -56,6 +56,7 @@ export interface GenerateComboOverrides {
   includeKnee?: boolean
   allowedRevolutions?: number[]
   maxHighRevolutionTricks?: number | null
+  allowedTrickIds?: string[]
 }
 
 export interface BuildComboTrickItem {

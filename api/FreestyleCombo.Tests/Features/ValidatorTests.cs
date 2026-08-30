@@ -187,7 +187,7 @@ public class ValidatorTests
     // ── CreatePreferenceValidator ──────────────────────────────────────────
 
     private static CreatePreferenceCommand ValidCreatePreference() => new(
-        Guid.NewGuid(), "My Pref", 7, 10, 60, 30, 2, true, true, [], null);
+        Guid.NewGuid(), "My Pref", 7, 10, 60, 30, 2, true, true, [], null, []);
 
     [Fact]
     public void CreatePreferenceValidator_ShouldAccept_ValidCommand()
@@ -239,7 +239,7 @@ public class ValidatorTests
     // ── UpdatePreferencesValidator ─────────────────────────────────────────
 
     private static UpdatePreferencesCommand ValidUpdatePreference() => new(
-        Guid.NewGuid(), Guid.NewGuid(), "My Pref", 7, 10, 60, 30, 2, true, true, [], null);
+        Guid.NewGuid(), Guid.NewGuid(), "My Pref", 7, 10, 60, 30, 2, true, true, [], null, []);
 
     [Fact]
     public void UpdatePreferencesValidator_ShouldAccept_ValidCommand()

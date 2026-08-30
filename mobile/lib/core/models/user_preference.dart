@@ -11,6 +11,7 @@ class UserPreference {
   final bool includeKnee;
   final List<double> allowedRevolutions;
   final int? maxHighRevolutionTricks;
+  final List<String> allowedTrickIds;
 
   const UserPreference({
     required this.id,
@@ -25,6 +26,7 @@ class UserPreference {
     required this.includeKnee,
     required this.allowedRevolutions,
     this.maxHighRevolutionTricks,
+    this.allowedTrickIds = const [],
   });
 
   factory UserPreference.fromJson(Map<String, dynamic> j) => UserPreference(
@@ -45,6 +47,9 @@ class UserPreference {
             .map((m) => (m as num).toDouble())
             .toList(),
         maxHighRevolutionTricks: j['maxHighRevolutionTricks'] as int?,
+        allowedTrickIds: ((j['allowedTrickIds'] as List<dynamic>?) ?? [])
+            .map((id) => id as String)
+            .toList(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -58,6 +63,7 @@ class UserPreference {
         'includeKnee': includeKnee,
         'allowedRevolutions': allowedRevolutions,
         'maxHighRevolutionTricks': maxHighRevolutionTricks,
+        'allowedTrickIds': allowedTrickIds,
       };
 
   UserPreference copyWith({
@@ -71,6 +77,7 @@ class UserPreference {
     bool? includeKnee,
     List<double>? allowedRevolutions,
     int? maxHighRevolutionTricks,
+    List<String>? allowedTrickIds,
   }) =>
       UserPreference(
         id: id,
@@ -85,5 +92,6 @@ class UserPreference {
         includeKnee: includeKnee ?? this.includeKnee,
         allowedRevolutions: allowedRevolutions ?? this.allowedRevolutions,
         maxHighRevolutionTricks: maxHighRevolutionTricks ?? this.maxHighRevolutionTricks,
+        allowedTrickIds: allowedTrickIds ?? this.allowedTrickIds,
       );
 }

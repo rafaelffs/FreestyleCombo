@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { preferencesApi, extractError, type UserPreference, type PreferencePayload } from '@/lib/api'
+import { ChevronDown, ChevronUp } from 'lucide-react'
+import { preferencesApi, tricksApi, extractError, type UserPreference, type PreferencePayload, type TrickItem } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,6 +19,91 @@ const DEFAULTS: PreferencePayload = {
   includeKnee: true,
   allowedRevolutions: [],
   maxHighRevolutionTricks: 1,
+  allowedTrickIds: [],
+}
+
+function TrickPicker({
+  selectedIds,
+  onChange,
+}: {
+  selectedIds: string[]
+  onChange: (ids: string[]) => void
+}) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+
+  const { data: items = [] } = useQuery({
+    queryKey: ['tricks-for-picker'],
+    queryFn: () => tricksApi.getAll().then((r) => r.data),
+    enabled: open,
+  })
+
+  const tricks = items.filter((i): i is TrickItem => i.type === 'trick' && !i.isTransition)
+  const filtered = tricks.filter(
+    (t) =>
+      search === '' ||
+      t.name.toLowerCase().includes(search.toLowerCase()) ||
+      t.abbreviation.toLowerCase().includes(search.toLowerCase()),
+  )
+
+  function toggle(id: string) {
+    onChange(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id])
+  }
+
+  return (
+    <div className="rounded-md border border-gray-200">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm"
+      >
+        <span className="font-medium text-gray-700">
+          {t('preferences.allowedTricks')}
+          {selectedIds.length > 0 && ` (${t('preferences.allowedTricksCount', { count: selectedIds.length })})`}
+        </span>
+        {open ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
+      </button>
+      {open && (
+        <div className="border-t border-gray-200 p-3">
+          <p className="mb-2 text-xs text-gray-500">{t('preferences.allowedTricksHint')}</p>
+          <div className="mb-2 flex items-center gap-2">
+            <Input
+              placeholder={t('preferences.searchTricksPlaceholder')}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="flex-1"
+            />
+            {selectedIds.length > 0 && (
+              <Button type="button" variant="ghost" size="sm" onClick={() => onChange([])}>
+                {t('preferences.clearSelection')}
+              </Button>
+            )}
+          </div>
+          <div className="max-h-56 overflow-y-auto rounded-md border border-gray-100">
+            {filtered.map((trick) => (
+              <label
+                key={trick.id}
+                className="flex cursor-pointer items-center gap-2 border-b border-gray-50 px-3 py-1.5 text-sm last:border-b-0 hover:bg-gray-50"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(trick.id)}
+                  onChange={() => toggle(trick.id)}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+                />
+                <span className="text-gray-500">{trick.abbreviation}</span>
+                <span className="truncate text-gray-800">{trick.name}</span>
+              </label>
+            ))}
+            {filtered.length === 0 && (
+              <p className="px-3 py-2 text-sm text-gray-400">{t('preferences.noTricksMatch')}</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function PreferenceForm({
@@ -103,6 +189,8 @@ function PreferenceForm({
         </div>
       </div>
 
+      <TrickPicker selectedIds={form.allowedTrickIds} onChange={(ids) => update('allowedTrickIds', ids)} />
+
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="flex gap-2">
@@ -154,7 +242,7 @@ function PreferenceCard({
         </CardHeader>
         <CardContent>
           <PreferenceForm
-            initial={{ name: pref.name, comboLength: pref.comboLength, maxDifficulty: pref.maxDifficulty, strongFootPercentage: pref.strongFootPercentage, noTouchPercentage: pref.noTouchPercentage, maxConsecutiveNoTouch: pref.maxConsecutiveNoTouch, includeCrossOver: pref.includeCrossOver, includeKnee: pref.includeKnee, allowedRevolutions: pref.allowedRevolutions, maxHighRevolutionTricks: pref.maxHighRevolutionTricks ?? 1 }}
+            initial={{ name: pref.name, comboLength: pref.comboLength, maxDifficulty: pref.maxDifficulty, strongFootPercentage: pref.strongFootPercentage, noTouchPercentage: pref.noTouchPercentage, maxConsecutiveNoTouch: pref.maxConsecutiveNoTouch, includeCrossOver: pref.includeCrossOver, includeKnee: pref.includeKnee, allowedRevolutions: pref.allowedRevolutions, maxHighRevolutionTricks: pref.maxHighRevolutionTricks ?? 1, allowedTrickIds: pref.allowedTrickIds }}
             onSave={(p) => updateMutation.mutate(p)}
             onCancel={() => setEditing(false)}
             isPending={updateMutation.isPending}
@@ -174,6 +262,9 @@ function PreferenceCard({
           <p className="mt-0.5 text-xs text-gray-400">
             {pref.includeCrossOver ? 'CO ✓' : 'CO ✗'} · {pref.includeKnee ? `${t('preferences.kneeLabel')} ✓` : `${t('preferences.kneeLabel')} ✗`} · {t('preferences.maxConsecLabel')} {pref.maxConsecutiveNoTouch}
             {pref.maxHighRevolutionTricks != null && <> · {t('preferences.maxHighRevLabel')} {pref.maxHighRevolutionTricks}</>}
+            {pref.allowedTrickIds.length > 0 && (
+              <> · {t('preferences.allowedTricksCount', { count: pref.allowedTrickIds.length })}</>
+            )}
           </p>
         </div>
         <div className="flex shrink-0 gap-2">

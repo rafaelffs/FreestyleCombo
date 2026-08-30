@@ -28,6 +28,7 @@ public class UpdatePreferencesHandler : IRequestHandler<UpdatePreferencesCommand
         pref.IncludeKnee = request.IncludeKnee;
         pref.AllowedRevolutions = request.AllowedRevolutions;
         pref.MaxHighRevolutionTricks = request.MaxHighRevolutionTricks;
+        pref.AllowedTrickIds = request.AllowedTrickIds;
 
         await _repo.UpdateAsync(pref, cancellationToken);
 
@@ -43,7 +44,8 @@ public class UpdatePreferencesHandler : IRequestHandler<UpdatePreferencesCommand
             IncludeCrossOver = pref.IncludeCrossOver,
             IncludeKnee = pref.IncludeKnee,
             AllowedRevolutions = pref.AllowedRevolutions,
-            MaxHighRevolutionTricks = pref.MaxHighRevolutionTricks
+            MaxHighRevolutionTricks = pref.MaxHighRevolutionTricks,
+            AllowedTrickIds = pref.AllowedTrickIds
         };
     }
 }

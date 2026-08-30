@@ -176,7 +176,13 @@ platform :ios do
     sigh(app_identifier: "com.rafaelffs.freestyleCombo", output_path: signing_dir)
   end
 
-  IPA_PATH = "build/ios/ipa/freestyle_combo.ipa"
+  # Named after CFBundleDisplayName (FSCombo.ipa), not the pubspec package
+  # name — glob instead of hardcoding so a future display-name change
+  # doesn't silently break this again.
+  def built_ipa_path
+    ipa_dir = File.expand_path("../build/ios/ipa", __dir__)
+    Dir.glob(File.join(ipa_dir, "*.ipa")).first || UI.user_error!("No .ipa found in #{ipa_dir} — run the build lane first.")
+  end
 
   desc "Build the release IPA"
   lane :build do
@@ -202,6 +208,6 @@ platform :ios do
   desc "Upload the latest build to TestFlight"
   lane :beta do
     auth
-    upload_to_testflight(ipa: IPA_PATH, skip_waiting_for_build_processing: true)
+    upload_to_testflight(ipa: built_ipa_path, skip_waiting_for_build_processing: true)
   end
 end

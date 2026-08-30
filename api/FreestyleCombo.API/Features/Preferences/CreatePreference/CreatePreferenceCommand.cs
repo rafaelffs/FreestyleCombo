@@ -14,5 +14,6 @@ public record CreatePreferenceCommand(
     bool IncludeCrossOver,
     bool IncludeKnee,
     List<decimal> AllowedRevolutions,
-    int? MaxHighRevolutionTricks
+    int? MaxHighRevolutionTricks,
+    List<Guid> AllowedTrickIds
 ) : IRequest<PreferenceDto>;

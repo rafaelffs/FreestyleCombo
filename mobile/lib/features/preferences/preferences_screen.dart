@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_service.dart';
+import '../../core/models/combo.dart';
 import '../../core/models/user_preference.dart';
 import '../../theme/app_colors.dart';
 
@@ -173,7 +174,8 @@ class _PrefCard extends StatelessWidget {
     final flags = '${pref.includeCrossOver ? "Cross-overs" : "No cross-overs"} · '
         '${pref.includeKnee ? "Knee tricks" : "No knee tricks"} · '
         'Max consec. NT ${pref.maxConsecutiveNoTouch}'
-        '${pref.maxHighRevolutionTricks != null ? " · Max 3+ rev ${pref.maxHighRevolutionTricks}" : ""}';
+        '${pref.maxHighRevolutionTricks != null ? " · Max 3+ rev ${pref.maxHighRevolutionTricks}" : ""}'
+        '${pref.allowedTrickIds.isNotEmpty ? " · ${pref.allowedTrickIds.length} allowed tricks" : ""}';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 13),
@@ -294,6 +296,8 @@ class _PreferenceFormState extends State<_PreferenceForm> {
   bool _includeCrossOver = true;
   bool _includeKnee = true;
   int _maxHighRevTricks = 1;
+  List<String> _allowedTrickIds = [];
+  List<TrickItem>? _allTricks;
   bool _saving = false;
   String? _error;
 
@@ -311,6 +315,7 @@ class _PreferenceFormState extends State<_PreferenceForm> {
       _includeCrossOver = p.includeCrossOver;
       _includeKnee = p.includeKnee;
       _maxHighRevTricks = p.maxHighRevolutionTricks ?? 1;
+      _allowedTrickIds = List.from(p.allowedTrickIds);
     }
   }
 
@@ -318,6 +323,138 @@ class _PreferenceFormState extends State<_PreferenceForm> {
   void dispose() {
     _nameCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _showTrickPicker() async {
+    if (_allTricks == null) {
+      final all = await ApiClient.instance.getTricks();
+      _allTricks = all.whereType<TrickItem>().where((t) => !t.isTransition).toList()
+        ..sort((a, b) => a.name.compareTo(b.name));
+    }
+    if (!mounted) return;
+    var search = '';
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.bg,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) {
+          final filtered = _allTricks!.where((t) {
+            if (search.isEmpty) return true;
+            final q = search.toLowerCase();
+            return t.name.toLowerCase().contains(q) || t.abbreviation.toLowerCase().contains(q);
+          }).toList();
+          return SafeArea(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(color: AppColors.chipBg, borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 16, 22, 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Allowed tricks',
+                            style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+                          ),
+                        ),
+                        if (_allowedTrickIds.isNotEmpty)
+                          TextButton(
+                            onPressed: () {
+                              setState(() => _allowedTrickIds = []);
+                              setSt(() {});
+                            },
+                            child: const Text('Clear'),
+                          ),
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: Text(
+                            'OK',
+                            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: AppColors.indigo),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 0, 22, 10),
+                    child: Text(
+                      'Leave everything unchecked to allow the full trick library.',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppColors.muted),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 22),
+                    child: TextField(
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      onChanged: (v) => setSt(() => search = v),
+                      decoration: InputDecoration(
+                        hintText: 'Search tricks...',
+                        filled: true,
+                        fillColor: AppColors.chipBg,
+                        prefixIcon: const Icon(Icons.search, size: 18),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 14),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Flexible(
+                    child: filtered.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Center(
+                              child: Text('No tricks match', style: GoogleFonts.plusJakartaSans(fontSize: 13, color: AppColors.muted)),
+                            ),
+                          )
+                        : ListView.builder(
+                            shrinkWrap: true,
+                            padding: const EdgeInsets.fromLTRB(10, 0, 10, 20),
+                            itemCount: filtered.length,
+                            itemBuilder: (_, i) {
+                              final t = filtered[i];
+                              final selected = _allowedTrickIds.contains(t.id);
+                              return CheckboxListTile(
+                                value: selected,
+                                activeColor: AppColors.indigo,
+                                controlAffinity: ListTileControlAffinity.leading,
+                                dense: true,
+                                title: Text(
+                                  '${t.abbreviation} · ${t.name}',
+                                  style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink),
+                                ),
+                                onChanged: (v) {
+                                  setState(() {
+                                    _allowedTrickIds = v == true
+                                        ? [..._allowedTrickIds, t.id]
+                                        : _allowedTrickIds.where((id) => id != t.id).toList();
+                                  });
+                                  setSt(() {});
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _save() async {
@@ -341,6 +478,7 @@ class _PreferenceFormState extends State<_PreferenceForm> {
         includeKnee: _includeKnee,
         allowedRevolutions: widget.initial?.allowedRevolutions ?? [],
         maxHighRevolutionTricks: _maxHighRevTricks,
+        allowedTrickIds: _allowedTrickIds,
       );
 
       UserPreference saved;
@@ -412,6 +550,31 @@ class _PreferenceFormState extends State<_PreferenceForm> {
             _PrefToggle(label: 'Include cross-overs', value: _includeCrossOver, onChanged: (v) => setState(() => _includeCrossOver = v)),
             const SizedBox(height: 11),
             _PrefToggle(label: 'Include knee tricks', value: _includeKnee, onChanged: (v) => setState(() => _includeKnee = v)),
+            const SizedBox(height: 18),
+            Material(
+              color: AppColors.chipBg,
+              borderRadius: BorderRadius.circular(15),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(15),
+                onTap: _showTrickPicker,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _allowedTrickIds.isEmpty
+                              ? 'Allowed tricks (all)'
+                              : 'Allowed tricks (${_allowedTrickIds.length} selected)',
+                          style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink),
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, size: 18, color: AppColors.faint),
+                    ],
+                  ),
+                ),
+              ),
+            ),
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(_error!, style: const TextStyle(color: AppColors.red, fontSize: 13)),

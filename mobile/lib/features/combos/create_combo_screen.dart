@@ -112,6 +112,8 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   bool _includeCrossOver = true;
   bool _includeKnee = true;
   int _maxHighRevTricks = 1;
+  List<String> _allowedTrickIds = [];
+  List<TrickItem>? _allTricksForPicker;
   bool _genLoading = false;
   String? _genError;
   List<String> _previewWarnings = [];
@@ -150,6 +152,138 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     }
   }
 
+  Future<void> _showTrickPicker() async {
+    if (_allTricksForPicker == null) {
+      final all = await ApiClient.instance.getTricks();
+      _allTricksForPicker = all.whereType<TrickItem>().where((t) => !t.isTransition).toList()
+        ..sort((a, b) => a.name.compareTo(b.name));
+    }
+    if (!mounted) return;
+    var search = '';
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.bg,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) {
+          final filtered = _allTricksForPicker!.where((t) {
+            if (search.isEmpty) return true;
+            final q = search.toLowerCase();
+            return t.name.toLowerCase().contains(q) || t.abbreviation.toLowerCase().contains(q);
+          }).toList();
+          return SafeArea(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(color: AppColors.chipBg, borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 16, 22, 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Allowed tricks',
+                            style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+                          ),
+                        ),
+                        if (_allowedTrickIds.isNotEmpty)
+                          TextButton(
+                            onPressed: () {
+                              setState(() => _allowedTrickIds = []);
+                              setSt(() {});
+                            },
+                            child: const Text('Clear'),
+                          ),
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: Text(
+                            'OK',
+                            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: AppColors.indigo),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 0, 22, 10),
+                    child: Text(
+                      'Leave everything unchecked to allow the full trick library.',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppColors.muted),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 22),
+                    child: TextField(
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      onChanged: (v) => setSt(() => search = v),
+                      decoration: InputDecoration(
+                        hintText: 'Search tricks...',
+                        filled: true,
+                        fillColor: AppColors.chipBg,
+                        prefixIcon: const Icon(Icons.search, size: 18),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 14),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Flexible(
+                    child: filtered.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Center(
+                              child: Text('No tricks match', style: GoogleFonts.plusJakartaSans(fontSize: 13, color: AppColors.muted)),
+                            ),
+                          )
+                        : ListView.builder(
+                            shrinkWrap: true,
+                            padding: const EdgeInsets.fromLTRB(10, 0, 10, 20),
+                            itemCount: filtered.length,
+                            itemBuilder: (_, i) {
+                              final t = filtered[i];
+                              final selected = _allowedTrickIds.contains(t.id);
+                              return CheckboxListTile(
+                                value: selected,
+                                activeColor: AppColors.indigo,
+                                controlAffinity: ListTileControlAffinity.leading,
+                                dense: true,
+                                title: Text(
+                                  '${t.abbreviation} · ${t.name}',
+                                  style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink),
+                                ),
+                                onChanged: (v) {
+                                  setState(() {
+                                    _allowedTrickIds = v == true
+                                        ? [..._allowedTrickIds, t.id]
+                                        : _allowedTrickIds.where((id) => id != t.id).toList();
+                                  });
+                                  setSt(() {});
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _preview() async {
     setState(() {
       _genLoading = true;
@@ -167,6 +301,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
               includeCrossOver: _includeCrossOver,
               includeKnee: _includeKnee,
               maxHighRevolutionTricks: _maxHighRevTricks,
+              allowedTrickIds: _allowedTrickIds,
             );
       final result =
           await ApiClient.instance.previewCombo(_selectedPrefId, overrides);
@@ -751,6 +886,9 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   Widget _buildGenerateView() {
     final authed = AuthService.instance.isAuthenticated;
     final locked = _selectedPrefId != null;
+    final selectedPref = _selectedPrefId == null
+        ? null
+        : _savedPrefs.where((p) => p.id == _selectedPrefId).firstOrNull;
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -794,6 +932,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                               _includeCrossOver = p.includeCrossOver;
                               _includeKnee = p.includeKnee;
                               _maxHighRevTricks = p.maxHighRevolutionTricks ?? 1;
+                              _allowedTrickIds = List.from(p.allowedTrickIds);
                             }),
                           ),
                         ],
@@ -879,6 +1018,51 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                   onChanged:
                       locked ? null : (v) => setState(() => _includeKnee = v),
                 ),
+                const SizedBox(height: 20),
+                if (locked && selectedPref != null && selectedPref.allowedTrickIds.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(color: AppColors.chipBg, borderRadius: BorderRadius.circular(15)),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.filter_alt, size: 16, color: AppColors.indigo),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Allowed tricks: only ${selectedPref.allowedTrickIds.length} selected in "${selectedPref.name}"',
+                            style: GoogleFonts.plusJakartaSans(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.ink2),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (!locked)
+                  Material(
+                    color: AppColors.chipBg,
+                    borderRadius: BorderRadius.circular(15),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(15),
+                      onTap: _showTrickPicker,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.filter_alt, size: 16, color: AppColors.indigo),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _allowedTrickIds.isEmpty
+                                    ? 'Allowed tricks (all)'
+                                    : 'Allowed tricks (${_allowedTrickIds.length} selected)',
+                                style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink),
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right, size: 18, color: AppColors.faint),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 if (locked)
                   Padding(
                     padding: const EdgeInsets.only(top: 10),
@@ -1490,8 +1674,8 @@ class _SlotTile extends StatelessWidget {
           // strong/weak foot and no-touch don't apply to it.
           if (!slot.isTransition) ...[
             _SlotFlagToggle(
-              label: 'SF',
-              active: slot.strongFoot,
+              label: 'WF',
+              active: !slot.strongFoot,
               onTap: () => onToggleStrongFoot(!slot.strongFoot),
             ),
             const SizedBox(width: 6),

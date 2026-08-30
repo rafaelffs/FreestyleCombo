@@ -26,7 +26,8 @@ public class CreatePreferenceHandler : IRequestHandler<CreatePreferenceCommand, 
             IncludeCrossOver = request.IncludeCrossOver,
             IncludeKnee = request.IncludeKnee,
             AllowedRevolutions = request.AllowedRevolutions,
-            MaxHighRevolutionTricks = request.MaxHighRevolutionTricks
+            MaxHighRevolutionTricks = request.MaxHighRevolutionTricks,
+            AllowedTrickIds = request.AllowedTrickIds
         };
 
         await _repo.AddAsync(pref, cancellationToken);
@@ -43,7 +44,8 @@ public class CreatePreferenceHandler : IRequestHandler<CreatePreferenceCommand, 
             IncludeCrossOver = pref.IncludeCrossOver,
             IncludeKnee = pref.IncludeKnee,
             AllowedRevolutions = pref.AllowedRevolutions,
-            MaxHighRevolutionTricks = pref.MaxHighRevolutionTricks
+            MaxHighRevolutionTricks = pref.MaxHighRevolutionTricks,
+            AllowedTrickIds = pref.AllowedTrickIds
         };
     }
 }

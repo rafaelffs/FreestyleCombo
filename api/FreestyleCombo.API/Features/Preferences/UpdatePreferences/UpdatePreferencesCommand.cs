@@ -15,5 +15,6 @@ public record UpdatePreferencesCommand(
     bool IncludeCrossOver,
     bool IncludeKnee,
     List<decimal> AllowedRevolutions,
-    int? MaxHighRevolutionTricks
+    int? MaxHighRevolutionTricks,
+    List<Guid> AllowedTrickIds
 ) : IRequest<PreferenceDto>;

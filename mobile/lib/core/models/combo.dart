@@ -372,6 +372,7 @@ class GenerateComboOverrides {
   final bool? includeCrossOver;
   final bool? includeKnee;
   final int? maxHighRevolutionTricks;
+  final List<String>? allowedTrickIds;
 
   const GenerateComboOverrides({
     this.comboLength,
@@ -382,6 +383,7 @@ class GenerateComboOverrides {
     this.includeCrossOver,
     this.includeKnee,
     this.maxHighRevolutionTricks,
+    this.allowedTrickIds,
   });
 
   Map<String, dynamic> toJson() => {
@@ -393,5 +395,6 @@ class GenerateComboOverrides {
         if (includeCrossOver != null) 'includeCrossOver': includeCrossOver,
         if (includeKnee != null) 'includeKnee': includeKnee,
         if (maxHighRevolutionTricks != null) 'maxHighRevolutionTricks': maxHighRevolutionTricks,
+        if (allowedTrickIds != null && allowedTrickIds!.isNotEmpty) 'allowedTrickIds': allowedTrickIds,
       };
 }

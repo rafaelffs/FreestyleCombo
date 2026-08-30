@@ -20,6 +20,13 @@ public class UserPreferenceConfiguration : IEntityTypeConfiguration<UserPreferen
                 v => System.Text.Json.JsonSerializer.Deserialize<List<decimal>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new List<decimal>()
             );
 
+        builder.Property(p => p.AllowedTrickIds)
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                v => System.Text.Json.JsonSerializer.Deserialize<List<Guid>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new List<Guid>()
+            );
+
         builder.HasOne(p => p.User)
             .WithMany(u => u.Preferences)
             .HasForeignKey(p => p.UserId)

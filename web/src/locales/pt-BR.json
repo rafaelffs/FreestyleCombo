@@ -337,7 +337,13 @@
     "kneeLabel": "Joelho",
     "maxConsecLabel": "NT consec máx",
     "maxHighRevTricks": "Máx tricks 3+ giros",
-    "maxHighRevLabel": "Máx 3+ giros"
+    "maxHighRevLabel": "Máx 3+ giros",
+    "allowedTricks": "Tricks Permitidas",
+    "allowedTricksHint": "Deixe tudo desmarcado para permitir toda a biblioteca de tricks. Marque tricks específicas para restringir a geração a apenas elas.",
+    "allowedTricksCount": "{{count}} selecionada(s)",
+    "searchTricksPlaceholder": "Buscar tricks…",
+    "clearSelection": "Limpar",
+    "noTricksMatch": "Nenhuma trick encontrada."
   },
   "account": {
     "pageTitle": "Minha Conta",

@@ -337,7 +337,13 @@
     "kneeLabel": "Knee",
     "maxConsecLabel": "Max consec NT",
     "maxHighRevTricks": "Max 3+ Rev Tricks",
-    "maxHighRevLabel": "Max 3+ rev"
+    "maxHighRevLabel": "Max 3+ rev",
+    "allowedTricks": "Allowed Tricks",
+    "allowedTricksHint": "Leave everything unchecked to allow the full trick library. Check specific tricks to restrict generation to only those.",
+    "allowedTricksCount": "{{count}} selected",
+    "searchTricksPlaceholder": "Search tricks…",
+    "clearSelection": "Clear",
+    "noTricksMatch": "No tricks match."
   },
   "account": {
     "pageTitle": "My Account",

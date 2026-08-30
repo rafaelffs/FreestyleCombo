@@ -16,10 +16,10 @@ public class PreferenceHandlerTests
     private readonly Guid _prefId = Guid.NewGuid();
 
     private CreatePreferenceCommand DefaultCreateCommand() => new(
-        _userId, "My Pref", 6, 5, 50, 20, 3, true, false, [1m, 2m], null);
+        _userId, "My Pref", 6, 5, 50, 20, 3, true, false, [1m, 2m], null, []);
 
     private UpdatePreferencesCommand DefaultUpdateCommand(Guid callerId) => new(
-        _prefId, callerId, "Updated", 7, 6, 60, 30, 4, false, true, [3m], null);
+        _prefId, callerId, "Updated", 7, 6, 60, 30, 4, false, true, [3m], null, []);
 
     private UserPreference StoredPref() => new()
     {

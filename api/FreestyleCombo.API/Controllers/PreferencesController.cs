@@ -43,7 +43,8 @@ public class PreferencesController : ControllerBase
             request.IncludeCrossOver,
             request.IncludeKnee,
             request.AllowedRevolutions,
-            request.MaxHighRevolutionTricks
+            request.MaxHighRevolutionTricks,
+            request.AllowedTrickIds
         ), ct);
         return CreatedAtAction(nameof(GetAll), result);
     }
@@ -65,7 +66,8 @@ public class PreferencesController : ControllerBase
             request.IncludeCrossOver,
             request.IncludeKnee,
             request.AllowedRevolutions,
-            request.MaxHighRevolutionTricks
+            request.MaxHighRevolutionTricks,
+            request.AllowedTrickIds
         ), ct);
         return Ok(result);
     }
@@ -92,4 +94,5 @@ public class PreferenceRequest
     public bool IncludeKnee { get; set; } = true;
     public List<decimal> AllowedRevolutions { get; set; } = [];
     public int? MaxHighRevolutionTricks { get; set; }
+    public List<Guid> AllowedTrickIds { get; set; } = [];
 }
