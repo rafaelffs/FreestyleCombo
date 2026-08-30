@@ -95,6 +95,14 @@ Upload the latest build to TestFlight
 
 Push App Store listing metadata + screenshots and attach a build. Does NOT submit for review.
 
+### ios set_app_info
+
+```sh
+[bundle exec] fastlane ios set_app_info
+```
+
+Set primary/secondary category and content rights declaration
+
 ### ios clear_screenshots
 
 ```sh

@@ -23,7 +23,7 @@ platform :ios do
       UI.message("AppInfo state=#{info.app_store_state}")
       info.get_app_info_localizations.each do |loc|
         next unless loc.locale == "en-US"
-        UI.message("  [#{loc.locale}] name=#{loc.name.inspect} subtitle=#{loc.subtitle.inspect}")
+        UI.message("  [#{loc.locale}] name=#{loc.name.inspect} subtitle=#{loc.subtitle.inspect} privacyPolicyUrl=#{loc.privacy_policy_url.inspect}")
       end
     else
       UI.important("No editable app info found")
@@ -251,6 +251,22 @@ platform :ios do
         notes: "Demo account provided for full app testing. No special setup required."
       }
     )
+  end
+
+  desc "Set primary/secondary category and content rights declaration"
+  lane :set_app_info do
+    auth
+    app = Spaceship::ConnectAPI::App.find("com.rafaelffs.freestyleCombo")
+
+    app.update(attributes: { contentRightsDeclaration: "DOES_NOT_USE_THIRD_PARTY_CONTENT" })
+    UI.success("Set content rights declaration: does not use third-party content")
+
+    info = app.fetch_edit_app_info
+    info.update_categories(category_id_map: {
+      primary_category_id: "SPORTS",
+      secondary_category_id: "HEALTH_AND_FITNESS"
+    })
+    UI.success("Set primary category: Sports, secondary: Health & Fitness")
   end
 
   desc "Delete all screenshots from the en-US App Store version localization"
