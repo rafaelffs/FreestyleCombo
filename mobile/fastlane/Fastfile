@@ -2,6 +2,17 @@ require "shellwords"
 
 default_platform(:ios)
 
+# CocoaPods (Homebrew) is built against Homebrew's own Ruby
+# (/opt/homebrew/opt/ruby/bin/ruby), not the system `ruby` that's normally
+# first on PATH. `flutter build ipa` shells out to a Ruby-based CocoaPods
+# validity check that uses whatever `ruby` PATH resolves to — with system
+# Ruby first, it can't see the cocoapods gem and fails with "CocoaPods not
+# installed or not in valid state" even though `pod --version` works fine
+# directly. Prepending Homebrew's Ruby here fixes it for every lane in this
+# file without requiring a system-wide PATH change.
+homebrew_ruby_bin = "/opt/homebrew/opt/ruby/bin"
+ENV["PATH"] = "#{homebrew_ruby_bin}:#{ENV.fetch('PATH', '')}" if File.directory?(homebrew_ruby_bin)
+
 platform :ios do
   private_lane :auth do
     app_store_connect_api_key(
@@ -222,7 +233,16 @@ platform :ios do
     # directly and does NOT regenerate ios/Flutter/Generated.xcconfig, so it
     # silently reuses a stale FLUTTER_BUILD_NUMBER from pubspec.yaml and
     # every upload after the first gets rejected as a duplicate version.
-    sh("flutter build ipa --release")
+    #
+    # --export-options-plist is required: flutter build ipa's own default
+    # export step doesn't reliably pick up manual signing/the exact
+    # provisioning profile the archive step just used (observed directly:
+    # the archive embeds the correct profile, but the export step still
+    # rejects it as missing an entitlement the profile actually has) —
+    # passing ios/ExportOptions.plist explicitly, with signingStyle manual
+    # and the profile named directly, is what actually works.
+    export_options_path = File.expand_path("../ios/ExportOptions.plist", __dir__)
+    sh("flutter build ipa --release --export-options-plist=#{export_options_path.shellescape}")
   end
 
   desc "Upload the latest build to TestFlight"
