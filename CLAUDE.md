@@ -35,7 +35,7 @@ FreestyleCombo/
 |---|---|
 | `AppUser` | `IdentityUser<Guid>`, has `ICollection<Combo>`, `ICollection<ComboRating>`, `ICollection<UserPreference>`, `ICollection<TrickSubmission>`, `ICollection<UserFavouriteCombo>`, `ICollection<UserComboCompletion>` |
 | `Trick` | `Id, Name, Abbreviation, CrossOver, Knee, Revolution(decimal), Difficulty, CommonLevel` |
-| `Combo` | `Id, OwnerId, Name?, AverageDifficulty, TrickCount, Visibility(ComboVisibility), IsReusable(bool), CreatedAt, AiDescription, ICollection<UserFavouriteCombo>`, `ICollection<UserComboCompletion>` — `IsPublic` is a computed property (`=> Visibility == ComboVisibility.Public`), ignored by EF. `IsReusable` can only be set by admins; combo must be Public first. Reusable combos cannot be set to non-public (blocked in UpdateCombo, UpdateVisibility, and RejectComboVisibility — owner edits to a reusable public combo skip the PendingReview reset). |
+| `Combo` | `Id, OwnerId, Name?, AverageDifficulty, TrickCount, Visibility(ComboVisibility), IsReusable(bool), IsPersonalReusable(bool), CreatedAt, AiDescription, ICollection<UserFavouriteCombo>`, `ICollection<UserComboCompletion>` — `IsPublic` is a computed property (`=> Visibility == ComboVisibility.Public`), ignored by EF. `IsReusable` can only be set by admins; combo must be Public first. Reusable combos cannot be set to non-public (blocked in UpdateCombo, UpdateVisibility, and RejectComboVisibility — owner edits to a reusable public combo skip the PendingReview reset). `IsPersonalReusable` is the owner-scoped counterpart: the owner (only) can set it at any visibility, no admin approval needed, and it makes the combo show up as a sub-combo/reusable pick **only for that owner** — see "Personal reusable combos" below. |
 | `ComboTrick` | `Id, ComboId, TrickId?(nullable), SubComboId?(nullable), Position, StrongFoot, NoTouch` — exactly one of TrickId/SubComboId must be non-null (DB check constraint `CK_ComboTrick_TrickOrSubCombo`). SubComboId references a reusable combo. |
 | `ComboRating` | `Id, ComboId, RatedByUserId, Score, CreatedAt` |
 | `UserPreference` | `Id, UserId, Name(string max 100), MaxDifficulty, ComboLength, StrongFootPercentage, NoTouchPercentage, MaxConsecutiveNoTouch, IncludeCrossOver, IncludeKnee, AllowedRevolutions(List<decimal>), MaxHighRevolutionTricks(int?), AllowedTrickIds(List<Guid>)` — 1:many with AppUser (no unique index on UserId), `AllowedRevolutions` and `AllowedTrickIds` stored as `jsonb` |
@@ -60,7 +60,7 @@ Approving a submission creates a real `Trick` from the submission fields.
 ### Tricks API (`/api/tricks`)
 | Method | Route | Auth | Description |
 |---|---|---|---|
-| `GET` | `/` | Public | Returns `TrickListItemDto[]` — both tricks (`type: "trick"`) and reusable combos (`type: "combo"`). Tricks sorted alphabetically first, then combos alphabetically. Trick filters don't affect combos. |
+| `GET` | `/` | Public (optionally authed) | Returns `TrickListItemDto[]` — both tricks (`type: "trick"`) and reusable combos (`type: "combo"`). Tricks sorted alphabetically first, then combos alphabetically. Trick filters don't affect combos. The "combo" set is every admin-`IsReusable` public combo (everyone sees these) **plus**, for an authenticated caller, their own `IsPersonalReusable` combos at any visibility — see "Personal reusable combos" below. |
 | `PUT` | `/{id}` | Admin | Update trick — all fields editable |
 | `DELETE` | `/{id}` | Admin | Delete trick — 409 Conflict if used in any combo |
 
@@ -74,6 +74,7 @@ Trick delete throws `InvalidOperationException` ("This trick is used in X combo(
 | `PUT` | `/api/combos/{id}` | User/Admin | Update combo (name + tricks) — owner or admin only; if combo was `Public`, resets to `PendingReview` |
 | `DELETE` | `/api/combos/{id}` | User/Admin | Owner or Admin can delete; 403 otherwise. 409 Conflict if combo is referenced as a sub-combo in another combo. |
 | `PUT` | `/api/combos/{id}/reusable` | Admin | Toggle `IsReusable` flag — 400 if setting true on non-Public combo. Body: `{ "isReusable": bool }` |
+| `PUT` | `/api/combos/{id}/personal-reusable` | Owner | Toggle `IsPersonalReusable` flag — owner-only (403 otherwise), any visibility, no reference guard on unset. Body: `{ "isPersonalReusable": bool }` |
 | `POST` | `/api/combos/{id}/favourite` | User | Add combo to favourites |
 | `DELETE` | `/api/combos/{id}/favourite` | User | Remove combo from favourites |
 | `POST` | `/api/combos/{id}/complete` | User | Mark combo as done (idempotent) |
@@ -82,9 +83,13 @@ Trick delete throws `InvalidOperationException` ("This trick is used in X combo(
 | `POST` | `/api/combos/{id}/approve-visibility` | Admin | Approve → sets `Visibility = Public` |
 | `POST` | `/api/combos/{id}/reject-visibility` | Admin | Reject → sets `Visibility = Private` |
 
-`BuildComboCommand` / `UpdateComboCommand` validate: `Tricks` NotEmpty, each `Position >= 1`, NoTouch only on `CrossOver = true` tricks. Each slot must have exactly one of `TrickId`/`SubComboId` (XOR). Sub-combo slots must reference a reusable combo with no nested sub-combos (flat only). Reusable combos cannot themselves have sub-combo slots. `BuildComboTrickItem(Guid? TrickId, Guid? SubComboId, int Position, bool StrongFoot, bool NoTouch)`.
+`BuildComboCommand` / `UpdateComboCommand` validate: `Tricks` NotEmpty, each `Position >= 1`, NoTouch only on `CrossOver = true` tricks. Each slot must have exactly one of `TrickId`/`SubComboId` (XOR). Sub-combo slots must reference a reusable combo with no nested sub-combos (flat only) — "reusable" here means `IsReusable` **or** (`IsPersonalReusable` and the caller owns it). Reusable combos cannot themselves have sub-combo slots. `BuildComboTrickItem(Guid? TrickId, Guid? SubComboId, int Position, bool StrongFoot, bool NoTouch)`.
 
-`ComboTrickDto` is a discriminated union: `Type = "trick"` (trick fields) or `Type = "combo"` (SubComboId, SubComboName, SubComboTricks). All combo response DTOs include `IsReusable: bool`.
+`ComboTrickDto` is a discriminated union: `Type = "trick"` (trick fields) or `Type = "combo"` (SubComboId, SubComboName, SubComboTricks). All combo response DTOs include `IsReusable: bool` and `IsPersonalReusable: bool`.
+
+#### Personal reusable combos
+
+`IsPersonalReusable` is a lighter, owner-scoped alternative to the admin-gated `IsReusable`: the owner can flip it on their own combo at any visibility (Private/PendingReview/Public), no admin approval needed, and it makes that combo selectable as a sub-combo/reusable block **only in that owner's own** `GET /api/tricks` result and sub-combo slot validation — nobody else sees it there. The existing admin `IsReusable` mechanic (Public-only, admin-only, visible to everyone) is completely unchanged and independent; the two flags can coexist on the same combo. `IComboRepository.GetReusableAsync(Guid? requestingUserId, ...)` implements the merge (`WHERE IsReusable OR (IsPersonalReusable AND OwnerId == requestingUserId)`); `TricksController.GetTricks` resolves `requestingUserId` from the JWT when present, same pattern as `CombosController.GetPublic`. See `docs/superpowers/specs/2026-08-31-personal-reusable-combos-design.md` for the full design.
 
 `GenerateComboCommand(Guid? PreferenceId, GenerateComboOverrides? Overrides, string? Name)` — `PreferenceId` replaces the old `UsePreferences` bool. When set, the handler fetches that preference by ID and verifies ownership; when null, uses inline `Overrides`. Saved as `null` if Name is blank/whitespace. **No longer generates an AI description** — `AiDescription` is always `null` for new combos.
 
@@ -393,6 +398,10 @@ mobile/lib/
 
 `create_combo_screen.dart` generate view: preference selector is now a horizontal row of preset chips (first chip "Custom" = null) instead of a dropdown; selecting a preset still copies its values into state and locks the custom sliders/switches (`onChanged: null`). Sliders are a custom-painted `_AppSlider` (gradient fill track + ringed knob, JetBrains Mono value label) rather than Material `Slider`. A sticky bottom action bar holds the "Generate combo" button (calls `_preview()`, same preview→build-tab flow as before). Toggles use `CupertinoSwitch`. Build-tab slot rows and the picker list are restyled but functionally unchanged. The nested `_EditComboScreen` (combo detail's inline edit) and `_InlineSubmitForm`/`_EditTrickDialog` (tricks screen) got the same slider/toggle/field treatment.
 
+`create_combo_screen.dart` generate view: selecting "Custom" after a preset was selected resets every copied-over field (combo length, difficulty, foot/no-touch %, max consecutive no-touch, max 3+ rev tricks, cross-over/knee toggles, allowed-tricks filter) back to defaults, not just the selected-preset pointer — previously only the pointer reset, so e.g. the allowed-tricks filter stayed applied after switching back to Custom. Web's generate flow never had this bug (it reads preset values for display without writing them into its own override state).
+
+Both the manual build-save panel (`create_combo_screen.dart`'s `_buildComboTab()`, `CreateComboPage.tsx`) and the post-save `_EditComboScreen` (mobile) / edit mode (`ComboDetailPage.tsx`, web) expose two independent toggles: "Submit as public" (mobile edit screen only — the build/generate flow already had it; shown only while the combo is `Private`, calls `setVisibility`/`combosApi.setPublic` after the base update succeeds) and "Reusable for me" (all four surfaces; shown regardless of visibility, calls `setPersonalReusable`/`combosApi.setPersonalReusable`). Both call a second endpoint after the base build/update call succeeds, mirroring the two-call pattern already used for admin approval flows.
+
 `admin_combo_reviews_screen.dart` is dead code — unreferenced since `/admin/combo-reviews` redirects to `/admin/approvals` and `admin_submissions_screen.dart` already covers combo review approvals itself. Left as-is (not restyled, not deleted) since removing it wasn't requested.
 
 ### Mobile Navigation (post-merge)
@@ -408,13 +417,17 @@ mobile/lib/
 
 New mobile routes: none added — `/account`, `/users/:id`, `/admin/users` already existed. `combos_screen.dart`'s own FloatingActionButton was removed since the bottom-nav FAB now covers combo creation (the "Create your first combo" empty-state CTA on the Mine tab still exists).
 
+`widgets/submit_trick_sheet.dart` — shared `showSubmitTrickSheet()` + `SubmitTrickForm` (extracted from `tricks_screen.dart`'s formerly-private `_InlineSubmitForm`; `SubmitToggle` within it is public and also reused by `_EditTrickDialog` and the combo edit screens' "Submit as public"/"Reusable for me" toggles). `tricks_screen.dart`'s search and the manual combo-build trick picker (`create_combo_screen.dart`'s `_buildPickerTab()`) both show a "Missing a trick? Submit '\<query\>'" empty state when a search matches nothing, prefilling the submit sheet's name field with the search text. `tricks_screen.dart`'s sort-by bottom sheet (tune icon) also has a "Filter by revolutions" section below "Sort by", reusing the same `_selectedRevs` state as the standalone "Revs" chip (both remain — additive, not a replacement).
+
+`combos_screen.dart` has a "Done" filter chip (authed only, next to the Full name/Abbr. toggle) that client-side filters whichever tab (Public/Mine/Favourites) is active down to `combo.isCompleted`. `ComboCard`'s completion toggle now calls `widget.onRefresh?.call()` after marking/unmarking done (previously only the favourite toggle did this) so the parent list's cached `isCompleted` — and this filter — stays in sync immediately.
+
 ### combo_card.dart features
 - Shows `combo.name` (bold, 17/800) above `displayText` (JetBrains Mono) when present, with a gradient `DIFF` badge (top-right) showing `totalDifficulty`
 - Shows `combo.ownerUserName` (not ownerEmail) as an indigo "by [username]" link → `/users/{ownerId}` when set
 - Top icon row (authed only): favourite toggle, done toggle (+ count), rate button (non-owners only, opens `RateComboDialog`) — small bordered square icon buttons
 - Trick chips: `1. ATW` (JetBrains Mono, position in faint), no-touch chips tinted violet; sub-combo chips fall back to `subComboName` if `abbreviation` is null; "+N" overflow chip expands the list inline (existing cap-at-6 logic preserved)
 - Footer row (top hairline border): ★ average rating (if any ratings), ✓ done count, spacer, visibility tag (Public=blue/Pending=amber/Private=grey) — tappable only when `canActOnVisibility`, same confirm-sheet flow as before
-- Weak-foot tricks shown as `·wf`, no-touch as `·nt`
+- Weak-foot tricks shown as `·wf`, no-touch as `·nt` — suppressed for transition tricks (e.g. "Combo"), which have no foot/no-touch of their own; same suppression applies in `combo_detail_screen.dart`'s hero/sequence and the web equivalents (`ComboCard.tsx`, `ComboDetailPage.tsx`, `CreateComboPage.tsx`, `TricksPage.tsx`'s reusable-combo expansion, `AdminSubmissionsPage.tsx`). The root cause was the inline "edit combo" screens (mobile `_EditComboScreen`, web `ComboDetailPage.tsx` edit mode) not knowing about `isTransition` at all, unlike the main build flow — both now hide the SF/NT controls for transition slots and normalize away stale flags on load.
 
 ### Difficulty chip (mobile)
 - Shared `DifficultyChip(int)` in `widgets/difficulty_chip.dart` — green/greenBg (1–4), amber/amberBg (5–7), red/redBg (8–10), JetBrains Mono numeral
@@ -472,7 +485,7 @@ cd api
 dotnet test
 ```
 
-199 unit tests covering: combo generation/build/preview, combo visibility and deletion permissions, combo query/update handlers, pending combo review mapping, favourites/completions, auth login/register flows, account/admin handler flows, trick CRUD handlers, preference CRUD handlers, trick submission review flows, query handlers (tricks/preferences/ratings/pending approvals/submissions), revolution boundary validation (trick create/update/submission, preference and combo override allowed revolutions, preview override validation, rating score bounds), weight adjustment job/aggregator behavior, reusable combo repository methods, GetTricks unified response, SetReusable endpoint, BuildCombo/UpdateCombo sub-combo slot support, DeleteCombo sub-combo guard, and reusable combo visibility guard (cannot be set non-public).
+214 unit tests covering: combo generation/build/preview, combo visibility and deletion permissions, combo query/update handlers, pending combo review mapping, favourites/completions, auth login/register flows, account/admin handler flows, trick CRUD handlers, preference CRUD handlers, trick submission review flows, query handlers (tricks/preferences/ratings/pending approvals/submissions), revolution boundary validation (trick create/update/submission, preference and combo override allowed revolutions, preview override validation, rating score bounds), weight adjustment job/aggregator behavior, reusable combo repository methods, GetTricks unified response, SetReusable endpoint, BuildCombo/UpdateCombo sub-combo slot support, DeleteCombo sub-combo guard, reusable combo visibility guard (cannot be set non-public), and personal reusable combos (SetPersonalReusable owner/authorization, GetTricks per-user merge, BuildCombo/UpdateCombo sub-combo acceptance for the owner vs. rejection for non-owners).
 
 ---
 
