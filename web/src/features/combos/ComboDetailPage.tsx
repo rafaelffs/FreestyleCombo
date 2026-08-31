@@ -97,7 +97,11 @@ export function ComboDetailPage() {
         tricks: editSlots.map(({ trickId, position, strongFoot, noTouch }) => ({ trickId, position, strongFoot, noTouch })),
       })
       if (editIsPersonalReusable !== combo?.isPersonalReusable) {
-        await combosApi.setPersonalReusable(id!, editIsPersonalReusable)
+        if (editIsPersonalReusable) {
+          await combosApi.addPersonalReusable(id!)
+        } else {
+          await combosApi.removePersonalReusable(id!)
+        }
       }
       return res
     },

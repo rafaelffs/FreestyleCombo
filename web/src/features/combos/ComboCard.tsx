@@ -177,7 +177,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
   })
 
   const personalReusableMutation = useMutation({
-    mutationFn: () => combosApi.setPersonalReusable(combo.id, !personalReusable),
+    mutationFn: () => personalReusable ? combosApi.removePersonalReusable(combo.id) : combosApi.addPersonalReusable(combo.id),
     onSuccess: () => {
       setPersonalReusable((r) => !r)
       setPersonalReusableConfirmOpen(false)
@@ -242,7 +242,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
                 {favoured ? <HeartIconFilled /> : <HeartIconOutline />}
               </button>
             )}
-            {isOwner && (
+            {authed && (isOwner || combo.visibility === 'Public') && (
               <button
                 type="button"
                 onClick={() => setPersonalReusableConfirmOpen(true)}

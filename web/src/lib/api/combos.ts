@@ -127,8 +127,8 @@ export const combosApi = {
   rejectVisibility: (id: string) => api.post(`/combos/${id}/reject-visibility`),
   setReusable: (id: string, isReusable: boolean) =>
     api.put(`/combos/${id}/reusable`, { isReusable }),
-  setPersonalReusable: (id: string, isPersonalReusable: boolean) =>
-    api.put(`/combos/${id}/personal-reusable`, { isPersonalReusable }),
+  addPersonalReusable: (id: string) => api.post(`/combos/${id}/personal-reusable`),
+  removePersonalReusable: (id: string) => api.delete(`/combos/${id}/personal-reusable`),
 }
 
 export interface RatingDto {

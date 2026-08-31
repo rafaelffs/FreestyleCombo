@@ -177,7 +177,7 @@ export function CreateComboPage() {
     mutationFn: async () => {
       const res = await combosApi.build(serializeSlots(), isPublic, name || undefined)
       if (isPersonalReusable) {
-        await combosApi.setPersonalReusable(res.data.id, true)
+        await combosApi.addPersonalReusable(res.data.id)
       }
       return res
     },
