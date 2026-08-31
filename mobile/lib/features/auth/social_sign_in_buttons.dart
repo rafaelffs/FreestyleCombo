@@ -33,6 +33,16 @@ class _SocialSignInButtonsState extends State<SocialSignInButtons> {
     setState(() => _busy = true);
     try {
       await action();
+    } on GoogleSignInException catch (e) {
+      // The user backing out of the account picker isn't an error — nothing
+      // to show, just reset back to the idle state below.
+      if (e.code != GoogleSignInExceptionCode.canceled) {
+        widget.onError('Google sign-in failed. Please try again.');
+      }
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code != AuthorizationErrorCode.canceled) {
+        widget.onError('Apple sign-in failed. Please try again.');
+      }
     } catch (e) {
       widget.onError(e.toString().replaceFirst('Exception: ', ''));
     } finally {
