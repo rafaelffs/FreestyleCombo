@@ -247,14 +247,26 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
                       _AiDescriptionCard(text: combo.aiDescription!),
                     if (combo.tricks != null && combo.tricks!.isNotEmpty) ...[
                       const SizedBox(height: 20),
-                      Text(
-                        'SEQUENCE',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.8,
-                          color: AppColors.faint,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'SEQUENCE',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.8,
+                              color: AppColors.faint,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              _nameFormatChip('Full name', TrickNameDisplay.showFullName),
+                              const SizedBox(width: 6),
+                              _nameFormatChip('Abbr.', !TrickNameDisplay.showFullName),
+                            ],
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 12),
                       for (var i = 0; i < combo.tricks!.length; i++)
@@ -332,6 +344,27 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _nameFormatChip(String label, bool active) {
+    return GestureDetector(
+      onTap: () => setState(() => TrickNameDisplay.showFullName = label == 'Full name'),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: active ? AppColors.indigo : AppColors.chipBg,
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: active ? Colors.white : AppColors.ink2,
+          ),
+        ),
       ),
     );
   }
@@ -686,7 +719,7 @@ class _SequenceStepState extends State<_SequenceStep> {
         children: [
           Expanded(
             child: Text(
-              t.name ?? t.abbreviation ?? '',
+              TrickNameDisplay.label(isTransition: t.isTransition, name: t.name, abbreviation: t.abbreviation),
               style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink),
               overflow: TextOverflow.ellipsis,
             ),
