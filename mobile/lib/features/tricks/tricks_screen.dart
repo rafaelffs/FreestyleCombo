@@ -127,7 +127,7 @@ class _TricksScreenState extends State<TricksScreen> {
     }
   }
 
-  void _openSubmit() {
+  void _openSubmit({String? initialName}) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -135,12 +135,62 @@ class _TricksScreenState extends State<TricksScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (_) => _InlineSubmitForm(
+        initialName: initialName,
         onSubmitted: () {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Trick submitted for review!')),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    final hasSearch = _search.trim().isNotEmpty;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              hasSearch ? 'No tricks found for "${_search.trim()}".' : 'No tricks found.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(color: AppColors.muted, fontWeight: FontWeight.w600),
+            ),
+            if (hasSearch) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Missing a trick?',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(color: AppColors.ink2, fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+              const SizedBox(height: 14),
+              GestureDetector(
+                onTap: () => _openSubmit(initialName: _search.trim()),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.grad,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.add, size: 18, color: Colors.white),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Submit "${_search.trim()}"',
+                        style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13.5),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -831,9 +881,7 @@ class _TricksScreenState extends State<TricksScreen> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.indigo))
                 : filtered.isEmpty
-                    ? Center(
-                        child: Text('No tricks found.',
-                            style: GoogleFonts.plusJakartaSans(color: AppColors.muted, fontWeight: FontWeight.w600)))
+                    ? _buildEmptyState()
                     : ListView.builder(
                         padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
                         itemCount: filtered.length,
@@ -939,14 +987,15 @@ class _CircleIconButton extends StatelessWidget {
 
 class _InlineSubmitForm extends StatefulWidget {
   final VoidCallback onSubmitted;
-  const _InlineSubmitForm({required this.onSubmitted});
+  final String? initialName;
+  const _InlineSubmitForm({required this.onSubmitted, this.initialName});
 
   @override
   State<_InlineSubmitForm> createState() => _InlineSubmitFormState();
 }
 
 class _InlineSubmitFormState extends State<_InlineSubmitForm> {
-  final _nameCtrl = TextEditingController();
+  late final _nameCtrl = TextEditingController(text: widget.initialName ?? '');
   final _abbrevCtrl = TextEditingController();
   double _revolution = 1;
   int _difficulty = 1;
