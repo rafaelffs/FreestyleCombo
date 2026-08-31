@@ -37,7 +37,7 @@ String? _formatSequence(List<ComboTrickDto>? tricks) {
         : TrickNameDisplay.label(isTransition: t.isTransition, name: t.name, abbreviation: t.abbreviation);
     if (buffer.isNotEmpty) buffer.write(' ');
     buffer.write('($label)');
-    if (t.noTouch) buffer.write('(nt)');
+    if (t.noTouch && !t.isTransition) buffer.write('(nt)');
   }
   return buffer.toString();
 }
@@ -556,7 +556,7 @@ class _TrickChips extends StatelessWidget {
     // regardless of the full-name/abbreviation toggle, which only affects
     // the card's headline sequence (_formatSequence).
     final label = t.type == 'combo' ? (t.subComboName ?? 'Combo') : (t.abbreviation ?? '?');
-    final suffix = t.noTouch ? '·nt' : (!t.strongFoot ? '·wf' : '');
+    final suffix = t.isTransition ? '' : (t.noTouch ? '·nt' : (!t.strongFoot ? '·wf' : ''));
     final isNoTouch = t.noTouch;
 
     return Container(

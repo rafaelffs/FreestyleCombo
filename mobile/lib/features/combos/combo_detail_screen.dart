@@ -17,6 +17,7 @@ class _SlotItem {
   int position;
   bool strongFoot;
   bool noTouch;
+  final bool isTransition;
 
   // Sub-combo support
   final bool isSubCombo;
@@ -32,6 +33,7 @@ class _SlotItem {
     required this.position,
     this.strongFoot = true,
     this.noTouch = false,
+    this.isTransition = false,
     this.isSubCombo = false,
     this.subComboId,
     this.subComboName,
@@ -311,7 +313,7 @@ String? _formatSequence(List<ComboTrickDto>? tricks) {
         : TrickNameDisplay.label(isTransition: t.isTransition, name: t.name, abbreviation: t.abbreviation);
     if (buffer.isNotEmpty) buffer.write(' ');
     buffer.write('($label)');
-    if (t.noTouch) buffer.write('(nt)');
+    if (t.noTouch && !t.isTransition) buffer.write('(nt)');
   }
   return buffer.toString();
 }
@@ -638,11 +640,11 @@ class _SequenceStepState extends State<_SequenceStep> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (!t.strongFoot) ...[
+          if (!t.strongFoot && !t.isTransition) ...[
             _FlagTag(label: 'weak', bg: AppColors.amberBg, fg: AppColors.amber),
             const SizedBox(width: 6),
           ],
-          if (t.noTouch) ...[
+          if (t.noTouch && !t.isTransition) ...[
             _FlagTag(label: 'NT', bg: AppColors.noTouchBg, fg: AppColors.noTouchText),
             const SizedBox(width: 6),
           ],
@@ -712,7 +714,7 @@ class _SequenceStepState extends State<_SequenceStep> {
               runSpacing: 6,
               children: (t.subComboTricks ?? []).map((st) {
                 final label = st.abbreviation ?? '?';
-                final suffix = st.noTouch ? '·nt' : (!st.strongFoot ? '·wf' : '');
+                final suffix = st.isTransition ? '' : (st.noTouch ? '·nt' : (!st.strongFoot ? '·wf' : ''));
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                   decoration: BoxDecoration(
@@ -798,8 +800,11 @@ class _EditComboScreenState extends State<_EditComboScreen> {
         abbreviation: t.abbreviation ?? '',
         crossOver: false, // will be updated when tricks load
         position: t.position,
-        strongFoot: t.strongFoot,
-        noTouch: t.noTouch,
+        // A transition trick (e.g. "Combo") has no foot/no-touch of its own —
+        // normalize away any stale flags from before this was enforced.
+        strongFoot: t.isTransition ? true : t.strongFoot,
+        noTouch: t.isTransition ? false : t.noTouch,
+        isTransition: t.isTransition,
       );
     }).toList();
     _loadTricks();
@@ -852,6 +857,7 @@ class _EditComboScreenState extends State<_EditComboScreen> {
         abbreviation: trick.abbreviation,
         crossOver: trick.crossOver,
         position: _slots.length + 1,
+        isTransition: trick.isTransition,
       ));
       _tab = 1;
     });
@@ -1244,14 +1250,20 @@ class _EditSlot extends StatelessWidget {
               ],
             ),
           ),
-          _EditFlagToggle(label: 'SF', active: slot.strongFoot, onTap: () => onToggleStrongFoot(!slot.strongFoot)),
-          const SizedBox(width: 6),
-          _EditFlagToggle(
-            label: 'NT',
-            active: slot.noTouch,
-            enabled: slot.crossOver,
-            onTap: slot.crossOver ? () => onToggleNoTouch(!slot.noTouch) : null,
-          ),
+          if (!slot.isTransition) ...[
+            _EditFlagToggle(
+              label: 'SF',
+              active: slot.strongFoot,
+              onTap: () => onToggleStrongFoot(!slot.strongFoot),
+            ),
+            const SizedBox(width: 6),
+            _EditFlagToggle(
+              label: 'NT',
+              active: slot.noTouch,
+              enabled: slot.crossOver,
+              onTap: slot.crossOver ? () => onToggleNoTouch(!slot.noTouch) : null,
+            ),
+          ],
           IconButton(
             icon: const Icon(Icons.close, size: 18, color: AppColors.muted),
             padding: EdgeInsets.zero,

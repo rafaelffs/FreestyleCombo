@@ -329,8 +329,8 @@ export function ComboCard({ combo, showActions = false }: Props) {
                   {t_.type === 'trick' ? (
                     <>
                       {t_.abbreviation}
-                      {t_.noTouch && <span className="text-indigo-500">(nt)</span>}
-                      {!t_.strongFoot && <span className="text-orange-500">(wf)</span>}
+                      {!t_.isTransition && t_.noTouch && <span className="text-indigo-500">(nt)</span>}
+                      {!t_.isTransition && !t_.strongFoot && <span className="text-orange-500">(wf)</span>}
                     </>
                   ) : (
                     <>{t_.subComboName ?? 'Sub-combo'} ({t_.subComboTricks.length})</>

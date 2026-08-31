@@ -616,18 +616,22 @@ export function CreateComboPage() {
                     <span className="w-5 shrink-0 text-xs font-bold text-gray-400">{slot.position}</span>
                     {slot.type === 'trick' ? (() => {
                       const trickSlot = slot
-                      const ntDisabled = trickSlot.isTransition || !prevLastTrickIsCrossOver(slots, i)
+                      const ntDisabled = !prevLastTrickIsCrossOver(slots, i)
                       return (
                       <>
                         <div className="flex-1 min-w-0">
                           <span className="font-mono text-xs font-semibold text-gray-900">{trickSlot.abbreviation}</span>
                           {!abbrevOnly && <span className="ml-1.5 text-sm text-gray-500">{trickSlot.trickName}</span>}
                         </div>
-                        <FootToggle value={trickSlot.strongFoot} onChange={() => toggleStrongFoot(i)} disabled={trickSlot.isTransition} />
-                        <label className={`flex items-center gap-1 text-xs cursor-pointer ${ntDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}`}>
-                          <input type="checkbox" checked={trickSlot.noTouch} onChange={() => toggleNoTouch(i)} disabled={ntDisabled} className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 disabled:opacity-40" />
-                          NT
-                        </label>
+                        {!trickSlot.isTransition && (
+                          <>
+                            <FootToggle value={trickSlot.strongFoot} onChange={() => toggleStrongFoot(i)} />
+                            <label className={`flex items-center gap-1 text-xs cursor-pointer ${ntDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}`}>
+                              <input type="checkbox" checked={trickSlot.noTouch} onChange={() => toggleNoTouch(i)} disabled={ntDisabled} className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 disabled:opacity-40" />
+                              NT
+                            </label>
+                          </>
+                        )}
                       </>
                       )
                     })() : (
