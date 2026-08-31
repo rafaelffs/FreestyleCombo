@@ -190,7 +190,10 @@ platform :ios do
     signing_dir = File.expand_path("~/.appstoreconnect/freestylecombo-signing")
     FileUtils.mkdir_p(signing_dir)
     cert(output_path: signing_dir, keychain_path: keychain_path, keychain_password: password)
-    sigh(app_identifier: "com.rafaelffs.freestyleCombo", output_path: signing_dir)
+    # force: true — otherwise sigh just re-downloads whatever profile
+    # already exists by that name, even if the App ID's capabilities
+    # (e.g. Sign In with Apple) changed since it was last generated.
+    sigh(app_identifier: "com.rafaelffs.freestyleCombo", output_path: signing_dir, force: true)
   end
 
   # Named after CFBundleDisplayName (FSCombo.ipa), not the pubspec package
