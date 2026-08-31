@@ -34,7 +34,10 @@ Host filesystem:
    POSTGRES_PASSWORD=<strong-random>
    JWT_SECRET=<min-32-char-random>
    ANTHROPIC_API_KEY=<your-key>   # keep for future use, not active
+   GOOGLE_AUTH_AUDIENCES=<comma-separated Google OAuth client IDs: web,iOS,Android>
+   APPLE_AUTH_AUDIENCES=<comma-separated Apple audiences: bundle ID,web Services ID>
    ```
+   `GOOGLE_AUTH_AUDIENCES`/`APPLE_AUTH_AUDIENCES` are optional — if unset, Google/Apple sign-in endpoints exist and respond but fail closed (403) for every token, same as the `Resend__ApiKey` no-op pattern above.
 4. **Initial access**: use the raw VPS IP (`http://<IP>`) — HTTP only, fine for private testing
 
 ### When you get a domain (future step)

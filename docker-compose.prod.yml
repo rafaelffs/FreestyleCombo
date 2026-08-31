@@ -22,6 +22,8 @@ services:
       JwtSettings__Secret: "${JWT_SECRET}"
       JwtSettings__Issuer: "FreestyleComboAPI"
       JwtSettings__Audience: "FreestyleComboApp"
+      Auth__Google__Audiences: "${GOOGLE_AUTH_AUDIENCES:-}"
+      Auth__Apple__Audiences: "${APPLE_AUTH_AUDIENCES:-}"
       Anthropic__ApiKey: "${ANTHROPIC_API_KEY}"
     depends_on:
       - db
