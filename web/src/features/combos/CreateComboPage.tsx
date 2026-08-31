@@ -4,7 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
 import { FootToggle } from '@/components/ui/foot-toggle'
-import { combosApi, tricksApi, preferencesApi, extractError, type GenerateComboOverrides, type TrickItem, type ComboItem, type BuildComboTrickItem } from '@/lib/api'
+import { combosApi, tricksApi, preferencesApi, extractError, comboDisplayName, type GenerateComboOverrides, type TrickItem, type ComboItem, type BuildComboTrickItem } from '@/lib/api'
 import { isAuthenticated, setPendingCombo } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -87,6 +87,7 @@ export function CreateComboPage() {
   const [slots, setSlots] = useState<SlotItem[]>([])
   const [expandedSlots, setExpandedSlots] = useState<Set<number>>(new Set())
   const [isPublic, setIsPublic] = useState(false)
+  const [isPersonalReusable, setIsPersonalReusable] = useState(false)
   const [buildError, setBuildError] = useState<string | null>(null)
   const dragIndex = useRef<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -173,7 +174,13 @@ export function CreateComboPage() {
   }
 
   const buildMutation = useMutation({
-    mutationFn: () => combosApi.build(serializeSlots(), isPublic, name || undefined),
+    mutationFn: async () => {
+      const res = await combosApi.build(serializeSlots(), isPublic, name || undefined)
+      if (isPersonalReusable) {
+        await combosApi.addPersonalReusable(res.data.id)
+      }
+      return res
+    },
     onSuccess: ({ data }) => { navigate(`/combos/${data.id}`) },
     onError: (err) => setBuildError(extractError(err, t('create.buildFailed'))),
   })
@@ -198,7 +205,7 @@ export function CreateComboPage() {
         position: prev.length + 1,
         strongFoot: false,
         noTouch: false,
-        comboName: combo.name,
+        comboName: comboDisplayName(combo),
         trickCount: combo.trickCount,
         totalDifficulty: combo.totalDifficulty,
         trickSlots: combo.tricks.filter((t) => t.type === 'trick').map((t) => ({ abbreviation: t.abbreviation, noTouch: t.noTouch })),
@@ -247,7 +254,7 @@ export function CreateComboPage() {
   )
 
   const filteredCombos = comboItems.filter(
-    (c) => c.name.toLowerCase().includes(search.toLowerCase()),
+    (c) => comboDisplayName(c).toLowerCase().includes(search.toLowerCase()),
   )
 
   // Calculate summary expanding sub-combo tricks
@@ -532,7 +539,7 @@ export function CreateComboPage() {
                 {filteredCombos.map((combo) => (
                   <button key={combo.id} type="button" onClick={() => addCombo(combo)} className="flex w-full items-center justify-between px-2 py-2 text-left hover:bg-indigo-50 transition-colors border-l-2 border-indigo-300">
                     <div>
-                      <span className="text-sm font-semibold text-indigo-700">{combo.name}</span>
+                      <span className="text-sm font-semibold text-indigo-700">{comboDisplayName(combo)}</span>
                       <span className="ml-2 text-xs text-gray-400">
                         {t('createCombo.comboSlotLabel', { count: combo.trickCount, total: combo.totalDifficulty })}
                       </span>
@@ -616,18 +623,22 @@ export function CreateComboPage() {
                     <span className="w-5 shrink-0 text-xs font-bold text-gray-400">{slot.position}</span>
                     {slot.type === 'trick' ? (() => {
                       const trickSlot = slot
-                      const ntDisabled = trickSlot.isTransition || !prevLastTrickIsCrossOver(slots, i)
+                      const ntDisabled = !prevLastTrickIsCrossOver(slots, i)
                       return (
                       <>
                         <div className="flex-1 min-w-0">
                           <span className="font-mono text-xs font-semibold text-gray-900">{trickSlot.abbreviation}</span>
                           {!abbrevOnly && <span className="ml-1.5 text-sm text-gray-500">{trickSlot.trickName}</span>}
                         </div>
-                        <FootToggle value={trickSlot.strongFoot} onChange={() => toggleStrongFoot(i)} disabled={trickSlot.isTransition} />
-                        <label className={`flex items-center gap-1 text-xs cursor-pointer ${ntDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}`}>
-                          <input type="checkbox" checked={trickSlot.noTouch} onChange={() => toggleNoTouch(i)} disabled={ntDisabled} className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 disabled:opacity-40" />
-                          NT
-                        </label>
+                        {!trickSlot.isTransition && (
+                          <>
+                            <FootToggle value={trickSlot.strongFoot} onChange={() => toggleStrongFoot(i)} />
+                            <label className={`flex items-center gap-1 text-xs cursor-pointer ${ntDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}`}>
+                              <input type="checkbox" checked={trickSlot.noTouch} onChange={() => toggleNoTouch(i)} disabled={ntDisabled} className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 disabled:opacity-40" />
+                              NT
+                            </label>
+                          </>
+                        )}
                       </>
                       )
                     })() : (
@@ -666,6 +677,10 @@ export function CreateComboPage() {
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600" />
                   {t('create.submitForReview')}
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={isPersonalReusable} onChange={(e) => setIsPersonalReusable(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600" />
+                  {t('create.reusableForMe')}
                 </label>
                 {buildError && <p className="text-sm text-red-600">{buildError}</p>}
                 <Button onClick={handleSave} disabled={buildMutation.isPending || slots.length === 0} className="w-full">

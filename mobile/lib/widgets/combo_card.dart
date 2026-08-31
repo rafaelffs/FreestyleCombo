@@ -5,6 +5,7 @@ import '../core/api/api_client.dart';
 import '../core/auth/auth_service.dart';
 import '../core/models/combo.dart';
 import '../theme/app_colors.dart';
+import 'confirm_sheet.dart';
 import 'rate_combo_dialog.dart';
 
 /// Whether combo trick sequences (card titles, chips) show full trick names
@@ -37,7 +38,7 @@ String? _formatSequence(List<ComboTrickDto>? tricks) {
         : TrickNameDisplay.label(isTransition: t.isTransition, name: t.name, abbreviation: t.abbreviation);
     if (buffer.isNotEmpty) buffer.write(' ');
     buffer.write('($label)');
-    if (t.noTouch) buffer.write('(nt)');
+    if (t.noTouch && !t.isTransition) buffer.write('(nt)');
   }
   return buffer.toString();
 }
@@ -67,6 +68,8 @@ class _ComboCardState extends State<ComboCard> {
   bool _completedLoading = false;
   late bool _completed;
   late int _completionCount;
+  bool _personalReusableLoading = false;
+  late bool _isPersonalReusable;
   bool _expanded = false;
 
   @override
@@ -75,6 +78,7 @@ class _ComboCardState extends State<ComboCard> {
     _favoured = widget.combo.isFavourited;
     _completed = widget.combo.isCompleted;
     _completionCount = widget.combo.completionCount;
+    _isPersonalReusable = widget.combo.isPersonalReusable;
   }
 
   Future<void> _toggleFavourite() async {
@@ -113,6 +117,7 @@ class _ComboCardState extends State<ComboCard> {
           _completionCount = _completionCount + 1;
         });
       }
+      widget.onRefresh?.call();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -120,6 +125,36 @@ class _ComboCardState extends State<ComboCard> {
       }
     } finally {
       if (mounted) setState(() => _completedLoading = false);
+    }
+  }
+
+  Future<void> _togglePersonalReusable() async {
+    final confirmed = await showConfirmSheet(
+      context,
+      title: _isPersonalReusable ? 'Remove from your trick list?' : 'List combo in your trick list?',
+      description: _isPersonalReusable
+          ? 'This combo will no longer show up when you\'re building other combos.'
+          : 'This combo will show up as a selectable item — alongside tricks — when you\'re building other combos. Only you will see it there.',
+      confirmLabel: _isPersonalReusable ? 'Remove' : 'List it',
+    );
+    if (!confirmed) return;
+
+    setState(() => _personalReusableLoading = true);
+    try {
+      if (_isPersonalReusable) {
+        await ApiClient.instance.removePersonalReusable(widget.combo.id);
+      } else {
+        await ApiClient.instance.addPersonalReusable(widget.combo.id);
+      }
+      setState(() => _isPersonalReusable = !_isPersonalReusable);
+      widget.onRefresh?.call();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) setState(() => _personalReusableLoading = false);
     }
   }
 
@@ -153,76 +188,13 @@ class _ComboCardState extends State<ComboCard> {
       return;
     }
 
-    final confirmed = await showModalBottomSheet<bool>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.line2,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              title,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: AppColors.ink,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              description,
-              style: GoogleFonts.plusJakartaSans(color: AppColors.muted, fontSize: 14),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              height: 52,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.indigo,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                onPressed: () => Navigator.pop(sheetContext, true),
-                child: Text(
-                  confirmLabel,
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 52,
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.line2),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                onPressed: () => Navigator.pop(sheetContext, false),
-                child: Text(
-                  'Cancel',
-                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: AppColors.ink),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    final confirmed = await showConfirmSheet(
+      context,
+      title: title,
+      description: description,
+      confirmLabel: confirmLabel,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     setState(() => _visibilityLoading = true);
     try {
@@ -309,6 +281,18 @@ class _ComboCardState extends State<ComboCard> {
                         onTap: _toggleCompleted,
                         label: _completionCount > 0 ? '$_completionCount' : null,
                       ),
+                      if (isOwner || visibilityState == 'public' || isAdmin) ...[
+                        const SizedBox(width: 8),
+                        _IconToggle(
+                          icon: _isPersonalReusable ? Icons.link : Icons.link_off,
+                          color: _isPersonalReusable ? AppColors.indigo : AppColors.faint,
+                          loading: _personalReusableLoading,
+                          tooltip: _isPersonalReusable
+                              ? 'Remove from your trick list'
+                              : 'List combo in the trick list',
+                          onTap: _togglePersonalReusable,
+                        ),
+                      ],
                       if (canRate) ...[
                         const SizedBox(width: 8),
                         _IconToggle(
@@ -556,7 +540,7 @@ class _TrickChips extends StatelessWidget {
     // regardless of the full-name/abbreviation toggle, which only affects
     // the card's headline sequence (_formatSequence).
     final label = t.type == 'combo' ? (t.subComboName ?? 'Combo') : (t.abbreviation ?? '?');
-    final suffix = t.noTouch ? '·nt' : (!t.strongFoot ? '·wf' : '');
+    final suffix = t.isTransition ? '' : (t.noTouch ? '·nt' : (!t.strongFoot ? '·wf' : ''));
     final isNoTouch = t.noTouch;
 
     return Container(

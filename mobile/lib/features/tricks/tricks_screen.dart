@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/api/api_client.dart';
@@ -7,6 +6,7 @@ import '../../core/models/combo.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/combo_card.dart' show TrickNameDisplay;
 import '../../widgets/difficulty_chip.dart';
+import '../../widgets/submit_trick_sheet.dart';
 
 enum _SortKey { abbreviation, name, revolution, difficulty }
 
@@ -102,7 +102,7 @@ class _TricksScreenState extends State<TricksScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('Remove reusable flag?', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: AppColors.ink)),
         content: Text(
-          'Remove "${combo.name}" from the reusable combos list?',
+          'Remove "${combo.displayName}" from the reusable combos list?',
           style: GoogleFonts.plusJakartaSans(color: AppColors.ink2, fontSize: 14),
         ),
         actions: [
@@ -127,20 +127,64 @@ class _TricksScreenState extends State<TricksScreen> {
     }
   }
 
-  void _openSubmit() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (_) => _InlineSubmitForm(
-        onSubmitted: () {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Trick submitted for review!')),
-          );
-        },
+  void _openSubmit({String? initialName}) {
+    showSubmitTrickSheet(
+      context,
+      initialName: initialName,
+      onSubmitted: () {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Trick submitted for review!')),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState() {
+    final hasSearch = _search.trim().isNotEmpty;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              hasSearch ? 'No tricks found for "${_search.trim()}".' : 'No tricks found.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(color: AppColors.muted, fontWeight: FontWeight.w600),
+            ),
+            if (hasSearch) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Missing a trick?',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(color: AppColors.ink2, fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+              const SizedBox(height: 14),
+              GestureDetector(
+                onTap: () => _openSubmit(initialName: _search.trim()),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.grad,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.add, size: 18, color: Colors.white),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Submit "${_search.trim()}"',
+                        style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13.5),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -262,7 +306,7 @@ class _TricksScreenState extends State<TricksScreen> {
       } else if (item is ComboItem) {
         if (_typeFilter == _TypeFilter.tricks) return false;
         // Combos: only filter by search on name, ignore diff/rev filters
-        if (q.isNotEmpty && !item.name.toLowerCase().contains(q)) return false;
+        if (q.isNotEmpty && !item.displayName.toLowerCase().contains(q)) return false;
         return true;
       }
       return true;
@@ -287,7 +331,7 @@ class _TricksScreenState extends State<TricksScreen> {
       return _sortAsc ? cmp : -cmp;
     });
 
-    combos.sort((a, b) => a.name.compareTo(b.name));
+    combos.sort((a, b) => a.displayName.compareTo(b.displayName));
 
     return [...tricks, ...combos];
   }
@@ -311,80 +355,125 @@ class _TricksScreenState extends State<TricksScreen> {
   };
 
   void _showSortSheet() {
+    final revOptions = _revOptions;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.bg,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 12),
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(color: AppColors.line2, borderRadius: BorderRadius.circular(2)),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 12),
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: AppColors.line2, borderRadius: BorderRadius.circular(2)),
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(22, 16, 22, 8),
-                child: Text(
-                  'Sort by',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 16, 22, 8),
+                  child: Text(
+                    'Sort by',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
-                child: Column(
-                  children: _sortLabels.entries.map((e) {
-                    final selected = _sortKey == e.key;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: () {
-                            _setSort(e.key);
-                            setSt(() {});
-                            Navigator.pop(ctx);
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-                            decoration: BoxDecoration(
-                              color: selected ? AppColors.indigoTint : AppColors.surface,
-                              border: Border.all(color: selected ? const Color(0xFFC7CCF7) : AppColors.line),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    e.value,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 14.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: selected ? AppColors.indigo : AppColors.ink,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
+                  child: Column(
+                    children: _sortLabels.entries.map((e) {
+                      final selected = _sortKey == e.key;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: () {
+                              _setSort(e.key);
+                              setSt(() {});
+                              Navigator.pop(ctx);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                              decoration: BoxDecoration(
+                                color: selected ? AppColors.indigoTint : AppColors.surface,
+                                border: Border.all(color: selected ? const Color(0xFFC7CCF7) : AppColors.line),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      e.value,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: selected ? AppColors.indigo : AppColors.ink,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                if (selected)
-                                  Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 18, color: AppColors.indigo)
-                                else
-                                  const Icon(Icons.circle_outlined, size: 20, color: AppColors.faint),
-                              ],
+                                  if (selected)
+                                    Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 18, color: AppColors.indigo)
+                                  else
+                                    const Icon(Icons.circle_outlined, size: 20, color: AppColors.faint),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  }).toList(),
+                      );
+                    }).toList(),
+                  ),
                 ),
-              ),
-            ],
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 0, 14, 8),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Filter by revolutions',
+                        style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+                      ),
+                      const Spacer(),
+                      if (_selectedRevs.isNotEmpty)
+                        TextButton(
+                          onPressed: () {
+                            setState(() => _selectedRevs = {});
+                            setSt(() {});
+                          },
+                          child: Text('Clear', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, color: AppColors.indigo)),
+                        ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
+                  child: Column(
+                    children: revOptions.map((rev) {
+                      final selected = _selectedRevs.contains(rev);
+                      return _RevOption(
+                        label: '${rev % 1 == 0 ? rev.toInt() : rev} rev${rev == 1 ? '' : 's'}',
+                        selected: selected,
+                        onTap: () {
+                          setState(() {
+                            if (selected) {
+                              _selectedRevs = _selectedRevs.where((r) => r != rev).toSet();
+                            } else {
+                              _selectedRevs = {..._selectedRevs, rev};
+                            }
+                          });
+                          setSt(() {});
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -416,7 +505,7 @@ class _TricksScreenState extends State<TricksScreen> {
 
   Widget _nameFormatChip(String label, bool active) {
     return GestureDetector(
-      onTap: () => setState(() => TrickNameDisplay.showFullName = label == 'Full name'),
+      onTap: () => setState(() => TrickNameDisplay.showFullName = label == 'Name'),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
@@ -555,7 +644,7 @@ class _TricksScreenState extends State<TricksScreen> {
                           children: [
                             Flexible(
                               child: Text(
-                                c.name,
+                                c.displayName,
                                 style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w800, color: AppColors.ink),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -801,7 +890,7 @@ class _TricksScreenState extends State<TricksScreen> {
                     ),
                   ),
                 ),
-                _nameFormatChip('Full name', TrickNameDisplay.showFullName),
+                _nameFormatChip('Name', TrickNameDisplay.showFullName),
                 const SizedBox(width: 6),
                 _nameFormatChip('Abbr.', !TrickNameDisplay.showFullName),
                 const SizedBox(width: 6),
@@ -831,9 +920,7 @@ class _TricksScreenState extends State<TricksScreen> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.indigo))
                 : filtered.isEmpty
-                    ? Center(
-                        child: Text('No tricks found.',
-                            style: GoogleFonts.plusJakartaSans(color: AppColors.muted, fontWeight: FontWeight.w600)))
+                    ? _buildEmptyState()
                     : ListView.builder(
                         padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
                         itemCount: filtered.length,
@@ -929,299 +1016,6 @@ class _CircleIconButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(13),
           ),
           child: Icon(icon, size: 20, color: gradient ? Colors.white : AppColors.ink2),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Submit form ────────────────────────────────────────────────────────────────
-
-class _InlineSubmitForm extends StatefulWidget {
-  final VoidCallback onSubmitted;
-  const _InlineSubmitForm({required this.onSubmitted});
-
-  @override
-  State<_InlineSubmitForm> createState() => _InlineSubmitFormState();
-}
-
-class _InlineSubmitFormState extends State<_InlineSubmitForm> {
-  final _nameCtrl = TextEditingController();
-  final _abbrevCtrl = TextEditingController();
-  double _revolution = 1;
-  int _difficulty = 1;
-  int _commonLevel = 5;
-  bool _crossOver = false;
-  bool _knee = false;
-  bool _loading = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _abbrevCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (_nameCtrl.text.trim().isEmpty || _abbrevCtrl.text.trim().isEmpty) {
-      setState(() => _error = 'Name and abbreviation are required.');
-      return;
-    }
-    setState(() { _loading = true; _error = null; });
-    try {
-      await ApiClient.instance.submitTrick(
-        name: _nameCtrl.text.trim(),
-        abbreviation: _abbrevCtrl.text.trim(),
-        crossOver: _crossOver,
-        knee: _knee,
-        revolution: _revolution,
-        difficulty: _difficulty,
-        commonLevel: _commonLevel,
-      );
-      if (mounted) widget.onSubmitted();
-    } catch (e) {
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(22, 16, 22, 24 + bottomInset),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(color: AppColors.line2, borderRadius: BorderRadius.circular(2)),
-            ),
-          ),
-          const SizedBox(height: 18),
-          Text('Submit a trick', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink)),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              SizedBox(
-                width: 110,
-                child: _SubmitField(
-                  controller: _abbrevCtrl,
-                  label: 'Abbreviation',
-                  hint: 'e.g. CO',
-                  textCapitalization: TextCapitalization.characters,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _SubmitField(
-                  controller: _nameCtrl,
-                  label: 'Name',
-                  hint: 'e.g. Crossover',
-                  textCapitalization: TextCapitalization.words,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _SubmitSlider(
-            label: 'Revolutions',
-            value: _revolution,
-            min: 0.5,
-            max: 4,
-            formatValue: (v) => v.toStringAsFixed(1),
-            onChanged: (v) => setState(() => _revolution = (v * 2).round() / 2),
-          ),
-          const SizedBox(height: 18),
-          _SubmitSlider(
-            label: 'Difficulty',
-            value: _difficulty.toDouble(),
-            min: 1,
-            max: 10,
-            onChanged: (v) => setState(() => _difficulty = v.round()),
-          ),
-          const SizedBox(height: 18),
-          _SubmitToggle(label: 'Cross-over', value: _crossOver, onChanged: (v) => setState(() => _crossOver = v)),
-          const SizedBox(height: 11),
-          _SubmitToggle(label: 'Knee trick', value: _knee, onChanged: (v) => setState(() => _knee = v)),
-          if (_error != null) ...[
-            const SizedBox(height: 12),
-            Text(_error!, style: const TextStyle(color: AppColors.red, fontSize: 12)),
-          ],
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 52,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.indigo,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              onPressed: _loading ? null : _submit,
-              child: _loading
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Submit', style: TextStyle(fontWeight: FontWeight.w800)),
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SubmitField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final String hint;
-  final TextCapitalization textCapitalization;
-
-  const _SubmitField({required this.controller, required this.label, required this.hint, required this.textCapitalization});
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      textCapitalization: textCapitalization,
-      style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        filled: true,
-        fillColor: AppColors.chipBg,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: AppColors.line2)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: AppColors.line2)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: AppColors.indigo, width: 1.5)),
-      ),
-    );
-  }
-}
-
-class _SubmitSlider extends StatelessWidget {
-  final String label;
-  final double value;
-  final double min;
-  final double max;
-  final ValueChanged<double> onChanged;
-  final String Function(double)? formatValue;
-
-  const _SubmitSlider({
-    required this.label,
-    required this.value,
-    required this.min,
-    required this.max,
-    required this.onChanged,
-    this.formatValue,
-  });
-
-  void _handle(Offset local, double width) {
-    if (width <= 0) return;
-    final pct = (local.dx / width).clamp(0.0, 1.0);
-    onChanged(min + pct * (max - min));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = ((value - min) / (max - min)).clamp(0.0, 1.0);
-    final valueLabel = formatValue != null ? formatValue!(value) : value.round().toString();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink)),
-            Text(valueLabel, style: GoogleFonts.jetBrainsMono(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.indigo)),
-          ],
-        ),
-        const SizedBox(height: 11),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            return GestureDetector(
-              onTapDown: (d) => _handle(d.localPosition, width),
-              onHorizontalDragUpdate: (d) => _handle(d.localPosition, width),
-              child: SizedBox(
-                height: 24,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Positioned(
-                      top: 8, left: 0, right: 0,
-                      child: Container(height: 8, decoration: BoxDecoration(color: const Color(0xFFE4E3EF), borderRadius: BorderRadius.circular(5))),
-                    ),
-                    Positioned(
-                      top: 8, left: 0,
-                      child: Container(
-                        width: (pct * width).clamp(0.0, width),
-                        height: 8,
-                        decoration: BoxDecoration(gradient: AppColors.grad, borderRadius: BorderRadius.circular(5)),
-                      ),
-                    ),
-                    Positioned(
-                      left: (pct * width - 12).clamp(0.0, width - 24 < 0 ? 0.0 : width - 24),
-                      top: 0,
-                      child: Container(
-                        width: 24, height: 24,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                          border: Border.all(color: AppColors.indigo, width: 4),
-                          boxShadow: const [BoxShadow(color: Color(0x40141221), blurRadius: 8, offset: Offset(0, 3))],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-}
-
-class _SubmitToggle extends StatelessWidget {
-  final String label;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _SubmitToggle({required this.label, required this.value, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => onChanged(!value),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            border: Border.all(color: AppColors.line),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink)),
-              IgnorePointer(
-                child: CupertinoSwitch(value: value, activeTrackColor: AppColors.indigo, onChanged: onChanged),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -1353,6 +1147,7 @@ class _EditTrickDialogState extends State<_EditTrickDialog> {
                                     value: _revolution,
                                     min: 0.5,
                                     max: 10,
+                                    step: 0.5,
                                     onChanged: (v) => setState(() => _revolution = v))),
                             const SizedBox(width: 8),
                             Expanded(
@@ -1373,9 +1168,9 @@ class _EditTrickDialogState extends State<_EditTrickDialog> {
                           ],
                         ),
                         const SizedBox(height: 6),
-                        _SubmitToggle(label: 'Cross-over', value: _crossOver, onChanged: (v) => setState(() => _crossOver = v)),
+                        SubmitToggle(label: 'Cross-over', value: _crossOver, onChanged: (v) => setState(() => _crossOver = v)),
                         const SizedBox(height: 8),
-                        _SubmitToggle(label: 'Knee trick', value: _knee, onChanged: (v) => setState(() => _knee = v)),
+                        SubmitToggle(label: 'Knee trick', value: _knee, onChanged: (v) => setState(() => _knee = v)),
                         if (_error != null) ...[
                           const SizedBox(height: 10),
                           Text(_error!, style: const TextStyle(color: AppColors.red)),
@@ -1434,6 +1229,7 @@ class _NumField extends StatelessWidget {
   final double min;
   final double max;
   final ValueChanged<double> onChanged;
+  final double? step;
 
   const _NumField({
     required this.label,
@@ -1441,6 +1237,7 @@ class _NumField extends StatelessWidget {
     required this.min,
     required this.max,
     required this.onChanged,
+    this.step,
   });
 
   @override
@@ -1459,8 +1256,10 @@ class _NumField extends StatelessWidget {
       ),
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       onChanged: (v) {
-        final parsed = double.tryParse(v);
-        if (parsed != null && parsed >= min && parsed <= max) onChanged(parsed);
+        var parsed = double.tryParse(v);
+        if (parsed == null || parsed < min || parsed > max) return;
+        if (step != null) parsed = (parsed / step!).round() * step!;
+        onChanged(parsed);
       },
     );
   }

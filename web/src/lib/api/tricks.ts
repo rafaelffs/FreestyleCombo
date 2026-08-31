@@ -16,13 +16,18 @@ export interface TrickItem {
 export interface ComboItem {
   type: 'combo'
   id: string
-  name: string
+  name: string | null
+  displayText: string
   totalDifficulty: number
   trickCount: number
   tricks: TrickSlotDto[]
 }
 
 export type TrickListItem = TrickItem | ComboItem
+
+// Combos aren't required to have a name — falls back to the trick sequence
+// notation, matching every other combo-display surface.
+export const comboDisplayName = (combo: ComboItem) => combo.name || combo.displayText
 
 export interface TrickDto {
   id: string

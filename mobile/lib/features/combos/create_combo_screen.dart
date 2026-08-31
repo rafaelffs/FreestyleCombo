@@ -9,6 +9,7 @@ import '../../core/models/user_preference.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/combo_card.dart' show TrickNameDisplay;
 import '../../widgets/difficulty_chip.dart';
+import '../../widgets/submit_trick_sheet.dart';
 import 'unsaved_combo_guard.dart';
 
 enum _Mode { choose, generate, build }
@@ -126,6 +127,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   _TypeFilter _typeFilter = _TypeFilter.all;
   final List<_SlotItem> _slots = [];
   bool _isPublic = false;
+  bool _isPersonalReusable = false;
   bool _saving = false;
   String? _buildError;
   ComboDto? _buildResult;
@@ -394,14 +396,14 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
 
   Future<void> _promptAddCombo(ComboItem combo) async {
     final choice = await _showAddOptionsSheet(
-      title: combo.name,
+      title: combo.displayName,
       allowNoTouch: false,
     );
     if (choice == null) return;
     setState(() {
       _slots.add(_SlotItem.combo(
         subComboId: combo.id,
-        subComboName: combo.name,
+        subComboName: combo.displayName,
         subComboTricks: combo.tricks,
         position: _slots.length + 1,
       )..strongFoot = choice.strongFoot);
@@ -624,6 +626,9 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
       final name = _nameCtrl.text.trim();
       final combo = await ApiClient.instance
           .buildCombo(items, _isPublic, name: name.isEmpty ? null : name);
+      if (_isPersonalReusable) {
+        await ApiClient.instance.addPersonalReusable(combo.id);
+      }
       setState(() => _buildResult = combo);
     } catch (e) {
       setState(
@@ -644,7 +649,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
       } else if (item is ComboItem) {
         if (_typeFilter == _TypeFilter.tricks) return false;
         if (q.isEmpty) return true;
-        return item.name.toLowerCase().contains(q);
+        return item.displayName.toLowerCase().contains(q);
       }
       return false;
     }).toList();
@@ -915,7 +920,18 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                         _PresetChip(
                           label: 'Custom',
                           selected: _selectedPrefId == null,
-                          onTap: () => setState(() => _selectedPrefId = null),
+                          onTap: () => setState(() {
+                            _selectedPrefId = null;
+                            _comboLength = 5;
+                            _maxDifficulty = 10;
+                            _strongFootPct = 50;
+                            _noTouchPct = 30;
+                            _maxConsecNoTouch = 2;
+                            _includeCrossOver = true;
+                            _includeKnee = true;
+                            _maxHighRevTricks = 1;
+                            _allowedTrickIds = [];
+                          }),
                         ),
                         for (final p in _savedPrefs) ...[
                           const SizedBox(width: 8),
@@ -1340,23 +1356,83 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
           child: _loadingTricks
               ? const Center(
                   child: CircularProgressIndicator(color: AppColors.indigo))
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
-                  itemCount: rest.length,
-                  itemBuilder: (_, i) {
-                    final item = rest[i];
-                    if (item is TrickItem) {
-                      return _PickerTrickRow(
-                          item: item, onAdd: () => _promptAddTrick(item));
-                    } else if (item is ComboItem) {
-                      return _PickerComboRow(
-                          item: item, onAdd: () => _promptAddCombo(item));
-                    }
-                    return const SizedBox.shrink();
-                  },
-                ),
+              : filtered.isEmpty
+                  ? _buildPickerEmptyState()
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
+                      itemCount: rest.length,
+                      itemBuilder: (_, i) {
+                        final item = rest[i];
+                        if (item is TrickItem) {
+                          return _PickerTrickRow(
+                              item: item, onAdd: () => _promptAddTrick(item));
+                        } else if (item is ComboItem) {
+                          return _PickerComboRow(
+                              item: item, onAdd: () => _promptAddCombo(item));
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
         ),
       ],
+    );
+  }
+
+  Widget _buildPickerEmptyState() {
+    final query = _search.trim();
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              query.isEmpty ? 'No tricks found.' : 'No tricks found for "$query".',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(color: AppColors.muted, fontWeight: FontWeight.w600),
+            ),
+            if (query.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Missing a trick?',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(color: AppColors.ink2, fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+              const SizedBox(height: 14),
+              GestureDetector(
+                onTap: () => showSubmitTrickSheet(
+                  context,
+                  initialName: query,
+                  onSubmitted: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Trick submitted for review!')),
+                    );
+                  },
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.grad,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.add, size: 18, color: Colors.white),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Submit "$query"',
+                        style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13.5),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -1429,6 +1505,12 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                   label: 'Submit as public',
                   value: _isPublic,
                   onChanged: (v) => setState(() => _isPublic = v),
+                ),
+                const SizedBox(height: 10),
+                _ToggleRow(
+                  label: 'List combo in the trick list',
+                  value: _isPersonalReusable,
+                  onChanged: (v) => setState(() => _isPersonalReusable = v),
                 ),
                 if (_buildError != null) ...[
                   const SizedBox(height: 8),
@@ -1854,7 +1936,7 @@ class _PickerComboRow extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              item.name,
+                              item.displayName,
                               style: GoogleFonts.plusJakartaSans(
                                   fontSize: 14.5,
                                   fontWeight: FontWeight.w800,

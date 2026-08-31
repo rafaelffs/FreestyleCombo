@@ -28,7 +28,7 @@ public class QueryHandlerTests
             TrickFaker.Create(name: "MATW", crossOver: true, knee: false, revolution: 2.0m, difficulty: 4, commonLevel: 5)
         };
         repo.Setup(r => r.GetAllAsync(true, false, 5, It.IsAny<CancellationToken>())).ReturnsAsync(tricks);
-        comboRepo.Setup(r => r.GetReusableAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        comboRepo.Setup(r => r.GetReusableAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
 
         var result = await new GetTricksHandler(repo.Object, comboRepo.Object)
             .Handle(new GetTricksQuery(true, false, 5), CancellationToken.None);

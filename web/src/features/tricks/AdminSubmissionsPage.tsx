@@ -102,8 +102,8 @@ export function AdminSubmissionsPage() {
                         {tr.type === 'trick' ? (
                           <>
                             {tr.position}. {tr.abbreviation}
-                            {tr.noTouch && <span className="text-indigo-500">(nt)</span>}
-                            {!tr.strongFoot && <span className="text-orange-500">(wf)</span>}
+                            {!tr.isTransition && tr.noTouch && <span className="text-indigo-500">(nt)</span>}
+                            {!tr.isTransition && !tr.strongFoot && <span className="text-orange-500">(wf)</span>}
                           </>
                         ) : (
                           <>{tr.position}. {tr.subComboName ?? 'Sub-combo'} ({tr.subComboTricks.length})</>

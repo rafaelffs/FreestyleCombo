@@ -1,3 +1,4 @@
+using FreestyleCombo.API.Features.Auth.ExternalSignIn;
 using FreestyleCombo.API.Features.Auth.ForgotPassword;
 using FreestyleCombo.API.Features.Auth.Login;
 using FreestyleCombo.API.Features.Auth.Register;
@@ -28,6 +29,22 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginCommand command, CancellationToken ct)
     {
         var result = await _mediator.Send(command, ct);
+        return Ok(result);
+    }
+
+    [HttpPost("google")]
+    [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GoogleSignIn([FromBody] ExternalSignInRequest request, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new ExternalSignInCommand("google", request.IdToken), ct);
+        return Ok(result);
+    }
+
+    [HttpPost("apple")]
+    [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> AppleSignIn([FromBody] ExternalSignInRequest request, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new ExternalSignInCommand("apple", request.IdToken), ct);
         return Ok(result);
     }
 

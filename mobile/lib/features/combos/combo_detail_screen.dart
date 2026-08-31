@@ -6,8 +6,10 @@ import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/combo_card.dart' show TrickNameDisplay;
+import '../../widgets/confirm_sheet.dart';
 import '../../widgets/difficulty_chip.dart';
 import '../../widgets/rate_combo_dialog.dart';
+import '../../widgets/submit_trick_sheet.dart' show SubmitToggle;
 
 class _SlotItem {
   final String? trickId;
@@ -17,6 +19,7 @@ class _SlotItem {
   int position;
   bool strongFoot;
   bool noTouch;
+  final bool isTransition;
 
   // Sub-combo support
   final bool isSubCombo;
@@ -32,6 +35,7 @@ class _SlotItem {
     required this.position,
     this.strongFoot = true,
     this.noTouch = false,
+    this.isTransition = false,
     this.isSubCombo = false,
     this.subComboId,
     this.subComboName,
@@ -54,6 +58,8 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
   bool _favoured = false;
   bool _completedLoading = false;
   bool _completed = false;
+  bool _personalReusableLoading = false;
+  bool _isPersonalReusable = false;
 
   Future<void> _deleteCombo(String comboId) async {
     final confirmed = await showDialog<bool>(
@@ -102,6 +108,7 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
         setState(() {
           _favoured = combo.isFavourited;
           _completed = combo.isCompleted;
+          _isPersonalReusable = combo.isPersonalReusable;
         });
       }
     });
@@ -144,6 +151,35 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
       }
     } finally {
       if (mounted) setState(() => _favLoading = false);
+    }
+  }
+
+  Future<void> _togglePersonalReusable(String comboId) async {
+    final confirmed = await showConfirmSheet(
+      context,
+      title: _isPersonalReusable ? 'Remove from your trick list?' : 'List combo in your trick list?',
+      description: _isPersonalReusable
+          ? 'This combo will no longer show up when you\'re building other combos.'
+          : 'This combo will show up as a selectable item — alongside tricks — when you\'re building other combos. Only you will see it there.',
+      confirmLabel: _isPersonalReusable ? 'Remove' : 'List it',
+    );
+    if (!confirmed) return;
+
+    setState(() => _personalReusableLoading = true);
+    try {
+      if (_isPersonalReusable) {
+        await ApiClient.instance.removePersonalReusable(comboId);
+      } else {
+        await ApiClient.instance.addPersonalReusable(comboId);
+      }
+      setState(() => _isPersonalReusable = !_isPersonalReusable);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) setState(() => _personalReusableLoading = false);
     }
   }
 
@@ -196,6 +232,9 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
                   favoured: _favoured,
                   favLoading: _favLoading,
                   onToggleFavourite: () => _toggleFavourite(combo.id),
+                  isPersonalReusable: _isPersonalReusable,
+                  personalReusableLoading: _personalReusableLoading,
+                  onTogglePersonalReusable: () => _togglePersonalReusable(combo.id),
                   onEdit: () => _openEdit(combo),
                   onDelete: () => _deleteCombo(combo.id),
                 ),
@@ -208,14 +247,26 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
                       _AiDescriptionCard(text: combo.aiDescription!),
                     if (combo.tricks != null && combo.tricks!.isNotEmpty) ...[
                       const SizedBox(height: 20),
-                      Text(
-                        'SEQUENCE',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.8,
-                          color: AppColors.faint,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'SEQUENCE',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.8,
+                              color: AppColors.faint,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              _nameFormatChip('Full name', TrickNameDisplay.showFullName),
+                              const SizedBox(width: 6),
+                              _nameFormatChip('Abbr.', !TrickNameDisplay.showFullName),
+                            ],
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 12),
                       for (var i = 0; i < combo.tricks!.length; i++)
@@ -296,6 +347,27 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
       ),
     );
   }
+
+  Widget _nameFormatChip(String label, bool active) {
+    return GestureDetector(
+      onTap: () => setState(() => TrickNameDisplay.showFullName = label == 'Full name'),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: active ? AppColors.indigo : AppColors.chipBg,
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: active ? Colors.white : AppColors.ink2,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Formats the trick list as "(ABBR)(nt) (ABBR) (SubCombo)…" for the hero
@@ -311,7 +383,7 @@ String? _formatSequence(List<ComboTrickDto>? tricks) {
         : TrickNameDisplay.label(isTransition: t.isTransition, name: t.name, abbreviation: t.abbreviation);
     if (buffer.isNotEmpty) buffer.write(' ');
     buffer.write('($label)');
-    if (t.noTouch) buffer.write('(nt)');
+    if (t.noTouch && !t.isTransition) buffer.write('(nt)');
   }
   return buffer.toString();
 }
@@ -324,6 +396,9 @@ class _DetailHero extends StatelessWidget {
   final bool favoured;
   final bool favLoading;
   final VoidCallback onToggleFavourite;
+  final bool isPersonalReusable;
+  final bool personalReusableLoading;
+  final VoidCallback onTogglePersonalReusable;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -335,6 +410,9 @@ class _DetailHero extends StatelessWidget {
     required this.favoured,
     required this.favLoading,
     required this.onToggleFavourite,
+    required this.isPersonalReusable,
+    required this.personalReusableLoading,
+    required this.onTogglePersonalReusable,
     required this.onEdit,
     required this.onDelete,
   });
@@ -381,6 +459,14 @@ class _DetailHero extends StatelessWidget {
                             iconColor: favoured ? AppColors.pink : Colors.white,
                             onTap: favLoading ? null : onToggleFavourite,
                           ),
+                        if (authed && (isOwner || combo.visibility == 'Public' || isAdmin)) ...[
+                          const SizedBox(width: 9),
+                          _HeroIconButton(
+                            icon: isPersonalReusable ? Icons.link : Icons.link_off,
+                            iconColor: isPersonalReusable ? AppColors.lime : Colors.white,
+                            onTap: personalReusableLoading ? null : onTogglePersonalReusable,
+                          ),
+                        ],
                         if (isOwner) ...[
                           const SizedBox(width: 9),
                           _HeroIconButton(icon: Icons.edit_outlined, onTap: onEdit),
@@ -633,16 +719,16 @@ class _SequenceStepState extends State<_SequenceStep> {
         children: [
           Expanded(
             child: Text(
-              t.name ?? t.abbreviation ?? '',
+              TrickNameDisplay.label(isTransition: t.isTransition, name: t.name, abbreviation: t.abbreviation),
               style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink),
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (!t.strongFoot) ...[
+          if (!t.strongFoot && !t.isTransition) ...[
             _FlagTag(label: 'weak', bg: AppColors.amberBg, fg: AppColors.amber),
             const SizedBox(width: 6),
           ],
-          if (t.noTouch) ...[
+          if (t.noTouch && !t.isTransition) ...[
             _FlagTag(label: 'NT', bg: AppColors.noTouchBg, fg: AppColors.noTouchText),
             const SizedBox(width: 6),
           ],
@@ -712,7 +798,7 @@ class _SequenceStepState extends State<_SequenceStep> {
               runSpacing: 6,
               children: (t.subComboTricks ?? []).map((st) {
                 final label = st.abbreviation ?? '?';
-                final suffix = st.noTouch ? '·nt' : (!st.strongFoot ? '·wf' : '');
+                final suffix = st.isTransition ? '' : (st.noTouch ? '·nt' : (!st.strongFoot ? '·wf' : ''));
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                   decoration: BoxDecoration(
@@ -771,6 +857,8 @@ class _EditComboScreenState extends State<_EditComboScreen> {
   bool _saving = false;
   String? _error;
   int _tab = 0;
+  late bool _isPublic = widget.combo.visibility != 'Private';
+  late bool _isPersonalReusable = widget.combo.isPersonalReusable;
 
   @override
   void initState() {
@@ -798,8 +886,11 @@ class _EditComboScreenState extends State<_EditComboScreen> {
         abbreviation: t.abbreviation ?? '',
         crossOver: false, // will be updated when tricks load
         position: t.position,
-        strongFoot: t.strongFoot,
-        noTouch: t.noTouch,
+        // A transition trick (e.g. "Combo") has no foot/no-touch of its own —
+        // normalize away any stale flags from before this was enforced.
+        strongFoot: t.isTransition ? true : t.strongFoot,
+        noTouch: t.isTransition ? false : t.noTouch,
+        isTransition: t.isTransition,
       );
     }).toList();
     _loadTricks();
@@ -838,7 +929,7 @@ class _EditComboScreenState extends State<_EditComboScreen> {
       if (item is TrickItem) {
         return item.name.toLowerCase().contains(q) || item.abbreviation.toLowerCase().contains(q);
       } else if (item is ComboItem) {
-        return item.name.toLowerCase().contains(q);
+        return item.displayName.toLowerCase().contains(q);
       }
       return false;
     }).toList();
@@ -852,6 +943,7 @@ class _EditComboScreenState extends State<_EditComboScreen> {
         abbreviation: trick.abbreviation,
         crossOver: trick.crossOver,
         position: _slots.length + 1,
+        isTransition: trick.isTransition,
       ));
       _tab = 1;
     });
@@ -861,13 +953,13 @@ class _EditComboScreenState extends State<_EditComboScreen> {
     setState(() {
       _slots.add(_SlotItem(
         trickId: '',
-        trickName: combo.name,
+        trickName: combo.displayName,
         abbreviation: '',
         crossOver: false,
         position: _slots.length + 1,
         isSubCombo: true,
         subComboId: combo.id,
-        subComboName: combo.name,
+        subComboName: combo.displayName,
         subComboTricks: combo.tricks,
       ));
       _tab = 1;
@@ -907,6 +999,16 @@ class _EditComboScreenState extends State<_EditComboScreen> {
         name: name,
         tricks: tricks,
       );
+      if (widget.combo.visibility == 'Private' && _isPublic) {
+        await ApiClient.instance.setVisibility(widget.combo.id, true);
+      }
+      if (_isPersonalReusable != widget.combo.isPersonalReusable) {
+        if (_isPersonalReusable) {
+          await ApiClient.instance.addPersonalReusable(widget.combo.id);
+        } else {
+          await ApiClient.instance.removePersonalReusable(widget.combo.id);
+        }
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
@@ -949,6 +1051,26 @@ class _EditComboScreenState extends State<_EditComboScreen> {
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.line2)),
                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.indigo, width: 1.5)),
               ),
+            ),
+          ),
+          if (widget.combo.visibility == 'Private') ...[
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              child: SubmitToggle(
+                label: 'Submit as public',
+                value: _isPublic,
+                onChanged: (v) => setState(() => _isPublic = v),
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: SubmitToggle(
+              label: 'List combo in the trick list',
+              value: _isPersonalReusable,
+              onChanged: (v) => setState(() => _isPersonalReusable = v),
             ),
           ),
           if (_error != null)
@@ -1023,7 +1145,7 @@ class _EditComboScreenState extends State<_EditComboScreen> {
                     } else if (item is ComboItem) {
                       return _EditPickerRow(
                         abbreviation: null,
-                        name: item.name,
+                        name: item.displayName,
                         meta: '${item.trickCount} tricks',
                         difficulty: item.totalDifficulty.toInt(),
                         isCombo: true,
@@ -1244,14 +1366,20 @@ class _EditSlot extends StatelessWidget {
               ],
             ),
           ),
-          _EditFlagToggle(label: 'SF', active: slot.strongFoot, onTap: () => onToggleStrongFoot(!slot.strongFoot)),
-          const SizedBox(width: 6),
-          _EditFlagToggle(
-            label: 'NT',
-            active: slot.noTouch,
-            enabled: slot.crossOver,
-            onTap: slot.crossOver ? () => onToggleNoTouch(!slot.noTouch) : null,
-          ),
+          if (!slot.isTransition) ...[
+            _EditFlagToggle(
+              label: 'SF',
+              active: slot.strongFoot,
+              onTap: () => onToggleStrongFoot(!slot.strongFoot),
+            ),
+            const SizedBox(width: 6),
+            _EditFlagToggle(
+              label: 'NT',
+              active: slot.noTouch,
+              enabled: slot.crossOver,
+              onTap: slot.crossOver ? () => onToggleNoTouch(!slot.noTouch) : null,
+            ),
+          ],
           IconButton(
             icon: const Icon(Icons.close, size: 18, color: AppColors.muted),
             padding: EdgeInsets.zero,

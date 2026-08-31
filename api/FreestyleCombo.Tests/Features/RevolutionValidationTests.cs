@@ -41,6 +41,45 @@ public class RevolutionValidationTests
     }
 
     [Fact]
+    public void CreateTrickValidator_ShouldReject_RevolutionNotOnHalfIncrement()
+    {
+        var validator = new CreateTrickValidator();
+        var result = validator.Validate(new CreateTrickCommand("ATW", "ATW", false, false, 1.7m, 6, 3, null, null, null));
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "Revolution");
+    }
+
+    [Fact]
+    public void UpdateTrickValidator_ShouldReject_RevolutionNotOnHalfIncrement()
+    {
+        var validator = new UpdateTrickValidator();
+        var result = validator.Validate(new UpdateTrickCommand(Guid.NewGuid(), "ATW", "ATW", false, false, 1.7m, 6, 3, null, null, null));
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "Revolution");
+    }
+
+    [Fact]
+    public void SubmitTrickValidator_ShouldReject_RevolutionNotOnHalfIncrement()
+    {
+        var validator = new SubmitTrickValidator();
+        var result = validator.Validate(new SubmitTrickCommand("ATW", "ATW", false, false, 1.7m, 6, 3));
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "Revolution");
+    }
+
+    [Fact]
+    public void SubmitTrickValidator_ShouldAllow_RevolutionOnHalfIncrement()
+    {
+        var validator = new SubmitTrickValidator();
+        var result = validator.Validate(new SubmitTrickCommand("ATW", "ATW", false, false, 1.5m, 6, 3));
+
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
     public void CreatePreferenceValidator_ShouldReject_AllowedRevolutionAboveFour()
     {
         var validator = new CreatePreferenceValidator();

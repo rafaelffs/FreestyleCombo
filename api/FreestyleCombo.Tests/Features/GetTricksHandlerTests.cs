@@ -39,7 +39,7 @@ public class GetTricksHandlerTests
     {
         var tricks = TrickFaker.CreateMany(3);
         _trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync(tricks);
-        _comboRepo.Setup(r => r.GetReusableAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        _comboRepo.Setup(r => r.GetReusableAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
 
         var result = await CreateHandler().Handle(new GetTricksQuery(null, null, null), CancellationToken.None);
 
@@ -53,7 +53,7 @@ public class GetTricksHandlerTests
         var trickA = TrickFaker.Create(name: "ATW", difficulty: 2);
         var trickB = TrickFaker.Create(name: "HTW", difficulty: 3);
         _trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([trickA]);
-        _comboRepo.Setup(r => r.GetReusableAsync(It.IsAny<CancellationToken>()))
+        _comboRepo.Setup(r => r.GetReusableAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([MakeReusableCombo("Warm Up Combo", trickA, trickB)]);
 
         var result = await CreateHandler().Handle(new GetTricksQuery(null, null, null), CancellationToken.None);
@@ -74,7 +74,7 @@ public class GetTricksHandlerTests
         var trickA = TrickFaker.Create(name: "Alpha Trick");
         _trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync([trickZ, trickA]);
-        _comboRepo.Setup(r => r.GetReusableAsync(It.IsAny<CancellationToken>()))
+        _comboRepo.Setup(r => r.GetReusableAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([
                 MakeReusableCombo("Zebra Combo", trickZ),
                 MakeReusableCombo("Alpha Combo", trickA)
@@ -106,7 +106,7 @@ public class GetTricksHandlerTests
         // When filtering by crossOver=true, only crossOver tricks are returned by the repo
         _trickRepo.Setup(r => r.GetAllAsync(true, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync([crossOverTrick]);
-        _comboRepo.Setup(r => r.GetReusableAsync(It.IsAny<CancellationToken>()))
+        _comboRepo.Setup(r => r.GetReusableAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([reusableCombo]);
 
         var result = await CreateHandler().Handle(new GetTricksQuery(true, null, null), CancellationToken.None);
@@ -116,5 +116,17 @@ public class GetTricksHandlerTests
         trickResult.Name.Should().Be("XO Trick");
         var comboResult = result.Single(r => r.Type == "combo");
         comboResult.Name.Should().Be("Reusable Combo");
+    }
+
+    [Fact]
+    public async Task GetTricks_PassesRequestingUserId_ToComboRepo()
+    {
+        var userId = Guid.NewGuid();
+        _trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        _comboRepo.Setup(r => r.GetReusableAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+
+        await CreateHandler().Handle(new GetTricksQuery(null, null, null, userId), CancellationToken.None);
+
+        _comboRepo.Verify(r => r.GetReusableAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

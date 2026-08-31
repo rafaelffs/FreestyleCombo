@@ -10,6 +10,7 @@ public class GenerateComboResponse
     public int TrickCount { get; set; }
     public bool IsPublic { get; set; }
     public bool IsReusable { get; set; }
+    public bool IsPersonalReusable { get; set; }
     public string Visibility { get; set; } = "Private";
     public DateTime CreatedAt { get; set; }
     public string DisplayText { get; set; } = string.Empty;

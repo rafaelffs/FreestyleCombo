@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { tricksApi, trickSubmissionsApi, combosApi, extractError, type TrickDto, type SubmitTrickRequest, type TrickItem, type ComboItem } from '@/lib/api'
+import { tricksApi, trickSubmissionsApi, combosApi, extractError, comboDisplayName, type TrickDto, type SubmitTrickRequest, type TrickItem, type ComboItem } from '@/lib/api'
 import { isAdmin, isAuthenticated } from '@/lib/auth'
 import { SEO } from '@/components/SEO'
 import { Button } from '@/components/ui/button'
@@ -553,7 +553,7 @@ export function TricksPage() {
                     >
                       <td className="px-4 py-2 text-center text-gray-400">—</td>
                       <td className="px-4 py-2 text-gray-700">
-                        <span className="font-medium">{combo.name}</span>
+                        <span className="font-medium">{comboDisplayName(combo)}</span>
                         <span className="bg-indigo-100 text-indigo-700 text-xs px-1.5 py-0.5 rounded ml-2">
                           {t('tricks.comboLabel')}
                         </span>
@@ -596,8 +596,8 @@ export function TricksPage() {
                                 className="inline-flex items-center gap-1 rounded bg-white border border-indigo-200 px-2 py-0.5 text-xs text-gray-700"
                               >
                                 <span className="font-mono font-semibold text-gray-900">{slot.abbreviation}</span>
-                                {slot.noTouch && <span className="text-indigo-500 font-medium">(nt)</span>}
-                                {!slot.strongFoot && <span className="text-orange-500 font-medium">(wf)</span>}
+                                {!slot.isTransition && slot.noTouch && <span className="text-indigo-500 font-medium">(nt)</span>}
+                                {!slot.isTransition && !slot.strongFoot && <span className="text-orange-500 font-medium">(wf)</span>}
                                 <span className={`rounded px-1 py-0.5 text-[10px] font-medium ${diffColor(slot.difficulty)}`}>
                                   {slot.difficulty}
                                 </span>

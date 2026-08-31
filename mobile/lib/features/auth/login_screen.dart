@@ -6,6 +6,7 @@ import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
 import '../../theme/app_colors.dart';
 import 'auth_chrome.dart';
+import 'social_sign_in_buttons.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -28,6 +29,24 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _onSignedIn() async {
+    final pending = AuthService.instance.getPendingCombo();
+    if (pending != null) {
+      try {
+        final tricks = (pending['tricks'] as List).map((t) => BuildComboTrickItem(
+          trickId: t['trickId'] as String,
+          position: t['position'] as int,
+          strongFoot: t['strongFoot'] as bool,
+          noTouch: t['noTouch'] as bool,
+        )).toList();
+        await ApiClient.instance.buildCombo(tricks, pending['isPublic'] as bool, name: pending['name'] as String?);
+      } finally {
+        await AuthService.instance.clearPendingCombo();
+      }
+    }
+    if (mounted) context.go('/combos');
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
@@ -38,21 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final result = await ApiClient.instance
           .login(_credentialCtrl.text.trim(), _passwordCtrl.text);
       await AuthService.instance.setCredentials(result.token, result.userId);
-      final pending = AuthService.instance.getPendingCombo();
-      if (pending != null) {
-        try {
-          final tricks = (pending['tricks'] as List).map((t) => BuildComboTrickItem(
-            trickId: t['trickId'] as String,
-            position: t['position'] as int,
-            strongFoot: t['strongFoot'] as bool,
-            noTouch: t['noTouch'] as bool,
-          )).toList();
-          await ApiClient.instance.buildCombo(tricks, pending['isPublic'] as bool, name: pending['name'] as String?);
-        } finally {
-          await AuthService.instance.clearPendingCombo();
-        }
-      }
-      if (mounted) context.go('/combos');
+      await _onSignedIn();
     } catch (e) {
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -108,6 +113,11 @@ class _LoginScreenState extends State<LoginScreen> {
               label: 'Log in',
               loading: _loading,
               onPressed: _submit,
+            ),
+            const SizedBox(height: 18),
+            SocialSignInButtons(
+              onError: (msg) => setState(() => _error = msg),
+              onSignedIn: _onSignedIn,
             ),
             const SizedBox(height: 4),
             Padding(

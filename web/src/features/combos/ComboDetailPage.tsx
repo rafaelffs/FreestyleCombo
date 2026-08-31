@@ -52,6 +52,7 @@ export function ComboDetailPage() {
 
   // Edit state
   const [editName, setEditName] = useState('')
+  const [editIsPersonalReusable, setEditIsPersonalReusable] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [editSlots, setEditSlots] = useState<SlotItem[]>([])
   const [trickSearch, setTrickSearch] = useState('')
@@ -90,11 +91,20 @@ export function ComboDetailPage() {
   })
 
   const updateMutation = useMutation({
-    mutationFn: () =>
-      combosApi.update(id!, {
+    mutationFn: async () => {
+      const res = await combosApi.update(id!, {
         name: editName || null,
         tricks: editSlots.map(({ trickId, position, strongFoot, noTouch }) => ({ trickId, position, strongFoot, noTouch })),
-      }),
+      })
+      if (editIsPersonalReusable !== combo?.isPersonalReusable) {
+        if (editIsPersonalReusable) {
+          await combosApi.addPersonalReusable(id!)
+        } else {
+          await combosApi.removePersonalReusable(id!)
+        }
+      }
+      return res
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['combos', id] })
       void queryClient.invalidateQueries({ queryKey: ['combos'] })
@@ -132,6 +142,7 @@ export function ComboDetailPage() {
 
   function startEdit() {
     setEditName(combo!.name ?? '')
+    setEditIsPersonalReusable(combo!.isPersonalReusable)
     setEditSlots(
       applyNoTouchRules(
         (combo!.tricks ?? []).flatMap((t_) => {
@@ -139,8 +150,10 @@ export function ComboDetailPage() {
             return [{
               trickId: t_.trickId,
               position: t_.position,
-              strongFoot: t_.strongFoot,
-              noTouch: t_.noTouch,
+              // A transition trick (e.g. "Combo") has no foot/no-touch of its
+              // own — normalize away any stale flags predating this rule.
+              strongFoot: t_.isTransition ? true : t_.strongFoot,
+              noTouch: t_.isTransition ? false : t_.noTouch,
               trickName: t_.name ?? '',
               abbreviation: t_.abbreviation,
               crossOver: t_.crossOver,
@@ -151,8 +164,8 @@ export function ComboDetailPage() {
           return t_.subComboTricks.map((st) => ({
             trickId: st.trickId,
             position: st.position,
-            strongFoot: st.strongFoot,
-            noTouch: st.noTouch,
+            strongFoot: st.isTransition ? true : st.strongFoot,
+            noTouch: st.isTransition ? false : st.noTouch,
             trickName: st.name ?? '',
             abbreviation: st.abbreviation,
             crossOver: st.crossOver,
@@ -260,8 +273,12 @@ export function ComboDetailPage() {
                         {!abbrevOnly && <span className="ml-1.5 text-sm text-gray-500">{trick.name}</span>}
                       </div>
                       <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(trick.difficulty ?? 0)}`}>{trick.difficulty}</span>
-                      <FootToggle value={trick.strongFoot} onChange={() => {}} />
-                      <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold ${trick.noTouch ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-400'}`}>NT</span>
+                      {!trick.isTransition && (
+                        <>
+                          <FootToggle value={trick.strongFoot} onChange={() => {}} />
+                          <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold ${trick.noTouch ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-400'}`}>NT</span>
+                        </>
+                      )}
                     </div>
                   )
                 }
@@ -297,8 +314,12 @@ export function ComboDetailPage() {
                               {!abbrevOnly && <span className="ml-1.5 text-xs text-gray-500">{st.name}</span>}
                             </div>
                             <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(st.difficulty ?? 0)}`}>{st.difficulty}</span>
-                            <FootToggle value={st.strongFoot} onChange={() => {}} />
-                            <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold ${st.noTouch ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-400'}`}>NT</span>
+                            {!st.isTransition && (
+                              <>
+                                <FootToggle value={st.strongFoot} onChange={() => {}} />
+                                <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold ${st.noTouch ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-400'}`}>NT</span>
+                              </>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -375,6 +396,16 @@ export function ComboDetailPage() {
               <Input id="edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder={t('comboDetail.comboNamePlaceholder')} maxLength={100} />
             </div>
 
+            <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={editIsPersonalReusable}
+                onChange={(e) => setEditIsPersonalReusable(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600"
+              />
+              {t('comboDetail.personalReusableLabel')}
+            </label>
+
             <div className="grid gap-4 lg:grid-cols-2">
               {/* Trick picker */}
               <div className="space-y-2">
@@ -434,15 +465,19 @@ export function ComboDetailPage() {
                       </span>
                       <span className="w-4 shrink-0 text-xs font-bold text-gray-400">{slot.position}</span>
                       <span className="flex-1 text-sm">{slot.trickName} <span className="font-mono text-xs text-gray-400">{slot.abbreviation}</span></span>
-                      <FootToggle value={slot.strongFoot} onChange={() => toggleSF(i)} />
-                      {(() => {
-                        const ntDisabled = slot.isTransition || !prevIsCrossOver(editSlots, i)
-                        return (
-                          <label className={`flex items-center gap-0.5 text-xs cursor-pointer ${ntDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}`}>
-                            <input type="checkbox" checked={slot.noTouch} onChange={() => toggleNT(i)} disabled={ntDisabled} className="h-3 w-3" /> NT
-                          </label>
-                        )
-                      })()}
+                      {!slot.isTransition && (
+                        <>
+                          <FootToggle value={slot.strongFoot} onChange={() => toggleSF(i)} />
+                          {(() => {
+                            const ntDisabled = !prevIsCrossOver(editSlots, i)
+                            return (
+                              <label className={`flex items-center gap-0.5 text-xs cursor-pointer ${ntDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}`}>
+                                <input type="checkbox" checked={slot.noTouch} onChange={() => toggleNT(i)} disabled={ntDisabled} className="h-3 w-3" /> NT
+                              </label>
+                            )
+                          })()}
+                        </>
+                      )}
                       <button type="button" onClick={() => removeSlot(i)} className="text-gray-400 hover:text-red-500 text-base leading-none">×</button>
                     </div>
                   ))}

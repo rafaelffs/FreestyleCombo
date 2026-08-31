@@ -10,12 +10,18 @@ public class GetMyCombosHandler : IRequestHandler<GetMyCombosQuery, PagedResult<
     private readonly IComboRepository _repo;
     private readonly IUserFavouriteRepository _favRepo;
     private readonly IUserComboCompletionRepository _completionRepo;
+    private readonly IUserPersonalReusableComboRepository _personalReusableRepo;
 
-    public GetMyCombosHandler(IComboRepository repo, IUserFavouriteRepository favRepo, IUserComboCompletionRepository completionRepo)
+    public GetMyCombosHandler(
+        IComboRepository repo,
+        IUserFavouriteRepository favRepo,
+        IUserComboCompletionRepository completionRepo,
+        IUserPersonalReusableComboRepository personalReusableRepo)
     {
         _repo = repo;
         _favRepo = favRepo;
         _completionRepo = completionRepo;
+        _personalReusableRepo = personalReusableRepo;
     }
 
     public async Task<PagedResult<MyComboDto>> Handle(GetMyCombosQuery request, CancellationToken cancellationToken)
@@ -23,6 +29,7 @@ public class GetMyCombosHandler : IRequestHandler<GetMyCombosQuery, PagedResult<
         var allCombos = await _repo.GetAllByOwnerAsync(request.UserId, request.IsPublic, cancellationToken);
         var favIds = await _favRepo.GetFavouriteComboIdsAsync(request.UserId, cancellationToken);
         var completedIds = await _completionRepo.GetCompletedComboIdsAsync(request.UserId, cancellationToken);
+        var personalReusableIds = await _personalReusableRepo.GetComboIdsAsync(request.UserId, cancellationToken);
 
         var filtered = allCombos.AsEnumerable();
         if (!string.IsNullOrWhiteSpace(request.Search))
@@ -126,7 +133,8 @@ public class GetMyCombosHandler : IRequestHandler<GetMyCombosQuery, PagedResult<
                 IsFavourited = favIds.Contains(c.Id),
                 IsCompleted = completedIds.Contains(c.Id),
                 CompletionCount = completionCounts.GetValueOrDefault(c.Id, 0),
-                IsReusable = c.IsReusable
+                IsReusable = c.IsReusable,
+                IsPersonalReusable = personalReusableIds.Contains(c.Id)
             }).ToList()
         };
     }

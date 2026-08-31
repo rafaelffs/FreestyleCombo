@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using FreestyleCombo.API.Features.Tricks.CreateTrick;
 using FreestyleCombo.API.Features.Tricks.DeleteTrick;
 using FreestyleCombo.API.Features.Tricks.GetTrickById;
@@ -25,7 +26,10 @@ public class TricksController : ControllerBase
         [FromQuery] int? maxDifficulty,
         CancellationToken ct)
     {
-        var result = await _mediator.Send(new GetTricksQuery(crossOver, knee, maxDifficulty), ct);
+        Guid? requestingUserId = User.Identity?.IsAuthenticated == true
+            ? Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!)
+            : null;
+        var result = await _mediator.Send(new GetTricksQuery(crossOver, knee, maxDifficulty, requestingUserId), ct);
         return Ok(result);
     }
 

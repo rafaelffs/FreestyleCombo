@@ -31,6 +31,9 @@ namespace FreestyleCombo.Infrastructure.Data.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("integer");
 
+                    b.Property<string>("AuthProvider")
+                        .HasColumnType("text");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("text");
@@ -41,6 +44,9 @@ namespace FreestyleCombo.Infrastructure.Data.Migrations
 
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("ExternalSubject")
+                        .HasColumnType("text");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean");
@@ -339,6 +345,24 @@ namespace FreestyleCombo.Infrastructure.Data.Migrations
                     b.ToTable("UserFavouriteCombos");
                 });
 
+            modelBuilder.Entity("FreestyleCombo.Core.Entities.UserPersonalReusableCombo", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ComboId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId", "ComboId");
+
+                    b.HasIndex("ComboId");
+
+                    b.ToTable("UserPersonalReusableCombos");
+                });
+
             modelBuilder.Entity("FreestyleCombo.Core.Entities.UserPreference", b =>
                 {
                     b.Property<Guid>("Id")
@@ -626,6 +650,25 @@ namespace FreestyleCombo.Infrastructure.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("FreestyleCombo.Core.Entities.UserPersonalReusableCombo", b =>
+                {
+                    b.HasOne("FreestyleCombo.Core.Entities.Combo", "Combo")
+                        .WithMany("PersonalReusableBy")
+                        .HasForeignKey("ComboId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FreestyleCombo.Core.Entities.AppUser", "User")
+                        .WithMany("PersonalReusableCombos")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Combo");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("FreestyleCombo.Core.Entities.UserPreference", b =>
                 {
                     b.HasOne("FreestyleCombo.Core.Entities.AppUser", "User")
@@ -696,6 +739,8 @@ namespace FreestyleCombo.Infrastructure.Data.Migrations
 
                     b.Navigation("FavouriteCombos");
 
+                    b.Navigation("PersonalReusableCombos");
+
                     b.Navigation("Preferences");
 
                     b.Navigation("Ratings");
@@ -710,6 +755,8 @@ namespace FreestyleCombo.Infrastructure.Data.Migrations
                     b.Navigation("CompletedBy");
 
                     b.Navigation("FavouritedBy");
+
+                    b.Navigation("PersonalReusableBy");
 
                     b.Navigation("Ratings");
                 });

@@ -9,12 +9,18 @@ public class GetComboHandler : IRequestHandler<GetComboQuery, ComboDetailDto>
     private readonly IComboRepository _repo;
     private readonly IUserFavouriteRepository _favRepo;
     private readonly IUserComboCompletionRepository _completionRepo;
+    private readonly IUserPersonalReusableComboRepository _personalReusableRepo;
 
-    public GetComboHandler(IComboRepository repo, IUserFavouriteRepository favRepo, IUserComboCompletionRepository completionRepo)
+    public GetComboHandler(
+        IComboRepository repo,
+        IUserFavouriteRepository favRepo,
+        IUserComboCompletionRepository completionRepo,
+        IUserPersonalReusableComboRepository personalReusableRepo)
     {
         _repo = repo;
         _favRepo = favRepo;
         _completionRepo = completionRepo;
+        _personalReusableRepo = personalReusableRepo;
     }
 
     public async Task<ComboDetailDto> Handle(GetComboQuery request, CancellationToken cancellationToken)
@@ -30,6 +36,9 @@ public class GetComboHandler : IRequestHandler<GetComboQuery, ComboDetailDto>
 
         var isCompleted = request.RequestingUserId.HasValue
             && await _completionRepo.ExistsAsync(request.RequestingUserId.Value, combo.Id, cancellationToken);
+
+        var isPersonalReusable = request.RequestingUserId.HasValue
+            && await _personalReusableRepo.ExistsAsync(request.RequestingUserId.Value, combo.Id, cancellationToken);
 
         var counts = await _completionRepo.GetCompletionCountsAsync([combo.Id], cancellationToken);
         var completionCount = counts.GetValueOrDefault(combo.Id, 0);
@@ -69,6 +78,7 @@ public class GetComboHandler : IRequestHandler<GetComboQuery, ComboDetailDto>
             IsCompleted = isCompleted,
             CompletionCount = completionCount,
             IsReusable = combo.IsReusable,
+            IsPersonalReusable = isPersonalReusable,
             Tricks = combo.ComboTricks.OrderBy(ct => ct.Position).Select(ct =>
             {
                 if (ct.TrickId.HasValue)

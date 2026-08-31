@@ -23,6 +23,7 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
 
   int? _publicCount;
   int? _mineCount;
+  bool _doneOnly = false;
 
   @override
   void initState() {
@@ -83,8 +84,9 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
         }
         final items = (snap.data?.items ?? [])
             .where((c) => !filterPublic || c.visibility != 'Public')
+            .where((c) => !_doneOnly || c.isCompleted)
             .toList();
-        if (items.isEmpty) return Center(child: emptyWidget);
+        if (items.isEmpty) return Center(child: _doneOnly ? _emptyState(Icons.check_circle_outline, "You haven't marked any of these as done yet.") : emptyWidget);
         return _listView(items, showActions, onRefresh);
       },
     );
@@ -105,8 +107,8 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
         if (snap.hasError) {
           return _errorView(snap.error.toString(), onRefresh);
         }
-        final items = snap.data ?? [];
-        if (items.isEmpty) return Center(child: emptyWidget);
+        final items = (snap.data ?? []).where((c) => !_doneOnly || c.isCompleted).toList();
+        if (items.isEmpty) return Center(child: _doneOnly ? _emptyState(Icons.check_circle_outline, "You haven't marked any of these as done yet.") : emptyWidget);
         return _listView(items, showActions, onRefresh);
       },
     );
@@ -156,6 +158,38 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
           ],
         ],
       );
+
+  Widget _doneFilterChip() {
+    return GestureDetector(
+      onTap: () => setState(() => _doneOnly = !_doneOnly),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: _doneOnly ? AppColors.indigo : AppColors.chipBg,
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _doneOnly ? Icons.check_circle : Icons.check_circle_outline,
+              size: 14,
+              color: _doneOnly ? Colors.white : AppColors.ink2,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Done',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                color: _doneOnly ? Colors.white : AppColors.ink2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _nameFormatChip(String label, bool active) {
     return GestureDetector(
@@ -267,11 +301,19 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
             Padding(
               padding: const EdgeInsets.fromLTRB(22, 0, 22, 10),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _nameFormatChip('Full name', TrickNameDisplay.showFullName),
-                  const SizedBox(width: 6),
-                  _nameFormatChip('Abbr.', !TrickNameDisplay.showFullName),
+                  if (_authed)
+                    _doneFilterChip()
+                  else
+                    const SizedBox.shrink(),
+                  Row(
+                    children: [
+                      _nameFormatChip('Full name', TrickNameDisplay.showFullName),
+                      const SizedBox(width: 6),
+                      _nameFormatChip('Abbr.', !TrickNameDisplay.showFullName),
+                    ],
+                  ),
                 ],
               ),
             ),

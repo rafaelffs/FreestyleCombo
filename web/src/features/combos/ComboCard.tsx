@@ -68,6 +68,15 @@ function CheckCircleIconOutline() {
   )
 }
 
+function LinkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  )
+}
+
 function ShareIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -110,6 +119,8 @@ export function ComboCard({ combo, showActions = false }: Props) {
   const [favError, setFavError] = useState<string | null>(null)
   const [completed, setCompleted] = useState(combo.isCompleted ?? false)
   const [, setCompletionCount] = useState(combo.completionCount ?? 0)
+  const [personalReusable, setPersonalReusable] = useState(combo.isPersonalReusable ?? false)
+  const [personalReusableConfirmOpen, setPersonalReusableConfirmOpen] = useState(false)
   const [visibilityModal, setVisibilityModal] = useState<VisibilityModalConfig | null>(null)
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -161,6 +172,15 @@ export function ComboCard({ combo, showActions = false }: Props) {
     onSuccess: () => {
       setCompletionCount((c) => completed ? c - 1 : c + 1)
       setCompleted((c) => !c)
+      void queryClient.invalidateQueries({ queryKey: ['combos'] })
+    },
+  })
+
+  const personalReusableMutation = useMutation({
+    mutationFn: () => personalReusable ? combosApi.removePersonalReusable(combo.id) : combosApi.addPersonalReusable(combo.id),
+    onSuccess: () => {
+      setPersonalReusable((r) => !r)
+      setPersonalReusableConfirmOpen(false)
       void queryClient.invalidateQueries({ queryKey: ['combos'] })
     },
   })
@@ -220,6 +240,19 @@ export function ComboCard({ combo, showActions = false }: Props) {
                 title={favoured ? t('combos.favouriteRemove') : t('combos.favouriteAdd')}
               >
                 {favoured ? <HeartIconFilled /> : <HeartIconOutline />}
+              </button>
+            )}
+            {authed && (isOwner || combo.visibility === 'Public' || adminUser) && (
+              <button
+                type="button"
+                onClick={() => setPersonalReusableConfirmOpen(true)}
+                disabled={personalReusableMutation.isPending}
+                className={`inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border bg-white transition-colors disabled:cursor-not-allowed ${
+                  personalReusable ? 'border-indigo-200 text-indigo-600 hover:border-indigo-300' : 'border-gray-200 text-gray-400 hover:border-indigo-300 hover:text-indigo-500'
+                }`}
+                title={personalReusable ? t('combos.removeFromTrickList') : t('combos.listInTrickList')}
+              >
+                <LinkIcon />
               </button>
             )}
             {authed && (
@@ -329,8 +362,8 @@ export function ComboCard({ combo, showActions = false }: Props) {
                   {t_.type === 'trick' ? (
                     <>
                       {t_.abbreviation}
-                      {t_.noTouch && <span className="text-indigo-500">(nt)</span>}
-                      {!t_.strongFoot && <span className="text-orange-500">(wf)</span>}
+                      {!t_.isTransition && t_.noTouch && <span className="text-indigo-500">(nt)</span>}
+                      {!t_.isTransition && !t_.strongFoot && <span className="text-orange-500">(wf)</span>}
                     </>
                   ) : (
                     <>{t_.subComboName ?? 'Sub-combo'} ({t_.subComboTricks.length})</>
@@ -381,6 +414,25 @@ export function ComboCard({ combo, showActions = false }: Props) {
               {visibilityMutation.isPending ? t('common.saving') : visibilityModal && t(visibilityModal.confirmLabelKey)}
             </Button>
             <Button variant="outline" onClick={() => setVisibilityModal(null)} disabled={visibilityMutation.isPending}>
+              {t('common.cancel')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={personalReusableConfirmOpen} onOpenChange={setPersonalReusableConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{personalReusable ? t('combos.personalReusableRemoveTitle') : t('combos.personalReusableAddTitle')}</DialogTitle>
+            <DialogDescription>{personalReusable ? t('combos.personalReusableRemoveDesc') : t('combos.personalReusableAddDesc')}</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button onClick={() => personalReusableMutation.mutate()} disabled={personalReusableMutation.isPending}>
+              {personalReusableMutation.isPending
+                ? t('common.saving')
+                : personalReusable ? t('combos.personalReusableRemoveConfirm') : t('combos.personalReusableAddConfirm')}
+            </Button>
+            <Button variant="outline" onClick={() => setPersonalReusableConfirmOpen(false)} disabled={personalReusableMutation.isPending}>
               {t('common.cancel')}
             </Button>
           </div>

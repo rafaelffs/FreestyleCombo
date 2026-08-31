@@ -32,19 +32,21 @@ public class GetTricksHandler : IRequestHandler<GetTricksQuery, List<TrickListIt
             IsTransition = t.IsTransition
         }).OrderBy(t => t.Name).ToList();
 
-        var reusableCombos = await _comboRepo.GetReusableAsync(cancellationToken);
+        var reusableCombos = await _comboRepo.GetReusableAsync(request.RequestingUserId, cancellationToken);
 
-        var comboItems = reusableCombos.Select(c => new TrickListItemDto
+        var comboItems = reusableCombos.Select(c =>
         {
-            Type = "combo",
-            Id = c.Id,
-            Name = c.Name,
-            TotalDifficulty = (decimal?)c.TotalDifficulty,
-            TrickCount = c.TrickCount,
-            Tricks = c.ComboTricks
-                .Where(ct => ct.TrickId.HasValue)
-                .OrderBy(ct => ct.Position)
-                .Select(ct => new ComboTrickDto
+            var orderedTricks = c.ComboTricks.Where(ct => ct.TrickId.HasValue).OrderBy(ct => ct.Position).ToList();
+            return new TrickListItemDto
+            {
+                Type = "combo",
+                Id = c.Id,
+                Name = c.Name,
+                DisplayText = string.Join(" ", orderedTricks.Select(ct =>
+                    ct.NoTouch ? $"{ct.Trick!.Abbreviation}(nt)" : ct.Trick!.Abbreviation)),
+                TotalDifficulty = (decimal?)c.TotalDifficulty,
+                TrickCount = c.TrickCount,
+                Tricks = orderedTricks.Select(ct => new ComboTrickDto
                 {
                     TrickId = ct.TrickId,
                     Name = ct.Trick!.Name,
@@ -57,7 +59,8 @@ public class GetTricksHandler : IRequestHandler<GetTricksQuery, List<TrickListIt
                     StrongFoot = ct.StrongFoot,
                     NoTouch = ct.NoTouch
                 }).ToList()
-        }).OrderBy(c => c.Name).ToList();
+            };
+        }).OrderBy(c => c.Name ?? c.DisplayText).ToList();
 
         var result = trickItems.ToList<TrickListItemDto>();
         result.AddRange(comboItems);

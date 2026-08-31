@@ -57,7 +57,7 @@ public class ComboBuildAndVisibilityHandlerTests
             .Returns(Task.CompletedTask);
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "rafael" });
 
-        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, new Mock<IUserPersonalReusableComboRepository>().Object, CreateHttp(_userId), userManager.Object);
         var result = await handler.Handle(
             new BuildComboCommand([new BuildComboTrickItem(trick.Id, null, 1, true, true)], false, "  My Combo  "),
             CancellationToken.None);
@@ -85,7 +85,7 @@ public class ComboBuildAndVisibilityHandlerTests
             .Returns(Task.CompletedTask);
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "rafael" });
 
-        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, new Mock<IUserPersonalReusableComboRepository>().Object, CreateHttp(_userId), userManager.Object);
         await handler.Handle(new BuildComboCommand([new BuildComboTrickItem(trick.Id, null, 1, true, false)], true), CancellationToken.None);
 
         savedCombo!.Visibility.Should().Be(ComboVisibility.PendingReview);
@@ -100,7 +100,7 @@ public class ComboBuildAndVisibilityHandlerTests
         trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([]);
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "rafael" });
 
-        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, new Mock<IUserPersonalReusableComboRepository>().Object, CreateHttp(_userId), userManager.Object);
         var missingId = Guid.NewGuid();
 
         Func<Task> act = () => handler.Handle(new BuildComboCommand([new BuildComboTrickItem(missingId, null, 1, true, false)]), CancellationToken.None);
@@ -264,7 +264,7 @@ public class ComboBuildAndVisibilityHandlerTests
             .Returns(Task.CompletedTask);
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "me" });
 
-        await new BuildComboHandler(trickRepo.Object, comboRepo.Object, CreateHttp(_userId), userManager.Object)
+        await new BuildComboHandler(trickRepo.Object, comboRepo.Object, new Mock<IUserPersonalReusableComboRepository>().Object, CreateHttp(_userId), userManager.Object)
             .Handle(new BuildComboCommand(
                 [new BuildComboTrickItem(coTrick.Id, null, 1, true, false), new BuildComboTrickItem(nextTrick.Id, null, 2, true, true)],
                 false), CancellationToken.None);
@@ -288,7 +288,7 @@ public class ComboBuildAndVisibilityHandlerTests
             .Returns(Task.CompletedTask);
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "me" });
 
-        await new BuildComboHandler(trickRepo.Object, comboRepo.Object, CreateHttp(_userId), userManager.Object)
+        await new BuildComboHandler(trickRepo.Object, comboRepo.Object, new Mock<IUserPersonalReusableComboRepository>().Object, CreateHttp(_userId), userManager.Object)
             .Handle(new BuildComboCommand([new BuildComboTrickItem(coTrick.Id, null, 1, true, true)], false), CancellationToken.None);
 
         savedCombo!.ComboTricks.Single().NoTouch.Should().BeFalse();
@@ -309,7 +309,7 @@ public class ComboBuildAndVisibilityHandlerTests
             .Returns(Task.CompletedTask);
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "me" });
 
-        await new BuildComboHandler(trickRepo.Object, comboRepo.Object, CreateHttp(_userId), userManager.Object)
+        await new BuildComboHandler(trickRepo.Object, comboRepo.Object, new Mock<IUserPersonalReusableComboRepository>().Object, CreateHttp(_userId), userManager.Object)
             .Handle(new BuildComboCommand([new BuildComboTrickItem(trick.Id, null, 1, true, false)], false, "   "), CancellationToken.None);
 
         savedCombo!.Name.Should().BeNull();
@@ -394,7 +394,7 @@ public class ComboBuildAndVisibilityHandlerTests
             .Returns(Task.CompletedTask);
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "u" });
 
-        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, new Mock<IUserPersonalReusableComboRepository>().Object, CreateHttp(_userId), userManager.Object);
         var result = await handler.Handle(
             new BuildComboCommand([new BuildComboTrickItem(trick.Id, null, 1, false, false)]),
             CancellationToken.None);
@@ -427,7 +427,7 @@ public class ComboBuildAndVisibilityHandlerTests
             .Returns(Task.CompletedTask);
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "u" });
 
-        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, new Mock<IUserPersonalReusableComboRepository>().Object, CreateHttp(_userId), userManager.Object);
         var result = await handler.Handle(new BuildComboCommand([
             new BuildComboTrickItem(directTrick.Id, null, 1, false, false),
             new BuildComboTrickItem(null, subComboId, 2, false, false)
@@ -464,7 +464,7 @@ public class ComboBuildAndVisibilityHandlerTests
         comboRepo.Setup(r => r.AddAsync(It.IsAny<Combo>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "u" });
 
-        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, new Mock<IUserPersonalReusableComboRepository>().Object, CreateHttp(_userId), userManager.Object);
         var result = await handler.Handle(new BuildComboCommand([
             new BuildComboTrickItem(directTrick.Id, null, 1, false, false),
             new BuildComboTrickItem(null, subComboId, 2, false, false)
@@ -488,7 +488,73 @@ public class ComboBuildAndVisibilityHandlerTests
         comboRepo.Setup(r => r.GetByIdAsync(subComboId, It.IsAny<CancellationToken>())).ReturnsAsync(notReusable);
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "u" });
 
-        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, new Mock<IUserPersonalReusableComboRepository>().Object, CreateHttp(_userId), userManager.Object);
+        Func<Task> act = () => handler.Handle(
+            new BuildComboCommand([new BuildComboTrickItem(null, subComboId, 1, false, false)]),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage($"*{subComboId}*is not reusable*");
+    }
+
+    [Fact]
+    public async Task BuildCombo_WithPersonalReusableSubComboSlot_WorksWhenCallerHasListedIt()
+    {
+        var trickRepo = new Mock<ITrickRepository>();
+        var comboRepo = new Mock<IComboRepository>();
+        var personalReusableRepo = new Mock<IUserPersonalReusableComboRepository>();
+        var userManager = CreateUserManagerMock();
+
+        var subComboId = Guid.NewGuid();
+        var personalReusable = new Combo
+        {
+            Id = subComboId,
+            Name = "My private block",
+            IsReusable = false,
+            OwnerId = _userId,
+            Visibility = ComboVisibility.Private,
+            ComboTricks = []
+        };
+
+        trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        comboRepo.Setup(r => r.GetByIdAsync(subComboId, It.IsAny<CancellationToken>())).ReturnsAsync(personalReusable);
+        comboRepo.Setup(r => r.AddAsync(It.IsAny<Combo>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        personalReusableRepo.Setup(r => r.ExistsAsync(_userId, subComboId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "u" });
+
+        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, personalReusableRepo.Object, CreateHttp(_userId), userManager.Object);
+        Func<Task> act = () => handler.Handle(
+            new BuildComboCommand([new BuildComboTrickItem(null, subComboId, 1, false, false)]),
+            CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task BuildCombo_Throws_WhenSubComboNotPersonallyListed_ByCaller()
+    {
+        var trickRepo = new Mock<ITrickRepository>();
+        var comboRepo = new Mock<IComboRepository>();
+        var personalReusableRepo = new Mock<IUserPersonalReusableComboRepository>();
+        var userManager = CreateUserManagerMock();
+
+        var subComboId = Guid.NewGuid();
+        var someoneElsesCombo = new Combo
+        {
+            Id = subComboId,
+            Name = "Their combo",
+            IsReusable = false,
+            OwnerId = Guid.NewGuid(),
+            Visibility = ComboVisibility.Private,
+            ComboTricks = []
+        };
+
+        trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        comboRepo.Setup(r => r.GetByIdAsync(subComboId, It.IsAny<CancellationToken>())).ReturnsAsync(someoneElsesCombo);
+        // ExistsAsync unconfigured -> defaults to false (caller hasn't listed it)
+        userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "u" });
+
+        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, personalReusableRepo.Object, CreateHttp(_userId), userManager.Object);
         Func<Task> act = () => handler.Handle(
             new BuildComboCommand([new BuildComboTrickItem(null, subComboId, 1, false, false)]),
             CancellationToken.None);
@@ -517,7 +583,7 @@ public class ComboBuildAndVisibilityHandlerTests
         comboRepo.Setup(r => r.GetByIdAsync(subComboId, It.IsAny<CancellationToken>())).ReturnsAsync(nested);
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "u" });
 
-        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, new Mock<IUserPersonalReusableComboRepository>().Object, CreateHttp(_userId), userManager.Object);
         Func<Task> act = () => handler.Handle(
             new BuildComboCommand([new BuildComboTrickItem(null, subComboId, 1, false, false)]),
             CancellationToken.None);
@@ -538,7 +604,7 @@ public class ComboBuildAndVisibilityHandlerTests
         comboRepo.Setup(r => r.GetByIdAsync(missingId, It.IsAny<CancellationToken>())).ReturnsAsync((Combo?)null);
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "u" });
 
-        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, new Mock<IUserPersonalReusableComboRepository>().Object, CreateHttp(_userId), userManager.Object);
         Func<Task> act = () => handler.Handle(
             new BuildComboCommand([new BuildComboTrickItem(null, missingId, 1, false, false)]),
             CancellationToken.None);
@@ -557,7 +623,7 @@ public class ComboBuildAndVisibilityHandlerTests
         trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([]);
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "u" });
 
-        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new BuildComboHandler(trickRepo.Object, comboRepo.Object, new Mock<IUserPersonalReusableComboRepository>().Object, CreateHttp(_userId), userManager.Object);
         // Both TrickId and SubComboId set — violates XOR
         Func<Task> act = () => handler.Handle(
             new BuildComboCommand([new BuildComboTrickItem(Guid.NewGuid(), Guid.NewGuid(), 1, false, false)]),

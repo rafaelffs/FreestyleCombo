@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using FluentAssertions;
+using FreestyleCombo.API.Features.Auth;
 using FreestyleCombo.API.Features.Auth.Login;
 using FreestyleCombo.API.Features.Auth.Register;
 using FreestyleCombo.Core.Entities;
@@ -28,6 +29,8 @@ public class AuthHandlerTests
         })
         .Build();
 
+    private static ITokenService CreateTokenService() => new TokenService(CreateJwtConfig());
+
     [Fact]
     public async Task Login_ValidCredentials_ReturnsTokenAndUserId()
     {
@@ -37,7 +40,7 @@ public class AuthHandlerTests
         userManager.Setup(m => m.CheckPasswordAsync(user, "Password1!")).ReturnsAsync(true);
         userManager.Setup(m => m.GetRolesAsync(user)).ReturnsAsync(["Admin"]);
 
-        var result = await new LoginHandler(userManager.Object, CreateJwtConfig())
+        var result = await new LoginHandler(userManager.Object, CreateTokenService())
             .Handle(new LoginCommand("user@example.com", "Password1!"), CancellationToken.None);
 
         result.UserId.Should().Be(user.Id);
@@ -57,7 +60,7 @@ public class AuthHandlerTests
         userManager.Setup(m => m.CheckPasswordAsync(user, "Password1!")).ReturnsAsync(true);
         userManager.Setup(m => m.GetRolesAsync(user)).ReturnsAsync([]);
 
-        var result = await new LoginHandler(userManager.Object, CreateJwtConfig())
+        var result = await new LoginHandler(userManager.Object, CreateTokenService())
             .Handle(new LoginCommand("rafael", "Password1!"), CancellationToken.None);
 
         result.UserId.Should().Be(user.Id);
@@ -70,7 +73,7 @@ public class AuthHandlerTests
         userManager.Setup(m => m.FindByEmailAsync("missing")).ReturnsAsync((AppUser?)null);
         userManager.Setup(m => m.FindByNameAsync("missing")).ReturnsAsync((AppUser?)null);
 
-        Func<Task> act = () => new LoginHandler(userManager.Object, CreateJwtConfig())
+        Func<Task> act = () => new LoginHandler(userManager.Object, CreateTokenService())
             .Handle(new LoginCommand("missing", "Password1!"), CancellationToken.None);
 
         await act.Should().ThrowAsync<UnauthorizedAccessException>()
@@ -85,7 +88,7 @@ public class AuthHandlerTests
         userManager.Setup(m => m.FindByEmailAsync("user@example.com")).ReturnsAsync(user);
         userManager.Setup(m => m.CheckPasswordAsync(user, "wrong")).ReturnsAsync(false);
 
-        Func<Task> act = () => new LoginHandler(userManager.Object, CreateJwtConfig())
+        Func<Task> act = () => new LoginHandler(userManager.Object, CreateTokenService())
             .Handle(new LoginCommand("user@example.com", "wrong"), CancellationToken.None);
 
         await act.Should().ThrowAsync<UnauthorizedAccessException>()

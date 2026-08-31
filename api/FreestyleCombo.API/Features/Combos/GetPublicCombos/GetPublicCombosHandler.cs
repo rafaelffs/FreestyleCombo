@@ -10,12 +10,18 @@ public class GetPublicCombosHandler : IRequestHandler<GetPublicCombosQuery, Page
     private readonly IComboRepository _repo;
     private readonly IUserFavouriteRepository _favRepo;
     private readonly IUserComboCompletionRepository _completionRepo;
+    private readonly IUserPersonalReusableComboRepository _personalReusableRepo;
 
-    public GetPublicCombosHandler(IComboRepository repo, IUserFavouriteRepository favRepo, IUserComboCompletionRepository completionRepo)
+    public GetPublicCombosHandler(
+        IComboRepository repo,
+        IUserFavouriteRepository favRepo,
+        IUserComboCompletionRepository completionRepo,
+        IUserPersonalReusableComboRepository personalReusableRepo)
     {
         _repo = repo;
         _favRepo = favRepo;
         _completionRepo = completionRepo;
+        _personalReusableRepo = personalReusableRepo;
     }
 
     public async Task<PagedResult<PublicComboDto>> Handle(GetPublicCombosQuery request, CancellationToken cancellationToken)
@@ -31,6 +37,9 @@ public class GetPublicCombosHandler : IRequestHandler<GetPublicCombosQuery, Page
             ? await _completionRepo.GetCompletedComboIdsAsync(request.RequestingUserId.Value, cancellationToken)
             : [];
         var completionCounts = await _completionRepo.GetCompletionCountsAsync(comboIds, cancellationToken);
+        var personalReusableIds = request.RequestingUserId.HasValue
+            ? await _personalReusableRepo.GetComboIdsAsync(request.RequestingUserId.Value, cancellationToken)
+            : [];
 
         return new PagedResult<PublicComboDto>
         {
@@ -110,7 +119,8 @@ public class GetPublicCombosHandler : IRequestHandler<GetPublicCombosQuery, Page
                 IsFavourited = favIds.Contains(c.Id),
                 IsCompleted = completedIds.Contains(c.Id),
                 CompletionCount = completionCounts.GetValueOrDefault(c.Id, 0),
-                IsReusable = c.IsReusable
+                IsReusable = c.IsReusable,
+                IsPersonalReusable = personalReusableIds.Contains(c.Id)
             }).ToList()
         };
     }

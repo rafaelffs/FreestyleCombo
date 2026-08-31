@@ -9,11 +9,16 @@ public class GetFavouritedCombosHandler : IRequestHandler<GetFavouritedCombosQue
 {
     private readonly IComboRepository _repo;
     private readonly IUserComboCompletionRepository _completionRepo;
+    private readonly IUserPersonalReusableComboRepository _personalReusableRepo;
 
-    public GetFavouritedCombosHandler(IComboRepository repo, IUserComboCompletionRepository completionRepo)
+    public GetFavouritedCombosHandler(
+        IComboRepository repo,
+        IUserComboCompletionRepository completionRepo,
+        IUserPersonalReusableComboRepository personalReusableRepo)
     {
         _repo = repo;
         _completionRepo = completionRepo;
+        _personalReusableRepo = personalReusableRepo;
     }
 
     public async Task<List<PublicComboDto>> Handle(GetFavouritedCombosQuery request, CancellationToken cancellationToken)
@@ -21,6 +26,7 @@ public class GetFavouritedCombosHandler : IRequestHandler<GetFavouritedCombosQue
         var combos = await _repo.GetFavouritedByUserAsync(request.UserId, cancellationToken);
         var completedIds = await _completionRepo.GetCompletedComboIdsAsync(request.UserId, cancellationToken);
         var completionCounts = await _completionRepo.GetCompletionCountsAsync(combos.Select(c => c.Id), cancellationToken);
+        var personalReusableIds = await _personalReusableRepo.GetComboIdsAsync(request.UserId, cancellationToken);
 
         return combos.Select(c => new PublicComboDto
         {
@@ -95,7 +101,8 @@ public class GetFavouritedCombosHandler : IRequestHandler<GetFavouritedCombosQue
             IsFavourited = true,
             IsCompleted = completedIds.Contains(c.Id),
             CompletionCount = completionCounts.GetValueOrDefault(c.Id, 0),
-            IsReusable = c.IsReusable
+            IsReusable = c.IsReusable,
+            IsPersonalReusable = personalReusableIds.Contains(c.Id)
         }).ToList();
     }
 }

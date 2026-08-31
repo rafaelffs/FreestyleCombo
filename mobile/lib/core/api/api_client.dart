@@ -91,6 +91,38 @@ class ApiClient {
     }
   }
 
+  Future<({String token, String userId})> signInWithGoogle(String idToken) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/auth/google',
+        data: {'idToken': idToken},
+      );
+      final d = res.data!;
+      return (
+        token: d['token'] as String,
+        userId: d['userId'] as String,
+      );
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<({String token, String userId})> signInWithApple(String idToken) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/auth/apple',
+        data: {'idToken': idToken},
+      );
+      final d = res.data!;
+      return (
+        token: d['token'] as String,
+        userId: d['userId'] as String,
+      );
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
   Future<void> forgotPassword(String email) async {
     try {
       await _dio.post('/auth/forgot-password', data: {'email': email});
@@ -211,6 +243,22 @@ class ApiClient {
   Future<void> setVisibility(String id, bool isPublic) async {
     try {
       await _dio.put('/combos/$id/visibility', data: {'isPublic': isPublic});
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> addPersonalReusable(String id) async {
+    try {
+      await _dio.post('/combos/$id/personal-reusable');
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> removePersonalReusable(String id) async {
+    try {
+      await _dio.delete('/combos/$id/personal-reusable');
     } on DioException catch (e) {
       throw Exception(_extractMessage(e));
     }

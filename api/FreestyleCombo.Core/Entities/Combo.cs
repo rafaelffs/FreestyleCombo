@@ -20,4 +20,5 @@ public class Combo
     public ICollection<ComboRating> Ratings { get; set; } = [];
     public ICollection<UserFavouriteCombo> FavouritedBy { get; set; } = [];
     public ICollection<UserComboCompletion> CompletedBy { get; set; } = [];
+    public ICollection<UserPersonalReusableCombo> PersonalReusableBy { get; set; } = [];
 }

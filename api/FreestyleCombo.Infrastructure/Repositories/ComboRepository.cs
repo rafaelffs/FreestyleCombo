@@ -119,9 +119,10 @@ public class ComboRepository : IComboRepository
             .OrderBy(c => c.CreatedAt)
             .ToListAsync(ct);
 
-    public async Task<List<Combo>> GetReusableAsync(CancellationToken ct = default) =>
+    public async Task<List<Combo>> GetReusableAsync(Guid? requestingUserId = null, CancellationToken ct = default) =>
         await _db.Combos
-            .Where(c => c.IsReusable)
+            .Where(c => c.IsReusable || (requestingUserId != null && _db.UserPersonalReusableCombos
+                .Any(upr => upr.ComboId == c.Id && upr.UserId == requestingUserId)))
             .Include(c => c.ComboTricks)
                 .ThenInclude(ct2 => ct2.Trick)
             .Include(c => c.ComboTricks)
