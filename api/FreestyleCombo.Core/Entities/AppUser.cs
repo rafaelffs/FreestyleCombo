@@ -17,4 +17,12 @@ public class AppUser : IdentityUser<Guid>
     // pending, or after a successful reset / on expiry.
     public string? PasswordResetCodeHash { get; set; }
     public DateTime? PasswordResetCodeExpiresAt { get; set; }
+
+    // External (OAuth) sign-in — null for password-only accounts. AuthProvider
+    // tracks the most recently linked provider ("google" | "apple");
+    // ExternalSubject is that provider's `sub` claim. See
+    // ExternalSignInHandler for the sign-in/link logic that reads and
+    // backfills these onto an existing password account.
+    public string? AuthProvider { get; set; }
+    public string? ExternalSubject { get; set; }
 }
