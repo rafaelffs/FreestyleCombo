@@ -8,6 +8,7 @@ import '../../theme/app_colors.dart';
 import '../../widgets/combo_card.dart' show TrickNameDisplay;
 import '../../widgets/difficulty_chip.dart';
 import '../../widgets/rate_combo_dialog.dart';
+import '../../widgets/submit_trick_sheet.dart' show SubmitToggle;
 
 class _SlotItem {
   final String? trickId;
@@ -773,6 +774,7 @@ class _EditComboScreenState extends State<_EditComboScreen> {
   bool _saving = false;
   String? _error;
   int _tab = 0;
+  late bool _isPublic = widget.combo.visibility != 'Private';
 
   @override
   void initState() {
@@ -913,6 +915,9 @@ class _EditComboScreenState extends State<_EditComboScreen> {
         name: name,
         tricks: tricks,
       );
+      if (widget.combo.visibility == 'Private' && _isPublic) {
+        await ApiClient.instance.setVisibility(widget.combo.id, true);
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
@@ -957,6 +962,17 @@ class _EditComboScreenState extends State<_EditComboScreen> {
               ),
             ),
           ),
+          if (widget.combo.visibility == 'Private') ...[
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              child: SubmitToggle(
+                label: 'Submit as public',
+                value: _isPublic,
+                onChanged: (v) => setState(() => _isPublic = v),
+              ),
+            ),
+          ],
           if (_error != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
