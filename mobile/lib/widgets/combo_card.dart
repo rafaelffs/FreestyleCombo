@@ -67,6 +67,8 @@ class _ComboCardState extends State<ComboCard> {
   bool _completedLoading = false;
   late bool _completed;
   late int _completionCount;
+  bool _personalReusableLoading = false;
+  late bool _isPersonalReusable;
   bool _expanded = false;
 
   @override
@@ -75,6 +77,7 @@ class _ComboCardState extends State<ComboCard> {
     _favoured = widget.combo.isFavourited;
     _completed = widget.combo.isCompleted;
     _completionCount = widget.combo.completionCount;
+    _isPersonalReusable = widget.combo.isPersonalReusable;
   }
 
   Future<void> _toggleFavourite() async {
@@ -121,6 +124,22 @@ class _ComboCardState extends State<ComboCard> {
       }
     } finally {
       if (mounted) setState(() => _completedLoading = false);
+    }
+  }
+
+  Future<void> _togglePersonalReusable() async {
+    setState(() => _personalReusableLoading = true);
+    try {
+      await ApiClient.instance.setPersonalReusable(widget.combo.id, !_isPersonalReusable);
+      setState(() => _isPersonalReusable = !_isPersonalReusable);
+      widget.onRefresh?.call();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) setState(() => _personalReusableLoading = false);
     }
   }
 
@@ -310,6 +329,18 @@ class _ComboCardState extends State<ComboCard> {
                         onTap: _toggleCompleted,
                         label: _completionCount > 0 ? '$_completionCount' : null,
                       ),
+                      if (isOwner) ...[
+                        const SizedBox(width: 8),
+                        _IconToggle(
+                          icon: _isPersonalReusable ? Icons.link : Icons.link_off,
+                          color: _isPersonalReusable ? AppColors.indigo : AppColors.faint,
+                          loading: _personalReusableLoading,
+                          tooltip: _isPersonalReusable
+                              ? 'Remove from your trick list'
+                              : 'List combo in the trick list',
+                          onTap: _togglePersonalReusable,
+                        ),
+                      ],
                       if (canRate) ...[
                         const SizedBox(width: 8),
                         _IconToggle(

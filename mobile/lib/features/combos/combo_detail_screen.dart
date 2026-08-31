@@ -57,6 +57,8 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
   bool _favoured = false;
   bool _completedLoading = false;
   bool _completed = false;
+  bool _personalReusableLoading = false;
+  bool _isPersonalReusable = false;
 
   Future<void> _deleteCombo(String comboId) async {
     final confirmed = await showDialog<bool>(
@@ -105,6 +107,7 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
         setState(() {
           _favoured = combo.isFavourited;
           _completed = combo.isCompleted;
+          _isPersonalReusable = combo.isPersonalReusable;
         });
       }
     });
@@ -147,6 +150,21 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
       }
     } finally {
       if (mounted) setState(() => _favLoading = false);
+    }
+  }
+
+  Future<void> _togglePersonalReusable(String comboId) async {
+    setState(() => _personalReusableLoading = true);
+    try {
+      await ApiClient.instance.setPersonalReusable(comboId, !_isPersonalReusable);
+      setState(() => _isPersonalReusable = !_isPersonalReusable);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) setState(() => _personalReusableLoading = false);
     }
   }
 
@@ -199,6 +217,9 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
                   favoured: _favoured,
                   favLoading: _favLoading,
                   onToggleFavourite: () => _toggleFavourite(combo.id),
+                  isPersonalReusable: _isPersonalReusable,
+                  personalReusableLoading: _personalReusableLoading,
+                  onTogglePersonalReusable: () => _togglePersonalReusable(combo.id),
                   onEdit: () => _openEdit(combo),
                   onDelete: () => _deleteCombo(combo.id),
                 ),
@@ -327,6 +348,9 @@ class _DetailHero extends StatelessWidget {
   final bool favoured;
   final bool favLoading;
   final VoidCallback onToggleFavourite;
+  final bool isPersonalReusable;
+  final bool personalReusableLoading;
+  final VoidCallback onTogglePersonalReusable;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -338,6 +362,9 @@ class _DetailHero extends StatelessWidget {
     required this.favoured,
     required this.favLoading,
     required this.onToggleFavourite,
+    required this.isPersonalReusable,
+    required this.personalReusableLoading,
+    required this.onTogglePersonalReusable,
     required this.onEdit,
     required this.onDelete,
   });
@@ -384,6 +411,14 @@ class _DetailHero extends StatelessWidget {
                             iconColor: favoured ? AppColors.pink : Colors.white,
                             onTap: favLoading ? null : onToggleFavourite,
                           ),
+                        if (isOwner) ...[
+                          const SizedBox(width: 9),
+                          _HeroIconButton(
+                            icon: isPersonalReusable ? Icons.link : Icons.link_off,
+                            iconColor: isPersonalReusable ? AppColors.lime : Colors.white,
+                            onTap: personalReusableLoading ? null : onTogglePersonalReusable,
+                          ),
+                        ],
                         if (isOwner) ...[
                           const SizedBox(width: 9),
                           _HeroIconButton(icon: Icons.edit_outlined, onTap: onEdit),
@@ -981,7 +1016,7 @@ class _EditComboScreenState extends State<_EditComboScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 22),
             child: SubmitToggle(
-              label: 'Reusable for me',
+              label: 'List combo in the trick list',
               value: _isPersonalReusable,
               onChanged: (v) => setState(() => _isPersonalReusable = v),
             ),

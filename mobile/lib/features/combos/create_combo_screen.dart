@@ -1508,7 +1508,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                 ),
                 const SizedBox(height: 10),
                 _ToggleRow(
-                  label: 'Reusable for me',
+                  label: 'List combo in the trick list',
                   value: _isPersonalReusable,
                   onChanged: (v) => setState(() => _isPersonalReusable = v),
                 ),

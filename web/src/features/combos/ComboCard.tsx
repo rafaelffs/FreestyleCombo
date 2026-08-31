@@ -68,6 +68,15 @@ function CheckCircleIconOutline() {
   )
 }
 
+function LinkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  )
+}
+
 function ShareIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -110,6 +119,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
   const [favError, setFavError] = useState<string | null>(null)
   const [completed, setCompleted] = useState(combo.isCompleted ?? false)
   const [, setCompletionCount] = useState(combo.completionCount ?? 0)
+  const [personalReusable, setPersonalReusable] = useState(combo.isPersonalReusable ?? false)
   const [visibilityModal, setVisibilityModal] = useState<VisibilityModalConfig | null>(null)
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -161,6 +171,14 @@ export function ComboCard({ combo, showActions = false }: Props) {
     onSuccess: () => {
       setCompletionCount((c) => completed ? c - 1 : c + 1)
       setCompleted((c) => !c)
+      void queryClient.invalidateQueries({ queryKey: ['combos'] })
+    },
+  })
+
+  const personalReusableMutation = useMutation({
+    mutationFn: () => combosApi.setPersonalReusable(combo.id, !personalReusable),
+    onSuccess: () => {
+      setPersonalReusable((r) => !r)
       void queryClient.invalidateQueries({ queryKey: ['combos'] })
     },
   })
@@ -220,6 +238,19 @@ export function ComboCard({ combo, showActions = false }: Props) {
                 title={favoured ? t('combos.favouriteRemove') : t('combos.favouriteAdd')}
               >
                 {favoured ? <HeartIconFilled /> : <HeartIconOutline />}
+              </button>
+            )}
+            {isOwner && (
+              <button
+                type="button"
+                onClick={() => personalReusableMutation.mutate()}
+                disabled={personalReusableMutation.isPending}
+                className={`inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border bg-white transition-colors disabled:cursor-not-allowed ${
+                  personalReusable ? 'border-indigo-200 text-indigo-600 hover:border-indigo-300' : 'border-gray-200 text-gray-400 hover:border-indigo-300 hover:text-indigo-500'
+                }`}
+                title={personalReusable ? t('combos.removeFromTrickList') : t('combos.listInTrickList')}
+              >
+                <LinkIcon />
               </button>
             )}
             {authed && (

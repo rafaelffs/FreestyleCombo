@@ -92,6 +92,8 @@
     "favouriteRemove": "Remover dos favoritos",
     "markDone": "Marcar como feito",
     "markNotDone": "Marcar como não feito",
+    "listInTrickList": "Listar combo na lista de tricks",
+    "removeFromTrickList": "Remover da sua lista de tricks",
     "visibilitySubmitForReview": "Enviar para revisão",
     "visibilityCancelRequest": "Cancelar solicitação de revisão",
     "visibilityPendingApproval": "Aguardando aprovação",
@@ -159,7 +161,7 @@
     "tapTricksHint": "Toque na aba Tricks acima para ver e adicionar tricks.",
     "clickTricksHint": "Clique nas tricks à esquerda para adicioná-las.",
     "submitForReview": "Enviar para revisão pública",
-    "reusableForMe": "Reutilizável só para mim",
+    "reusableForMe": "Listar combo na lista de tricks",
     "savingCombo": "Salvando…",
     "saveCombo": "Salvar Combo",
     "signUpToSave": "Cadastre-se para salvar",
@@ -207,7 +209,7 @@
     "subCombo": "Sub-combo",
     "reusable": "Reutilizável",
     "setReusableFailed": "Falha ao atualizar status de reutilizável",
-    "personalReusableLabel": "Reutilizável só para mim"
+    "personalReusableLabel": "Listar combo na lista de tricks"
   },
   "tricks": {
     "pageTitle": "Tricks",

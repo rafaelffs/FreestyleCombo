@@ -92,6 +92,8 @@
     "favouriteRemove": "Unfavourite",
     "markDone": "Mark as done",
     "markNotDone": "Mark as not done",
+    "listInTrickList": "List combo in the trick list",
+    "removeFromTrickList": "Remove from your trick list",
     "visibilitySubmitForReview": "Submit for review",
     "visibilityCancelRequest": "Cancel review request",
     "visibilityPendingApproval": "Pending approval",
@@ -159,7 +161,7 @@
     "tapTricksHint": "Tap the Tricks tab above to browse and add tricks.",
     "clickTricksHint": "Click tricks on the left to add them.",
     "submitForReview": "Submit for public review",
-    "reusableForMe": "Reusable for me",
+    "reusableForMe": "List combo in the trick list",
     "savingCombo": "Saving…",
     "saveCombo": "Save Combo",
     "signUpToSave": "Sign up to save",
@@ -207,7 +209,7 @@
     "subCombo": "Sub-combo",
     "reusable": "Reusable",
     "setReusableFailed": "Failed to update reusable status",
-    "personalReusableLabel": "Reusable for me"
+    "personalReusableLabel": "List combo in the trick list"
   },
   "tricks": {
     "pageTitle": "Tricks",
