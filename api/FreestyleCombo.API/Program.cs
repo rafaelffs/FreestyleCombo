@@ -3,6 +3,7 @@ using FluentValidation;
 using FreestyleCombo.AI.Services;
 using FreestyleCombo.AI.Training;
 using FreestyleCombo.API.Behaviors;
+using FreestyleCombo.API.Features.Auth;
 using FreestyleCombo.API.Middleware;
 using FreestyleCombo.Core.Entities;
 using FreestyleCombo.Core.Interfaces;
@@ -87,6 +88,7 @@ builder.Services.AddScoped<IUserPersonalReusableComboRepository, UserPersonalReu
 
 // AI Services
 builder.Services.AddScoped<IComboEnhancerService, ComboEnhancerService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ComboRatingAggregator>();
 builder.Services.AddScoped<FeedbackLearningService>();
 builder.Services.AddScoped<WeightAdjustmentJob>();
