@@ -896,7 +896,7 @@ class _EditComboScreenState extends State<_EditComboScreen> {
       if (item is TrickItem) {
         return item.name.toLowerCase().contains(q) || item.abbreviation.toLowerCase().contains(q);
       } else if (item is ComboItem) {
-        return item.name.toLowerCase().contains(q);
+        return item.displayName.toLowerCase().contains(q);
       }
       return false;
     }).toList();
@@ -920,13 +920,13 @@ class _EditComboScreenState extends State<_EditComboScreen> {
     setState(() {
       _slots.add(_SlotItem(
         trickId: '',
-        trickName: combo.name,
+        trickName: combo.displayName,
         abbreviation: '',
         crossOver: false,
         position: _slots.length + 1,
         isSubCombo: true,
         subComboId: combo.id,
-        subComboName: combo.name,
+        subComboName: combo.displayName,
         subComboTricks: combo.tricks,
       ));
       _tab = 1;
@@ -1112,7 +1112,7 @@ class _EditComboScreenState extends State<_EditComboScreen> {
                     } else if (item is ComboItem) {
                       return _EditPickerRow(
                         abbreviation: null,
-                        name: item.name,
+                        name: item.displayName,
                         meta: '${item.trickCount} tricks',
                         difficulty: item.totalDifficulty.toInt(),
                         isCombo: true,

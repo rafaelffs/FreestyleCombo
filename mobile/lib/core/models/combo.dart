@@ -109,7 +109,8 @@ class ComboItem extends TrickListItem {
   @override
   final String type = 'combo';
   final String id;
-  final String name;
+  final String? name;
+  final String displayText;
   final double totalDifficulty;
   final int trickCount;
   final List<ComboTrickDto> tricks;
@@ -117,14 +118,20 @@ class ComboItem extends TrickListItem {
   ComboItem({
     required this.id,
     required this.name,
+    required this.displayText,
     required this.totalDifficulty,
     required this.trickCount,
     required this.tricks,
   });
 
+  /// Combos aren't required to have a name — falls back to the trick
+  /// sequence notation, matching every other combo-display surface.
+  String get displayName => (name != null && name!.isNotEmpty) ? name! : displayText;
+
   factory ComboItem.fromJson(Map<String, dynamic> j) => ComboItem(
         id: j['id'] as String,
-        name: j['name'] as String,
+        name: j['name'] as String?,
+        displayText: j['displayText'] as String? ?? '',
         totalDifficulty: (j['totalDifficulty'] as num).toDouble(),
         trickCount: j['trickCount'] as int,
         tricks: (j['tricks'] as List<dynamic>? ?? [])

@@ -102,7 +102,7 @@ class _TricksScreenState extends State<TricksScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('Remove reusable flag?', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: AppColors.ink)),
         content: Text(
-          'Remove "${combo.name}" from the reusable combos list?',
+          'Remove "${combo.displayName}" from the reusable combos list?',
           style: GoogleFonts.plusJakartaSans(color: AppColors.ink2, fontSize: 14),
         ),
         actions: [
@@ -306,7 +306,7 @@ class _TricksScreenState extends State<TricksScreen> {
       } else if (item is ComboItem) {
         if (_typeFilter == _TypeFilter.tricks) return false;
         // Combos: only filter by search on name, ignore diff/rev filters
-        if (q.isNotEmpty && !item.name.toLowerCase().contains(q)) return false;
+        if (q.isNotEmpty && !item.displayName.toLowerCase().contains(q)) return false;
         return true;
       }
       return true;
@@ -331,7 +331,7 @@ class _TricksScreenState extends State<TricksScreen> {
       return _sortAsc ? cmp : -cmp;
     });
 
-    combos.sort((a, b) => a.name.compareTo(b.name));
+    combos.sort((a, b) => a.displayName.compareTo(b.displayName));
 
     return [...tricks, ...combos];
   }
@@ -644,7 +644,7 @@ class _TricksScreenState extends State<TricksScreen> {
                           children: [
                             Flexible(
                               child: Text(
-                                c.name,
+                                c.displayName,
                                 style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w800, color: AppColors.ink),
                                 overflow: TextOverflow.ellipsis,
                               ),

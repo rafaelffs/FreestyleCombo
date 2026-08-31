@@ -396,14 +396,14 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
 
   Future<void> _promptAddCombo(ComboItem combo) async {
     final choice = await _showAddOptionsSheet(
-      title: combo.name,
+      title: combo.displayName,
       allowNoTouch: false,
     );
     if (choice == null) return;
     setState(() {
       _slots.add(_SlotItem.combo(
         subComboId: combo.id,
-        subComboName: combo.name,
+        subComboName: combo.displayName,
         subComboTricks: combo.tricks,
         position: _slots.length + 1,
       )..strongFoot = choice.strongFoot);
@@ -649,7 +649,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
       } else if (item is ComboItem) {
         if (_typeFilter == _TypeFilter.tricks) return false;
         if (q.isEmpty) return true;
-        return item.name.toLowerCase().contains(q);
+        return item.displayName.toLowerCase().contains(q);
       }
       return false;
     }).toList();
@@ -1936,7 +1936,7 @@ class _PickerComboRow extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              item.name,
+                              item.displayName,
                               style: GoogleFonts.plusJakartaSans(
                                   fontSize: 14.5,
                                   fontWeight: FontWeight.w800,
