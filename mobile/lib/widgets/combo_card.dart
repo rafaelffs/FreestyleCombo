@@ -113,6 +113,7 @@ class _ComboCardState extends State<ComboCard> {
           _completionCount = _completionCount + 1;
         });
       }
+      widget.onRefresh?.call();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
