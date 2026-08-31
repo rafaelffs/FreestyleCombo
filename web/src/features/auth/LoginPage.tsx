@@ -9,12 +9,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { SEO } from '@/components/SEO'
+import { SocialSignInButtons } from './SocialSignInButtons'
 
 export function LoginPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const [credential, setCredential] = useState('')
   const [password, setPassword] = useState('')
+  const [socialError, setSocialError] = useState<string | null>(null)
 
   const { mutate, isPending, error } = useMutation({
     mutationFn: () => authApi.login(credential, password),
@@ -37,6 +39,21 @@ export function LoginPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     mutate()
+  }
+
+  async function handleSocialSignIn(token: string, userId: string) {
+    setToken(token, userId)
+    const pending = getPendingCombo()
+    if (pending) {
+      try {
+        await combosApi.build(pending.tricks, pending.isPublic, pending.name)
+      } finally {
+        clearPendingCombo()
+      }
+      navigate('/combos')
+    } else {
+      navigate('/combos/create')
+    }
   }
 
   const errorMessage = error ? extractError(error, t('auth.loginFailed')) : null
@@ -88,6 +105,8 @@ export function LoginPage() {
             <Button type="submit" className="w-full" disabled={isPending}>
               {isPending ? t('auth.signingIn') : t('auth.signIn')}
             </Button>
+            <SocialSignInButtons onSignedIn={handleSocialSignIn} onError={setSocialError} />
+            {socialError && <p className="text-sm text-red-600 text-center">{socialError}</p>}
             <p className="text-center text-sm text-gray-500">
               {t('auth.noAccount')}{' '}
               <Link to="/register" className="text-indigo-600 hover:underline">
