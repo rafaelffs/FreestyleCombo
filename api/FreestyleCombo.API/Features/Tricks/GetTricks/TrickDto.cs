@@ -20,4 +20,8 @@ public class TrickListItemDto
     public decimal? TotalDifficulty { get; set; }
     public int? TrickCount { get; set; }
     public List<ComboTrickDto>? Tricks { get; set; }
+
+    // Combo notation fallback (e.g. "ATW BF") for when Name is null — combos
+    // aren't required to have a name, unlike tricks.
+    public string? DisplayText { get; set; }
 }
