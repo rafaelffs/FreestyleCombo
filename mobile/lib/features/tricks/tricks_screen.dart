@@ -355,80 +355,125 @@ class _TricksScreenState extends State<TricksScreen> {
   };
 
   void _showSortSheet() {
+    final revOptions = _revOptions;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.bg,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 12),
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(color: AppColors.line2, borderRadius: BorderRadius.circular(2)),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 12),
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: AppColors.line2, borderRadius: BorderRadius.circular(2)),
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(22, 16, 22, 8),
-                child: Text(
-                  'Sort by',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 16, 22, 8),
+                  child: Text(
+                    'Sort by',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
-                child: Column(
-                  children: _sortLabels.entries.map((e) {
-                    final selected = _sortKey == e.key;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: () {
-                            _setSort(e.key);
-                            setSt(() {});
-                            Navigator.pop(ctx);
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-                            decoration: BoxDecoration(
-                              color: selected ? AppColors.indigoTint : AppColors.surface,
-                              border: Border.all(color: selected ? const Color(0xFFC7CCF7) : AppColors.line),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    e.value,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 14.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: selected ? AppColors.indigo : AppColors.ink,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
+                  child: Column(
+                    children: _sortLabels.entries.map((e) {
+                      final selected = _sortKey == e.key;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: () {
+                              _setSort(e.key);
+                              setSt(() {});
+                              Navigator.pop(ctx);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                              decoration: BoxDecoration(
+                                color: selected ? AppColors.indigoTint : AppColors.surface,
+                                border: Border.all(color: selected ? const Color(0xFFC7CCF7) : AppColors.line),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      e.value,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: selected ? AppColors.indigo : AppColors.ink,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                if (selected)
-                                  Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 18, color: AppColors.indigo)
-                                else
-                                  const Icon(Icons.circle_outlined, size: 20, color: AppColors.faint),
-                              ],
+                                  if (selected)
+                                    Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 18, color: AppColors.indigo)
+                                  else
+                                    const Icon(Icons.circle_outlined, size: 20, color: AppColors.faint),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  }).toList(),
+                      );
+                    }).toList(),
+                  ),
                 ),
-              ),
-            ],
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 0, 14, 8),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Filter by revolutions',
+                        style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+                      ),
+                      const Spacer(),
+                      if (_selectedRevs.isNotEmpty)
+                        TextButton(
+                          onPressed: () {
+                            setState(() => _selectedRevs = {});
+                            setSt(() {});
+                          },
+                          child: Text('Clear', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, color: AppColors.indigo)),
+                        ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
+                  child: Column(
+                    children: revOptions.map((rev) {
+                      final selected = _selectedRevs.contains(rev);
+                      return _RevOption(
+                        label: '${rev % 1 == 0 ? rev.toInt() : rev} rev${rev == 1 ? '' : 's'}',
+                        selected: selected,
+                        onTap: () {
+                          setState(() {
+                            if (selected) {
+                              _selectedRevs = _selectedRevs.where((r) => r != rev).toSet();
+                            } else {
+                              _selectedRevs = {..._selectedRevs, rev};
+                            }
+                          });
+                          setSt(() {});
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
