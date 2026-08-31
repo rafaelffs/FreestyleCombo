@@ -159,6 +159,7 @@
     "tapTricksHint": "Toque na aba Tricks acima para ver e adicionar tricks.",
     "clickTricksHint": "Clique nas tricks à esquerda para adicioná-las.",
     "submitForReview": "Enviar para revisão pública",
+    "reusableForMe": "Reutilizável só para mim",
     "savingCombo": "Salvando…",
     "saveCombo": "Salvar Combo",
     "signUpToSave": "Cadastre-se para salvar",
@@ -205,7 +206,8 @@
     "subComboCollapse": "Ocultar tricks",
     "subCombo": "Sub-combo",
     "reusable": "Reutilizável",
-    "setReusableFailed": "Falha ao atualizar status de reutilizável"
+    "setReusableFailed": "Falha ao atualizar status de reutilizável",
+    "personalReusableLabel": "Reutilizável só para mim"
   },
   "tricks": {
     "pageTitle": "Tricks",

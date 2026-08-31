@@ -52,6 +52,7 @@ export function ComboDetailPage() {
 
   // Edit state
   const [editName, setEditName] = useState('')
+  const [editIsPersonalReusable, setEditIsPersonalReusable] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [editSlots, setEditSlots] = useState<SlotItem[]>([])
   const [trickSearch, setTrickSearch] = useState('')
@@ -90,11 +91,16 @@ export function ComboDetailPage() {
   })
 
   const updateMutation = useMutation({
-    mutationFn: () =>
-      combosApi.update(id!, {
+    mutationFn: async () => {
+      const res = await combosApi.update(id!, {
         name: editName || null,
         tricks: editSlots.map(({ trickId, position, strongFoot, noTouch }) => ({ trickId, position, strongFoot, noTouch })),
-      }),
+      })
+      if (editIsPersonalReusable !== combo?.isPersonalReusable) {
+        await combosApi.setPersonalReusable(id!, editIsPersonalReusable)
+      }
+      return res
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['combos', id] })
       void queryClient.invalidateQueries({ queryKey: ['combos'] })
@@ -132,6 +138,7 @@ export function ComboDetailPage() {
 
   function startEdit() {
     setEditName(combo!.name ?? '')
+    setEditIsPersonalReusable(combo!.isPersonalReusable)
     setEditSlots(
       applyNoTouchRules(
         (combo!.tricks ?? []).flatMap((t_) => {
@@ -384,6 +391,16 @@ export function ComboDetailPage() {
               <Label htmlFor="edit-name">{t('comboDetail.comboNameLabel')}</Label>
               <Input id="edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder={t('comboDetail.comboNamePlaceholder')} maxLength={100} />
             </div>
+
+            <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={editIsPersonalReusable}
+                onChange={(e) => setEditIsPersonalReusable(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600"
+              />
+              {t('comboDetail.personalReusableLabel')}
+            </label>
 
             <div className="grid gap-4 lg:grid-cols-2">
               {/* Trick picker */}

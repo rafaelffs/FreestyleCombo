@@ -33,6 +33,7 @@ export interface ComboDto {
   trickCount: number
   isPublic?: boolean
   isReusable: boolean
+  isPersonalReusable: boolean
   visibility?: string
   createdAt: string
   displayText: string
@@ -126,6 +127,8 @@ export const combosApi = {
   rejectVisibility: (id: string) => api.post(`/combos/${id}/reject-visibility`),
   setReusable: (id: string, isReusable: boolean) =>
     api.put(`/combos/${id}/reusable`, { isReusable }),
+  setPersonalReusable: (id: string, isPersonalReusable: boolean) =>
+    api.put(`/combos/${id}/personal-reusable`, { isPersonalReusable }),
 }
 
 export interface RatingDto {

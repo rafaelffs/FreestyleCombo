@@ -87,6 +87,7 @@ export function CreateComboPage() {
   const [slots, setSlots] = useState<SlotItem[]>([])
   const [expandedSlots, setExpandedSlots] = useState<Set<number>>(new Set())
   const [isPublic, setIsPublic] = useState(false)
+  const [isPersonalReusable, setIsPersonalReusable] = useState(false)
   const [buildError, setBuildError] = useState<string | null>(null)
   const dragIndex = useRef<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -173,7 +174,13 @@ export function CreateComboPage() {
   }
 
   const buildMutation = useMutation({
-    mutationFn: () => combosApi.build(serializeSlots(), isPublic, name || undefined),
+    mutationFn: async () => {
+      const res = await combosApi.build(serializeSlots(), isPublic, name || undefined)
+      if (isPersonalReusable) {
+        await combosApi.setPersonalReusable(res.data.id, true)
+      }
+      return res
+    },
     onSuccess: ({ data }) => { navigate(`/combos/${data.id}`) },
     onError: (err) => setBuildError(extractError(err, t('create.buildFailed'))),
   })
@@ -670,6 +677,10 @@ export function CreateComboPage() {
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600" />
                   {t('create.submitForReview')}
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={isPersonalReusable} onChange={(e) => setIsPersonalReusable(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-indigo-600" />
+                  {t('create.reusableForMe')}
                 </label>
                 {buildError && <p className="text-sm text-red-600">{buildError}</p>}
                 <Button onClick={handleSave} disabled={buildMutation.isPending || slots.length === 0} className="w-full">
