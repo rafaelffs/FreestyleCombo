@@ -205,6 +205,32 @@ platform :ios do
     # already exists by that name, even if the App ID's capabilities
     # (e.g. Sign In with Apple) changed since it was last generated.
     sigh(app_identifier: "com.rafaelffs.freestyleCombo", output_path: signing_dir, force: true)
+
+    # sigh's output_path is NOT the same place xcodebuild reads profiles
+    # from — that's ~/Library/MobileDevice/Provisioning Profiles/, keyed
+    # by <UUID>.mobileprovision. Without this, `fastlane ios build` keeps
+    # using whatever was last manually installed there (discovered the
+    # hard way: a regenerated profile with a new entitlement silently had
+    # no effect on the next build until this copy happened). Also removes
+    # any other locally-installed profile with the same Name, so a stale
+    # duplicate can't win a name-based lookup over the fresh one.
+    profile_name = "com.rafaelffs.freestyleCombo AppStore"
+    profile_path = File.join(signing_dir, "AppStore_com.rafaelffs.freestyleCombo.mobileprovision")
+    uuid = sh("security cms -D -i #{profile_path.shellescape} 2>/dev/null | plutil -extract UUID raw -o - -", log: false).strip
+
+    installed_dir = File.expand_path("~/Library/MobileDevice/Provisioning Profiles")
+    FileUtils.mkdir_p(installed_dir)
+    Dir.glob(File.join(installed_dir, "*.mobileprovision")).each do |existing|
+      next if File.basename(existing, ".mobileprovision") == uuid
+      existing_name = sh("security cms -D -i #{existing.shellescape} 2>/dev/null | plutil -extract Name raw -o - -", log: false).strip
+      next unless existing_name == profile_name
+      UI.message("Removing stale local profile #{File.basename(existing)} (same name, older UUID)")
+      File.delete(existing)
+    end
+
+    installed_path = File.join(installed_dir, "#{uuid}.mobileprovision")
+    FileUtils.cp(profile_path, installed_path)
+    UI.success("Installed #{profile_name} (#{uuid}) to #{installed_path}")
   end
 
   # Named after CFBundleDisplayName (FSCombo.ipa), not the pubspec package
