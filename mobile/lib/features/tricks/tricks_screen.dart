@@ -1147,6 +1147,7 @@ class _EditTrickDialogState extends State<_EditTrickDialog> {
                                     value: _revolution,
                                     min: 0.5,
                                     max: 10,
+                                    step: 0.5,
                                     onChanged: (v) => setState(() => _revolution = v))),
                             const SizedBox(width: 8),
                             Expanded(
@@ -1228,6 +1229,7 @@ class _NumField extends StatelessWidget {
   final double min;
   final double max;
   final ValueChanged<double> onChanged;
+  final double? step;
 
   const _NumField({
     required this.label,
@@ -1235,6 +1237,7 @@ class _NumField extends StatelessWidget {
     required this.min,
     required this.max,
     required this.onChanged,
+    this.step,
   });
 
   @override
@@ -1253,8 +1256,10 @@ class _NumField extends StatelessWidget {
       ),
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       onChanged: (v) {
-        final parsed = double.tryParse(v);
-        if (parsed != null && parsed >= min && parsed <= max) onChanged(parsed);
+        var parsed = double.tryParse(v);
+        if (parsed == null || parsed < min || parsed > max) return;
+        if (step != null) parsed = (parsed / step!).round() * step!;
+        onChanged(parsed);
       },
     );
   }

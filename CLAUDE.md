@@ -177,7 +177,7 @@ AddSecurityRequirement(_ => new OpenApiSecurityRequirement {
 | `MaxDifficulty` | 1 | 10 | all validators + UIs |
 | `StrongFootPercentage` | 0 | 100 | all validators + UIs |
 | `NoTouchPercentage` | 0 | 100 | all validators + UIs |
-| `Revolution` | 0.5 | **4** | Trick create/update/submission validators |
+| `Revolution` | 0.5 | **4** | Trick create/update/submission validators — **must also be a multiple of 0.5** (`r * 2 % 1 == 0`), same three validators. Mobile's admin trick-edit `_NumField` snaps to the nearest 0.5 on input (matching the submit form's slider); web's create/edit/submit inputs already had `step={0.5}`. |
 | `AllowedRevolutions[]` | 0.5 | **4** | Preference + combo override validators |
 | `MaxHighRevolutionTricks` | **1** | **15** | `GenerateComboValidator`, `PreviewComboValidator`, `CreatePreferenceValidator`, `UpdatePreferencesValidator` — nullable, only validated `.When(HasValue)`; UI always sends a value (default 1) |
 
@@ -485,7 +485,7 @@ cd api
 dotnet test
 ```
 
-214 unit tests covering: combo generation/build/preview, combo visibility and deletion permissions, combo query/update handlers, pending combo review mapping, favourites/completions, auth login/register flows, account/admin handler flows, trick CRUD handlers, preference CRUD handlers, trick submission review flows, query handlers (tricks/preferences/ratings/pending approvals/submissions), revolution boundary validation (trick create/update/submission, preference and combo override allowed revolutions, preview override validation, rating score bounds), weight adjustment job/aggregator behavior, reusable combo repository methods, GetTricks unified response, SetReusable endpoint, BuildCombo/UpdateCombo sub-combo slot support, DeleteCombo sub-combo guard, reusable combo visibility guard (cannot be set non-public), and personal reusable combos (SetPersonalReusable owner/authorization, GetTricks per-user merge, BuildCombo/UpdateCombo sub-combo acceptance for the owner vs. rejection for non-owners).
+218 unit tests covering: combo generation/build/preview, combo visibility and deletion permissions, combo query/update handlers, pending combo review mapping, favourites/completions, auth login/register flows, account/admin handler flows, trick CRUD handlers, preference CRUD handlers, trick submission review flows, query handlers (tricks/preferences/ratings/pending approvals/submissions), revolution boundary validation (trick create/update/submission — including the half-increment constraint, preference and combo override allowed revolutions, preview override validation, rating score bounds), weight adjustment job/aggregator behavior, reusable combo repository methods, GetTricks unified response, SetReusable endpoint, BuildCombo/UpdateCombo sub-combo slot support, DeleteCombo sub-combo guard, reusable combo visibility guard (cannot be set non-public), and personal reusable combos (SetPersonalReusable owner/authorization, GetTricks per-user merge, BuildCombo/UpdateCombo sub-combo acceptance for the owner vs. rejection for non-owners).
 
 ---
 
