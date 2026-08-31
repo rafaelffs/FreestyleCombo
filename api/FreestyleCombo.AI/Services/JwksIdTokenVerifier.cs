@@ -79,6 +79,16 @@ public class JwksIdTokenVerifier : IIdTokenVerifier
             if (result.Claims.TryGetValue("sub", out var subObj) && subObj is string subject && !string.IsNullOrWhiteSpace(subject))
             {
                 var email = result.Claims.TryGetValue("email", out var emailObj) ? emailObj as string : null;
+                if (email != null && result.Claims.TryGetValue("email_verified", out var verifiedObj))
+                {
+                    var verified = verifiedObj switch
+                    {
+                        bool b => b,
+                        string s => bool.TryParse(s, out var parsed) && parsed,
+                        _ => true,
+                    };
+                    if (!verified) email = null;
+                }
                 var name = result.Claims.TryGetValue("name", out var nameObj) ? nameObj as string : null;
                 return new ExternalIdentity(subject, email, name);
             }

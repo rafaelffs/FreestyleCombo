@@ -150,6 +150,42 @@ public class ExternalSignInHandlerTests
     }
 
     [Fact]
+    public async Task ExistingLinkedAccount_DifferentProviderSameEmail_OverwritesProviderAndSubject()
+    {
+        await using var db = CreateDb();
+        var existing = new AppUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "rafael",
+            Email = "rafael@example.com",
+            AuthProvider = "google",
+            ExternalSubject = "old-google-sub"
+        };
+        db.Users.Add(existing);
+        await db.SaveChangesAsync();
+
+        var userManager = CreateUserManagerMock();
+        userManager.SetupGet(m => m.Users).Returns(db.Users);
+        userManager.Setup(m => m.FindByEmailAsync("rafael@example.com")).ReturnsAsync(existing);
+        userManager.Setup(m => m.UpdateAsync(existing))
+            .Callback<AppUser>(u => { existing.AuthProvider = u.AuthProvider; existing.ExternalSubject = u.ExternalSubject; })
+            .ReturnsAsync(IdentityResult.Success);
+        userManager.Setup(m => m.GetRolesAsync(existing)).ReturnsAsync([]);
+
+        var verifier = new Mock<IIdTokenVerifier>();
+        verifier.Setup(v => v.VerifyAsync("apple", "tok", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ExternalIdentity("apple-sub-2", "rafael@example.com", null));
+
+        var handler = new ExternalSignInHandler(userManager.Object, verifier.Object, CreateTokenService());
+        var result = await handler.Handle(new ExternalSignInCommand("apple", "tok"), CancellationToken.None);
+
+        result.UserId.Should().Be(existing.Id);
+        existing.AuthProvider.Should().Be("apple");
+        existing.ExternalSubject.Should().Be("apple-sub-2");
+        userManager.Verify(m => m.CreateAsync(It.IsAny<AppUser>()), Times.Never);
+    }
+
+    [Fact]
     public async Task InvalidToken_ThrowsUnauthorizedAccessException()
     {
         var userManager = CreateUserManagerMock();
