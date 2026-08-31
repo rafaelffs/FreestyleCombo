@@ -916,7 +916,18 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                         _PresetChip(
                           label: 'Custom',
                           selected: _selectedPrefId == null,
-                          onTap: () => setState(() => _selectedPrefId = null),
+                          onTap: () => setState(() {
+                            _selectedPrefId = null;
+                            _comboLength = 5;
+                            _maxDifficulty = 10;
+                            _strongFootPct = 50;
+                            _noTouchPct = 30;
+                            _maxConsecNoTouch = 2;
+                            _includeCrossOver = true;
+                            _includeKnee = true;
+                            _maxHighRevTricks = 1;
+                            _allowedTrickIds = [];
+                          }),
                         ),
                         for (final p in _savedPrefs) ...[
                           const SizedBox(width: 8),
