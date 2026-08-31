@@ -416,7 +416,7 @@ class _TricksScreenState extends State<TricksScreen> {
 
   Widget _nameFormatChip(String label, bool active) {
     return GestureDetector(
-      onTap: () => setState(() => TrickNameDisplay.showFullName = label == 'Full name'),
+      onTap: () => setState(() => TrickNameDisplay.showFullName = label == 'Name'),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
@@ -801,7 +801,7 @@ class _TricksScreenState extends State<TricksScreen> {
                     ),
                   ),
                 ),
-                _nameFormatChip('Full name', TrickNameDisplay.showFullName),
+                _nameFormatChip('Name', TrickNameDisplay.showFullName),
                 const SizedBox(width: 6),
                 _nameFormatChip('Abbr.', !TrickNameDisplay.showFullName),
                 const SizedBox(width: 6),
