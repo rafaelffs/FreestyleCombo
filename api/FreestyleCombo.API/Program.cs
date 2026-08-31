@@ -89,6 +89,7 @@ builder.Services.AddScoped<IUserPersonalReusableComboRepository, UserPersonalReu
 // AI Services
 builder.Services.AddScoped<IComboEnhancerService, ComboEnhancerService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddSingleton<IIdTokenVerifier, JwksIdTokenVerifier>();
 builder.Services.AddScoped<ComboRatingAggregator>();
 builder.Services.AddScoped<FeedbackLearningService>();
 builder.Services.AddScoped<WeightAdjustmentJob>();
