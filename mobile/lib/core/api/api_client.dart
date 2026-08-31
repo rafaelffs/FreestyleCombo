@@ -42,16 +42,21 @@ class ApiClient {
     ));
   }
 
+  // Falls back to a plain, translation-free "Request failed" rather than
+  // e.message for anything without a structured {error/message/title} JSON
+  // body — Dio's own e.message for a bad response is an internal, technical
+  // explanation of *why Dio threw* (e.g. "This exception was thrown because
+  // the response has a status code of 404 and RequestOptions.validateStatus
+  // was configured to throw..."), never meant to be shown to a user.
   String _extractMessage(DioException e) {
     final data = e.response?.data;
     if (data is Map) {
-      return data['error'] as String? ??
+      final message = data['error'] as String? ??
           data['message'] as String? ??
-          data['title'] as String? ??
-          e.message ??
-          'Request failed';
+          data['title'] as String?;
+      if (message != null) return message;
     }
-    return e.message ?? 'Request failed';
+    return 'Request failed';
   }
 
   // ── Auth ────────────────────────────────────────────────────────────────
