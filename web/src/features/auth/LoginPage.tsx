@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -41,7 +41,7 @@ export function LoginPage() {
     mutate()
   }
 
-  async function handleSocialSignIn(token: string, userId: string) {
+  const handleSocialSignIn = useCallback(async (token: string, userId: string) => {
     setToken(token, userId)
     const pending = getPendingCombo()
     if (pending) {
@@ -54,7 +54,7 @@ export function LoginPage() {
     } else {
       navigate('/combos/create')
     }
-  }
+  }, [navigate])
 
   const errorMessage = error ? extractError(error, t('auth.loginFailed')) : null
 

@@ -21,9 +21,15 @@ declare global {
   }
 }
 
+const scriptPromises = new Map<string, Promise<void>>()
+
 function loadScript(id: string, src: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (document.getElementById(id)) {
+  const cached = scriptPromises.get(id)
+  if (cached) return cached
+
+  const promise = new Promise<void>((resolve, reject) => {
+    const existing = document.getElementById(id)
+    if (existing) {
       resolve()
       return
     }
@@ -35,6 +41,8 @@ function loadScript(id: string, src: string): Promise<void> {
     script.onerror = () => reject(new Error(`Failed to load ${src}`))
     document.head.appendChild(script)
   })
+  scriptPromises.set(id, promise)
+  return promise
 }
 
 interface Props {
@@ -53,7 +61,10 @@ export function SocialSignInButtons({ onSignedIn, onError }: Props) {
     if (!googleClientId) return
     loadScript('google-identity-script', 'https://accounts.google.com/gsi/client')
       .then(() => {
-        if (!window.google || !googleButtonRef.current) return
+        if (!window.google || !googleButtonRef.current) {
+          onError(t('auth.loginFailed'))
+          return
+        }
         window.google.accounts.id.initialize({
           client_id: googleClientId,
           callback: async (response) => {
@@ -80,7 +91,10 @@ export function SocialSignInButtons({ onSignedIn, onError }: Props) {
     if (!appleClientId) return
     loadScript('apple-id-script', 'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js')
       .then(() => {
-        if (!window.AppleID) return
+        if (!window.AppleID) {
+          onError(t('auth.loginFailed'))
+          return
+        }
         window.AppleID.auth.init({
           clientId: appleClientId,
           scope: 'name email',
