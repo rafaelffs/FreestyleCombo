@@ -337,7 +337,9 @@ docker-compose up
 
 ## Production Deployment
 
-**Live at `https://www.fscombo.com`** — API + web are in production (see `DeploymentPlan/DEPLOYMENT.md` for the original rollout plan). Mobile is not yet submitted to app stores.
+**Live at `https://www.fscombo.com`** — API + web are in production (see `DeploymentPlan/DEPLOYMENT.md` for the original rollout plan). Mobile is not yet submitted to app stores; TestFlight build 6 (`1.0.0+6`) has Google/Apple sign-in.
+
+`feature/batch-release` (personal reusable combos, various mobile/web fixes, Google/Apple sign-in, release-pipeline fixes) merged to `main` and deployed on 2026-08-31 — `GOOGLE_AUTH_AUDIENCES`/`APPLE_AUTH_AUDIENCES` still need adding to the VPS's `/opt/freestylecombo/.env` before real Google/Apple sign-in works in production (currently fails closed with a clean 403 — see Environment variables table).
 
 - **Infra**: single Hetzner VPS running Docker Compose (`docker-compose.prod.yml`: API + Postgres, both bound to `127.0.0.1` only) behind a host Nginx (`nginx/nginx.conf`) doing TLS termination (Let's Encrypt) and reverse-proxying `/api/` to the API container; React `web/dist/` is served as static files from `/var/www/freestylecombo`.
 - **CD**: `.github/workflows/deploy.yml` runs after CI succeeds on `main` — builds the API into a Docker image pushed to GHCR, builds the React app, rsyncs both + nginx config to the VPS over SSH, swaps only the API container (DB untouched), reloads Nginx, then verifies `/api/tricks` responds. Secrets: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`.
@@ -515,8 +517,8 @@ dotnet test
 | `JwtSettings__Secret` | docker-compose / appsettings | Min 32 chars |
 | `JwtSettings__Issuer` | docker-compose / appsettings | `FreestyleComboAPI` |
 | `JwtSettings__Audience` | docker-compose / appsettings | `FreestyleComboApp` |
-| `Auth__Google__Audiences` | docker-compose / appsettings | Comma-separated Google OAuth client IDs (web, iOS, Android) — currently empty, sign-in fails closed until set |
-| `Auth__Apple__Audiences` | docker-compose / appsettings | Comma-separated Apple audiences (iOS bundle ID, web Services ID) — currently empty, sign-in fails closed until set |
+| `Auth__Google__Audiences` | docker-compose (local: set) / production `.env` (empty) / appsettings | Comma-separated Google OAuth client IDs (web, iOS, Android) — local dev has real web+iOS values; production's `/opt/freestylecombo/.env` (`GOOGLE_AUTH_AUDIENCES`, gitignored, VPS-only) still needs them added before prod sign-in works, otherwise fails closed (403) |
+| `Auth__Apple__Audiences` | docker-compose (local: set) / production `.env` (empty) / appsettings | Comma-separated Apple audiences (iOS bundle ID, web Services ID) — same as above, `APPLE_AUTH_AUDIENCES` on the VPS still needs the real values |
 | `Anthropic__ApiKey` | docker-compose / appsettings | Claude API key |
 | `Resend__ApiKey` | docker-compose / appsettings | Resend API key for forgot-password emails — omit to no-op (logs a warning) instead of sending |
 | `Resend__FromAddress` | docker-compose / appsettings | Optional — defaults to `FreestyleCombo <onboarding@resend.dev>` |
