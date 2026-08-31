@@ -21,7 +21,7 @@ public class ComboRepositoryTests
     private static AppUser CreateUser() =>
         new() { Id = Guid.NewGuid(), UserName = "testuser", Email = "test@example.com", NormalizedUserName = "TESTUSER", NormalizedEmail = "TEST@EXAMPLE.COM", SecurityStamp = Guid.NewGuid().ToString() };
 
-    private static Combo CreateCombo(AppUser owner, bool isReusable = false, ComboVisibility visibility = ComboVisibility.Private) =>
+    private static Combo CreateCombo(AppUser owner, bool isReusable = false, ComboVisibility visibility = ComboVisibility.Private, bool isPersonalReusable = false) =>
         new()
         {
             Id = Guid.NewGuid(),
@@ -32,7 +32,8 @@ public class ComboRepositoryTests
             TrickCount = 1,
             Visibility = visibility,
             CreatedAt = DateTime.UtcNow,
-            IsReusable = isReusable
+            IsReusable = isReusable,
+            IsPersonalReusable = isPersonalReusable
         };
 
     [Fact]
@@ -101,6 +102,78 @@ public class ComboRepositoryTests
         var result = await repo.GetReusableAsync();
 
         result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetReusableAsync_IncludesOwnersOwnPersonalReusableCombos()
+    {
+        await using var db = CreateDb();
+        var owner = CreateUser();
+        await db.Users.AddAsync(owner);
+
+        var personalReusable = CreateCombo(owner, isPersonalReusable: true, visibility: ComboVisibility.Private);
+        var notReusableAtAll = CreateCombo(owner, visibility: ComboVisibility.Private);
+        await db.Combos.AddRangeAsync(personalReusable, notReusableAtAll);
+        await db.SaveChangesAsync();
+
+        var repo = new ComboRepository(db);
+        var result = await repo.GetReusableAsync(requestingUserId: owner.Id);
+
+        result.Should().ContainSingle();
+        result[0].Id.Should().Be(personalReusable.Id);
+    }
+
+    [Fact]
+    public async Task GetReusableAsync_ExcludesOtherUsersPersonalReusableCombos()
+    {
+        await using var db = CreateDb();
+        var owner = CreateUser();
+        var otherUser = CreateUser();
+        await db.Users.AddRangeAsync(owner, otherUser);
+
+        var ownersPersonalReusable = CreateCombo(owner, isPersonalReusable: true, visibility: ComboVisibility.Private);
+        await db.Combos.AddAsync(ownersPersonalReusable);
+        await db.SaveChangesAsync();
+
+        var repo = new ComboRepository(db);
+        var result = await repo.GetReusableAsync(requestingUserId: otherUser.Id);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetReusableAsync_ExcludesPersonalReusableCombos_WhenNoRequestingUser()
+    {
+        await using var db = CreateDb();
+        var owner = CreateUser();
+        await db.Users.AddAsync(owner);
+
+        var personalReusable = CreateCombo(owner, isPersonalReusable: true, visibility: ComboVisibility.Private);
+        await db.Combos.AddAsync(personalReusable);
+        await db.SaveChangesAsync();
+
+        var repo = new ComboRepository(db);
+        var result = await repo.GetReusableAsync(requestingUserId: null);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetReusableAsync_StillIncludesPublicReusableCombos_ForAnyRequester()
+    {
+        await using var db = CreateDb();
+        var owner = CreateUser();
+        var otherUser = CreateUser();
+        await db.Users.AddRangeAsync(owner, otherUser);
+
+        var publicReusable = CreateCombo(owner, isReusable: true, visibility: ComboVisibility.Public);
+        await db.Combos.AddAsync(publicReusable);
+        await db.SaveChangesAsync();
+
+        var repo = new ComboRepository(db);
+
+        (await repo.GetReusableAsync(requestingUserId: null)).Should().ContainSingle(c => c.Id == publicReusable.Id);
+        (await repo.GetReusableAsync(requestingUserId: otherUser.Id)).Should().ContainSingle(c => c.Id == publicReusable.Id);
     }
 
     [Fact]

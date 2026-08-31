@@ -126,7 +126,8 @@ public class GetMyCombosHandler : IRequestHandler<GetMyCombosQuery, PagedResult<
                 IsFavourited = favIds.Contains(c.Id),
                 IsCompleted = completedIds.Contains(c.Id),
                 CompletionCount = completionCounts.GetValueOrDefault(c.Id, 0),
-                IsReusable = c.IsReusable
+                IsReusable = c.IsReusable,
+                IsPersonalReusable = c.IsPersonalReusable
             }).ToList()
         };
     }

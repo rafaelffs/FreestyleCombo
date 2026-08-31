@@ -22,4 +22,5 @@ public class ComboDetailDto
     public bool IsCompleted { get; set; }
     public int CompletionCount { get; set; }
     public bool IsReusable { get; set; }
+    public bool IsPersonalReusable { get; set; }
 }

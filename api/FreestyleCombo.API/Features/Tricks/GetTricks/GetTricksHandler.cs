@@ -32,7 +32,7 @@ public class GetTricksHandler : IRequestHandler<GetTricksQuery, List<TrickListIt
             IsTransition = t.IsTransition
         }).OrderBy(t => t.Name).ToList();
 
-        var reusableCombos = await _comboRepo.GetReusableAsync(cancellationToken);
+        var reusableCombos = await _comboRepo.GetReusableAsync(request.RequestingUserId, cancellationToken);
 
         var comboItems = reusableCombos.Select(c => new TrickListItemDto
         {

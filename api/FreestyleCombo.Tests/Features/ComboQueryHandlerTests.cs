@@ -474,6 +474,73 @@ public class ComboQueryHandlerTests
     }
 
     [Fact]
+    public async Task UpdateCombo_WithPersonalReusableSubComboSlot_WorksForOwner()
+    {
+        var comboRepo = new Mock<IComboRepository>();
+        var trickRepo = new Mock<ITrickRepository>();
+        var userManager = CreateUserManagerMock();
+
+        var combo = CreateCombo(Guid.NewGuid(), _userId, "me", ComboVisibility.Private, DateTime.UtcNow);
+        var subComboId = Guid.NewGuid();
+        var personalReusable = new Combo
+        {
+            Id = subComboId,
+            Name = "My private block",
+            IsReusable = false,
+            IsPersonalReusable = true,
+            OwnerId = _userId,
+            Visibility = ComboVisibility.Private,
+            ComboTricks = []
+        };
+
+        comboRepo.Setup(r => r.GetByIdAsync(combo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(combo);
+        comboRepo.Setup(r => r.GetByIdAsync(subComboId, It.IsAny<CancellationToken>())).ReturnsAsync(personalReusable);
+        comboRepo.Setup(r => r.ReplaceComboTricksAsync(combo.Id, It.IsAny<IEnumerable<ComboTrick>>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        comboRepo.Setup(r => r.UpdateAsync(combo, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+
+        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId), userManager.Object);
+        Func<Task> act = () => handler.Handle(
+            new UpdateComboCommand(combo.Id, null, [new BuildComboTrickItem(null, subComboId, 1, false, false)]),
+            CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task UpdateCombo_Throws_WhenSubComboIsPersonalReusable_ButCallerIsNotOwner()
+    {
+        var comboRepo = new Mock<IComboRepository>();
+        var trickRepo = new Mock<ITrickRepository>();
+        var userManager = CreateUserManagerMock();
+
+        var combo = CreateCombo(Guid.NewGuid(), _userId, "me", ComboVisibility.Private, DateTime.UtcNow);
+        var subComboId = Guid.NewGuid();
+        var someoneElsesPersonalReusable = new Combo
+        {
+            Id = subComboId,
+            Name = "Their private block",
+            IsReusable = false,
+            IsPersonalReusable = true,
+            OwnerId = Guid.NewGuid(),
+            Visibility = ComboVisibility.Private,
+            ComboTricks = []
+        };
+
+        comboRepo.Setup(r => r.GetByIdAsync(combo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(combo);
+        comboRepo.Setup(r => r.GetByIdAsync(subComboId, It.IsAny<CancellationToken>())).ReturnsAsync(someoneElsesPersonalReusable);
+        trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+
+        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId), userManager.Object);
+        Func<Task> act = () => handler.Handle(
+            new UpdateComboCommand(combo.Id, null, [new BuildComboTrickItem(null, subComboId, 1, false, false)]),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage($"*{subComboId}*is not reusable*");
+    }
+
+    [Fact]
     public async Task UpdateCombo_XorValidation_ThrowsOnInvalidSlot()
     {
         var comboRepo = new Mock<IComboRepository>();

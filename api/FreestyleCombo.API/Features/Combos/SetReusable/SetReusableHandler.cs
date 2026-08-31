@@ -48,6 +48,7 @@ public class SetReusableHandler : IRequestHandler<SetReusableCommand, GenerateCo
             TrickCount = combo.TrickCount,
             IsPublic = combo.IsPublic,
             IsReusable = combo.IsReusable,
+            IsPersonalReusable = combo.IsPersonalReusable,
             Visibility = combo.Visibility.ToString(),
             CreatedAt = combo.CreatedAt,
             DisplayText = displayText,

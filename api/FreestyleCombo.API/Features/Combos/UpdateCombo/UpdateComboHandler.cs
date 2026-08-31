@@ -79,7 +79,7 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
             {
                 var sc = await _comboRepo.GetByIdAsync(scId, cancellationToken)
                     ?? throw new KeyNotFoundException($"Sub-combo {scId} not found.");
-                if (!sc.IsReusable)
+                if (!sc.IsReusable && !(sc.IsPersonalReusable && sc.OwnerId == userId))
                     throw new InvalidOperationException($"Combo {scId} is not reusable.");
                 if (sc.ComboTricks.Any(ct => ct.SubComboId != null))
                     throw new InvalidOperationException($"Reusable combo {scId} contains nested sub-combos.");
@@ -280,6 +280,7 @@ public class UpdateComboHandler : IRequestHandler<UpdateComboCommand, GenerateCo
             TrickCount = combo.TrickCount,
             IsPublic = combo.IsPublic,
             IsReusable = combo.IsReusable,
+            IsPersonalReusable = combo.IsPersonalReusable,
             Visibility = combo.Visibility.ToString(),
             CreatedAt = combo.CreatedAt,
             DisplayText = displayText,

@@ -88,7 +88,8 @@ public class GetPendingComboReviewsHandler : IRequestHandler<GetPendingComboRevi
             IsFavourited = false,
             IsCompleted = false,
             CompletionCount = 0,
-            IsReusable = c.IsReusable
+            IsReusable = c.IsReusable,
+            IsPersonalReusable = c.IsPersonalReusable
         }).ToList();
     }
 }

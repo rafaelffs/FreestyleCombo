@@ -95,7 +95,8 @@ public class GetFavouritedCombosHandler : IRequestHandler<GetFavouritedCombosQue
             IsFavourited = true,
             IsCompleted = completedIds.Contains(c.Id),
             CompletionCount = completionCounts.GetValueOrDefault(c.Id, 0),
-            IsReusable = c.IsReusable
+            IsReusable = c.IsReusable,
+            IsPersonalReusable = c.IsPersonalReusable
         }).ToList();
     }
 }

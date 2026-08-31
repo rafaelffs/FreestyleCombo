@@ -14,6 +14,7 @@ using FreestyleCombo.API.Features.Combos.GetPublicCombos;
 using FreestyleCombo.API.Features.Combos.PreviewCombo;
 using FreestyleCombo.API.Features.Combos.RejectComboVisibility;
 using FreestyleCombo.API.Features.Combos.RemoveFavourite;
+using FreestyleCombo.API.Features.Combos.SetPersonalReusable;
 using FreestyleCombo.API.Features.Combos.SetReusable;
 using FreestyleCombo.API.Features.Combos.UpdateCombo;
 using FreestyleCombo.API.Features.Combos.UpdateVisibility;
@@ -167,6 +168,18 @@ public class CombosController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPut("{id:guid}/personal-reusable")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetPersonalReusable(Guid id, [FromBody] SetPersonalReusableRequest body, CancellationToken ct)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        await _mediator.Send(new SetPersonalReusableCommand(id, userId, body.IsPersonalReusable), ct);
+        return Ok();
+    }
+
     [HttpGet("favourites")]
     [Authorize]
     [ProducesResponseType(typeof(List<PublicComboDto>), StatusCodes.Status200OK)]
@@ -221,3 +234,4 @@ public class CombosController : ControllerBase
 public record UpdateVisibilityRequest(bool IsPublic);
 public record UpdateComboRequest(string? Name, List<BuildComboTrickItem>? Tricks);
 public record SetReusableRequest(bool IsReusable);
+public record SetPersonalReusableRequest(bool IsPersonalReusable);

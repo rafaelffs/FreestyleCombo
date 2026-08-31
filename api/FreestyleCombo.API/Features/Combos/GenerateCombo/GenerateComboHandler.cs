@@ -195,6 +195,7 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
             TrickCount = combo.TrickCount,
             IsPublic = combo.IsPublic,
             IsReusable = combo.IsReusable,
+            IsPersonalReusable = combo.IsPersonalReusable,
             Visibility = combo.Visibility.ToString(),
             CreatedAt = combo.CreatedAt,
             DisplayText = displayText,
