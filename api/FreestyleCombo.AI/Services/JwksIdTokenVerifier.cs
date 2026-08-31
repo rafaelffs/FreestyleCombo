@@ -59,10 +59,14 @@ public class JwksIdTokenVerifier : IIdTokenVerifier
 
             var validationParameters = new TokenValidationParameters
             {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                RequireSignedTokens = true,
                 ValidIssuers = providerInfo.Issuers,
                 ValidAudiences = audiences,
                 IssuerSigningKeys = openIdConfig.SigningKeys,
-                ValidateLifetime = true,
             };
 
             var result = await new JsonWebTokenHandler().ValidateTokenAsync(idToken, validationParameters);
