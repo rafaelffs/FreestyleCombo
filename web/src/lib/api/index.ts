@@ -22,7 +22,7 @@ export type {
   MineCombosParams,
 } from './combos'
 
-export { tricksApi, trickSubmissionsApi } from './tricks'
+export { tricksApi, trickSubmissionsApi, comboDisplayName } from './tricks'
 export type { TrickDto, TrickSubmissionDto, SubmitTrickRequest, TrickListItem, TrickItem, ComboItem } from './tricks'
 
 export { preferencesApi } from './preferences'

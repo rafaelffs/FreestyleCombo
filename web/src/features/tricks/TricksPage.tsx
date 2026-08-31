@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { tricksApi, trickSubmissionsApi, combosApi, extractError, type TrickDto, type SubmitTrickRequest, type TrickItem, type ComboItem } from '@/lib/api'
+import { tricksApi, trickSubmissionsApi, combosApi, extractError, comboDisplayName, type TrickDto, type SubmitTrickRequest, type TrickItem, type ComboItem } from '@/lib/api'
 import { isAdmin, isAuthenticated } from '@/lib/auth'
 import { SEO } from '@/components/SEO'
 import { Button } from '@/components/ui/button'
@@ -553,7 +553,7 @@ export function TricksPage() {
                     >
                       <td className="px-4 py-2 text-center text-gray-400">—</td>
                       <td className="px-4 py-2 text-gray-700">
-                        <span className="font-medium">{combo.name}</span>
+                        <span className="font-medium">{comboDisplayName(combo)}</span>
                         <span className="bg-indigo-100 text-indigo-700 text-xs px-1.5 py-0.5 rounded ml-2">
                           {t('tricks.comboLabel')}
                         </span>

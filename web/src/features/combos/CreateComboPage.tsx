@@ -4,7 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
 import { FootToggle } from '@/components/ui/foot-toggle'
-import { combosApi, tricksApi, preferencesApi, extractError, type GenerateComboOverrides, type TrickItem, type ComboItem, type BuildComboTrickItem } from '@/lib/api'
+import { combosApi, tricksApi, preferencesApi, extractError, comboDisplayName, type GenerateComboOverrides, type TrickItem, type ComboItem, type BuildComboTrickItem } from '@/lib/api'
 import { isAuthenticated, setPendingCombo } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -205,7 +205,7 @@ export function CreateComboPage() {
         position: prev.length + 1,
         strongFoot: false,
         noTouch: false,
-        comboName: combo.name,
+        comboName: comboDisplayName(combo),
         trickCount: combo.trickCount,
         totalDifficulty: combo.totalDifficulty,
         trickSlots: combo.tricks.filter((t) => t.type === 'trick').map((t) => ({ abbreviation: t.abbreviation, noTouch: t.noTouch })),
@@ -254,7 +254,7 @@ export function CreateComboPage() {
   )
 
   const filteredCombos = comboItems.filter(
-    (c) => c.name.toLowerCase().includes(search.toLowerCase()),
+    (c) => comboDisplayName(c).toLowerCase().includes(search.toLowerCase()),
   )
 
   // Calculate summary expanding sub-combo tricks
@@ -539,7 +539,7 @@ export function CreateComboPage() {
                 {filteredCombos.map((combo) => (
                   <button key={combo.id} type="button" onClick={() => addCombo(combo)} className="flex w-full items-center justify-between px-2 py-2 text-left hover:bg-indigo-50 transition-colors border-l-2 border-indigo-300">
                     <div>
-                      <span className="text-sm font-semibold text-indigo-700">{combo.name}</span>
+                      <span className="text-sm font-semibold text-indigo-700">{comboDisplayName(combo)}</span>
                       <span className="ml-2 text-xs text-gray-400">
                         {t('createCombo.comboSlotLabel', { count: combo.trickCount, total: combo.totalDifficulty })}
                       </span>
