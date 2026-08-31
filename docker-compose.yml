@@ -21,7 +21,7 @@ services:
       JwtSettings__Secret: "your-secret-key-here-minimum-32-characters"
       JwtSettings__Issuer: "FreestyleComboAPI"
       JwtSettings__Audience: "FreestyleComboApp"
-      Auth__Google__Audiences: ""
+      Auth__Google__Audiences: "186715626569-f9vi6m953qf7mjlo90vbing18i3ae61e.apps.googleusercontent.com,186715626569-olj62i0ps6am3c0en0g4i1983au1dmij.apps.googleusercontent.com"
       Auth__Apple__Audiences: ""
       Anthropic__ApiKey: ""
     depends_on:

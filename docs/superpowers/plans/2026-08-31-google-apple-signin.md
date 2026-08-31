@@ -1444,26 +1444,26 @@ git commit -m "Document Google/Apple sign-in in CLAUDE.md"
 
 **This entire task is blocked on the user (account owner) and cannot be executed by an agent.** Everything in Tasks 1–10 builds, typechecks, and unit-tests without this — do not attempt to fabricate or guess real client IDs to "complete" this task.
 
-- [ ] **Google Cloud Console** (account owner): create/select a project, configure the OAuth consent screen, create three OAuth 2.0 client IDs — Web application, iOS, Android. For the iOS client, use bundle ID `com.rafaelffs.freestyleCombo`.
-- [ ] **Apple Developer** (account owner): on the existing App ID `com.rafaelffs.freestyleCombo`, enable the **Sign in with Apple** capability. Create a Services ID (for the web flow) with an associated key, and configure its return URL to the web app's login page.
-- [ ] **Backend config** — set real values (comma-separated if more than one) for `Auth__Google__Audiences` (web + iOS + Android client IDs) and `Auth__Apple__Audiences` (`com.rafaelffs.freestyleCombo` + the web Services ID) in `docker-compose.yml` (local) and production secrets (wherever `JwtSettings__Secret` etc. are currently set for the deployed API — see `DeploymentPlan/DEPLOYMENT.md`).
-- [ ] **Web config** — create `web/.env.local` (gitignored) with real `VITE_GOOGLE_CLIENT_ID` (the Web client ID) and `VITE_APPLE_CLIENT_ID` (the Services ID).
-- [ ] **iOS config** — in Xcode (`mobile/ios/Runner.xcworkspace`), select the Runner target → Signing & Capabilities → "+ Capability" → **Sign in with Apple** (this creates `ios/Runner/Runner.entitlements` and wires it into the project automatically — do not hand-write this file). Then add the Google iOS client ID's *reversed* form as a URL scheme in `mobile/ios/Runner/Info.plist`, inside a new `CFBundleURLTypes` array (add this as a top-level key alongside the existing ones):
+- [x] **Google Cloud Console — Web + iOS** (account owner): OAuth consent screen configured; Web application and iOS (bundle ID `com.rafaelffs.freestyleCombo`) client IDs created.
+- [ ] **Google Cloud Console — Android**: **deliberately skipped for now** — no Android OAuth client ID created, no `mobile/android/app/google-services.json`. To be created later when Android release work starts; Google sign-in will not work on Android until then (`main.dart` only passes a `clientId` to `GoogleSignIn.instance.initialize()` on iOS).
+- [ ] **Apple Developer** (account owner): on the existing App ID `com.rafaelffs.freestyleCombo`, enable the **Sign in with Apple** capability. Create a Services ID (for the web flow) with an associated key, and configure its return URL to the web app's login page. **Not done yet** — `Auth__Apple__Audiences` and `VITE_APPLE_CLIENT_ID` are still empty, Apple sign-in fails closed on both platforms until this lands.
+- [x] **Backend config** — real Google web + iOS client IDs set in `Auth__Google__Audiences` in `docker-compose.yml` (local). `Auth__Apple__Audiences` still empty. **Production secrets not yet updated** — still needs to be set wherever `JwtSettings__Secret` etc. are currently set for the deployed API (see `DeploymentPlan/DEPLOYMENT.md`) before this works against `www.fscombo.com`.
+- [x] **Web config** — `web/.env.local` (gitignored) created with the real Google web client ID as `VITE_GOOGLE_CLIENT_ID`. `VITE_APPLE_CLIENT_ID` left empty (Apple button stays hidden on web until Apple setup lands). Production web env vars not yet updated.
+- [~] **iOS config** — `mobile/ios/Runner/Info.plist` has the Google iOS client ID's reversed form registered as a `CFBundleURLTypes` scheme (done). **Still needed**: in Xcode (`mobile/ios/Runner.xcworkspace`), select the Runner target → Signing & Capabilities → "+ Capability" → **Sign in with Apple** (this creates `ios/Runner/Runner.entitlements` and wires it into the project automatically — do not hand-write this file). For reference, the `CFBundleURLTypes` block that's already in place:
   ```xml
   <key>CFBundleURLTypes</key>
   <array>
       <dict>
           <key>CFBundleURLSchemes</key>
           <array>
-              <string>com.googleusercontent.apps.YOUR-IOS-CLIENT-ID-HERE</string>
+              <string>com.googleusercontent.apps.186715626569-olj62i0ps6am3c0en0g4i1983au1dmij</string>
           </array>
       </dict>
   </array>
   ```
-  Replace `YOUR-IOS-CLIENT-ID-HERE` with the iOS client ID's numeric/string identifier reversed (Google Cloud Console shows this exact reversed value on the iOS client's detail page — copy it directly, don't hand-reverse it).
-- [ ] **Verify backend**: `curl -X POST http://localhost:5050/api/auth/google -d '{"idToken":"..."}'` with a real ID token obtained by actually signing in through one of the clients below — a bad/placeholder token should still 403; a real one should 200 with a valid JWT.
-- [ ] **Verify web**: run `npm run dev`, load `/login`, confirm both buttons render and complete a real sign-in for a brand-new Google account (check a new `AppUser` row was created with the right `AuthProvider`/`ExternalSubject`/auto-generated username) and a returning one.
-- [ ] **Verify mobile**: run on a real iOS device or simulator signed into a real Apple ID (Sign in with Apple doesn't work in every simulator config), confirm both buttons work end-to-end, and confirm the Apple button is absent on Android.
+- [x] **Verify backend fails closed correctly**: confirmed a placeholder token still returns a clean `403 {"error":"Invalid or expired sign-in token."}` now that real Google audiences are configured (fails at JWT parsing, not at the "no audiences configured" short-circuit — confirms the config loaded correctly). **Still needed**: a real ID token from an actual Google sign-in to confirm the full success path (200 + valid JWT + correct `AppUser` row).
+- [ ] **Verify web**: run `npm run dev`, load `/login`, confirm the Google button renders (it should now, since `VITE_GOOGLE_CLIENT_ID` is set) and complete a real sign-in for a brand-new Google account (check a new `AppUser` row was created with the right `AuthProvider`/`ExternalSubject`/auto-generated username) and a returning one. Apple button won't render until its client ID is set.
+- [ ] **Verify mobile**: run on a real iOS device or simulator signed into a real Apple ID (Sign in with Apple doesn't work in every simulator config), confirm the Google button works end-to-end. Apple button needs the Xcode capability + entitlements step above first. Android is deliberately not tested — skipped for now.
 - [ ] **Verify auto-link**: sign up with email/password using some test email, then sign in with Google using an account with that same email — confirm it signs into the *same* account (same `userId`) rather than creating a second one.
 
 ---
