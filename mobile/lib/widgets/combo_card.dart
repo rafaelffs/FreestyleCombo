@@ -5,6 +5,7 @@ import '../core/api/api_client.dart';
 import '../core/auth/auth_service.dart';
 import '../core/models/combo.dart';
 import '../theme/app_colors.dart';
+import 'confirm_sheet.dart';
 import 'rate_combo_dialog.dart';
 
 /// Whether combo trick sequences (card titles, chips) show full trick names
@@ -128,6 +129,16 @@ class _ComboCardState extends State<ComboCard> {
   }
 
   Future<void> _togglePersonalReusable() async {
+    final confirmed = await showConfirmSheet(
+      context,
+      title: _isPersonalReusable ? 'Remove from your trick list?' : 'List combo in your trick list?',
+      description: _isPersonalReusable
+          ? 'This combo will no longer show up when you\'re building other combos.'
+          : 'This combo will show up as a selectable item — alongside tricks — when you\'re building other combos. Only you will see it there.',
+      confirmLabel: _isPersonalReusable ? 'Remove' : 'List it',
+    );
+    if (!confirmed) return;
+
     setState(() => _personalReusableLoading = true);
     try {
       await ApiClient.instance.setPersonalReusable(widget.combo.id, !_isPersonalReusable);
@@ -173,76 +184,13 @@ class _ComboCardState extends State<ComboCard> {
       return;
     }
 
-    final confirmed = await showModalBottomSheet<bool>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.line2,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              title,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: AppColors.ink,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              description,
-              style: GoogleFonts.plusJakartaSans(color: AppColors.muted, fontSize: 14),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              height: 52,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.indigo,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                onPressed: () => Navigator.pop(sheetContext, true),
-                child: Text(
-                  confirmLabel,
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 52,
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.line2),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                onPressed: () => Navigator.pop(sheetContext, false),
-                child: Text(
-                  'Cancel',
-                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: AppColors.ink),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    final confirmed = await showConfirmSheet(
+      context,
+      title: title,
+      description: description,
+      confirmLabel: confirmLabel,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     setState(() => _visibilityLoading = true);
     try {

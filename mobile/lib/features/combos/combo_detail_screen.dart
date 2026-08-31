@@ -6,6 +6,7 @@ import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/combo_card.dart' show TrickNameDisplay;
+import '../../widgets/confirm_sheet.dart';
 import '../../widgets/difficulty_chip.dart';
 import '../../widgets/rate_combo_dialog.dart';
 import '../../widgets/submit_trick_sheet.dart' show SubmitToggle;
@@ -154,6 +155,16 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
   }
 
   Future<void> _togglePersonalReusable(String comboId) async {
+    final confirmed = await showConfirmSheet(
+      context,
+      title: _isPersonalReusable ? 'Remove from your trick list?' : 'List combo in your trick list?',
+      description: _isPersonalReusable
+          ? 'This combo will no longer show up when you\'re building other combos.'
+          : 'This combo will show up as a selectable item — alongside tricks — when you\'re building other combos. Only you will see it there.',
+      confirmLabel: _isPersonalReusable ? 'Remove' : 'List it',
+    );
+    if (!confirmed) return;
+
     setState(() => _personalReusableLoading = true);
     try {
       await ApiClient.instance.setPersonalReusable(comboId, !_isPersonalReusable);
