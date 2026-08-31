@@ -141,7 +141,11 @@ class _ComboCardState extends State<ComboCard> {
 
     setState(() => _personalReusableLoading = true);
     try {
-      await ApiClient.instance.setPersonalReusable(widget.combo.id, !_isPersonalReusable);
+      if (_isPersonalReusable) {
+        await ApiClient.instance.removePersonalReusable(widget.combo.id);
+      } else {
+        await ApiClient.instance.addPersonalReusable(widget.combo.id);
+      }
       setState(() => _isPersonalReusable = !_isPersonalReusable);
       widget.onRefresh?.call();
     } catch (e) {
@@ -277,7 +281,7 @@ class _ComboCardState extends State<ComboCard> {
                         onTap: _toggleCompleted,
                         label: _completionCount > 0 ? '$_completionCount' : null,
                       ),
-                      if (isOwner) ...[
+                      if (isOwner || visibilityState == 'public') ...[
                         const SizedBox(width: 8),
                         _IconToggle(
                           icon: _isPersonalReusable ? Icons.link : Icons.link_off,

@@ -216,9 +216,17 @@ class ApiClient {
     }
   }
 
-  Future<void> setPersonalReusable(String id, bool isPersonalReusable) async {
+  Future<void> addPersonalReusable(String id) async {
     try {
-      await _dio.put('/combos/$id/personal-reusable', data: {'isPersonalReusable': isPersonalReusable});
+      await _dio.post('/combos/$id/personal-reusable');
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
+  Future<void> removePersonalReusable(String id) async {
+    try {
+      await _dio.delete('/combos/$id/personal-reusable');
     } on DioException catch (e) {
       throw Exception(_extractMessage(e));
     }

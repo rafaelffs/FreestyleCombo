@@ -627,7 +627,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
       final combo = await ApiClient.instance
           .buildCombo(items, _isPublic, name: name.isEmpty ? null : name);
       if (_isPersonalReusable) {
-        await ApiClient.instance.setPersonalReusable(combo.id, true);
+        await ApiClient.instance.addPersonalReusable(combo.id);
       }
       setState(() => _buildResult = combo);
     } catch (e) {

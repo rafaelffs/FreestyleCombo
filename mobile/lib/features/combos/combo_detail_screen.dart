@@ -167,7 +167,11 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
 
     setState(() => _personalReusableLoading = true);
     try {
-      await ApiClient.instance.setPersonalReusable(comboId, !_isPersonalReusable);
+      if (_isPersonalReusable) {
+        await ApiClient.instance.removePersonalReusable(comboId);
+      } else {
+        await ApiClient.instance.addPersonalReusable(comboId);
+      }
       setState(() => _isPersonalReusable = !_isPersonalReusable);
     } catch (e) {
       if (mounted) {
@@ -422,7 +426,7 @@ class _DetailHero extends StatelessWidget {
                             iconColor: favoured ? AppColors.pink : Colors.white,
                             onTap: favLoading ? null : onToggleFavourite,
                           ),
-                        if (isOwner) ...[
+                        if (authed && (isOwner || combo.visibility == 'Public')) ...[
                           const SizedBox(width: 9),
                           _HeroIconButton(
                             icon: isPersonalReusable ? Icons.link : Icons.link_off,
@@ -966,7 +970,11 @@ class _EditComboScreenState extends State<_EditComboScreen> {
         await ApiClient.instance.setVisibility(widget.combo.id, true);
       }
       if (_isPersonalReusable != widget.combo.isPersonalReusable) {
-        await ApiClient.instance.setPersonalReusable(widget.combo.id, _isPersonalReusable);
+        if (_isPersonalReusable) {
+          await ApiClient.instance.addPersonalReusable(widget.combo.id);
+        } else {
+          await ApiClient.instance.removePersonalReusable(widget.combo.id);
+        }
       }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
