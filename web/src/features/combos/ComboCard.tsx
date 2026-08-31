@@ -242,7 +242,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
                 {favoured ? <HeartIconFilled /> : <HeartIconOutline />}
               </button>
             )}
-            {authed && (isOwner || combo.visibility === 'Public') && (
+            {authed && (isOwner || combo.visibility === 'Public' || adminUser) && (
               <button
                 type="button"
                 onClick={() => setPersonalReusableConfirmOpen(true)}
