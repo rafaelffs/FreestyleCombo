@@ -44,6 +44,16 @@ public class ComboQueryHandlerTests
         };
     }
 
+    // Moq defaults an unconfigured Task<HashSet<Guid>>-returning method to a
+    // null result (reference type), unlike Task<bool> which safely defaults
+    // to false — so bulk personal-reusable lookups need an explicit empty set.
+    private static IUserPersonalReusableComboRepository EmptyPersonalReusableRepo()
+    {
+        var mock = new Mock<IUserPersonalReusableComboRepository>();
+        mock.Setup(r => r.GetComboIdsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(new HashSet<Guid>());
+        return mock.Object;
+    }
+
     private static Combo CreateCombo(Guid comboId, Guid ownerId, string ownerName, ComboVisibility visibility, DateTime createdAt)
     {
         var trick = TrickFaker.Create(name: "ATW", crossOver: true, revolution: 1.0m, difficulty: 3, commonLevel: 4);
@@ -94,7 +104,7 @@ public class ComboQueryHandlerTests
         completionRepo.Setup(r => r.GetCompletionCountsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, int> { [combo.Id] = 7 });
 
-        var result = await new GetPublicCombosHandler(repo.Object, favRepo.Object, completionRepo.Object)
+        var result = await new GetPublicCombosHandler(repo.Object, favRepo.Object, completionRepo.Object, EmptyPersonalReusableRepo())
             .Handle(new GetPublicCombosQuery(1, 10, "latest", 5, _userId), CancellationToken.None);
 
         result.TotalCount.Should().Be(1);
@@ -119,7 +129,7 @@ public class ComboQueryHandlerTests
         completionRepo.Setup(r => r.GetCompletionCountsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, int>());
 
-        var result = await new GetPublicCombosHandler(repo.Object, favRepo.Object, completionRepo.Object)
+        var result = await new GetPublicCombosHandler(repo.Object, favRepo.Object, completionRepo.Object, EmptyPersonalReusableRepo())
             .Handle(new GetPublicCombosQuery(1, 10, null, null, null), CancellationToken.None);
 
         result.Items[0].IsFavourited.Should().BeFalse();
@@ -142,7 +152,7 @@ public class ComboQueryHandlerTests
         completionRepo.Setup(r => r.GetCompletionCountsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, int> { [older.Id] = 1, [newer.Id] = 2 });
 
-        var result = await new GetMyCombosHandler(repo.Object, favRepo.Object, completionRepo.Object)
+        var result = await new GetMyCombosHandler(repo.Object, favRepo.Object, completionRepo.Object, EmptyPersonalReusableRepo())
             .Handle(new GetMyCombosQuery(_userId, 1, 10, null), CancellationToken.None);
 
         result.Items.Select(i => i.Id).Should().Equal([newer.Id, older.Id]);
@@ -162,7 +172,7 @@ public class ComboQueryHandlerTests
         completionRepo.Setup(r => r.GetCompletionCountsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, int> { [combo.Id] = 5 });
 
-        var result = await new GetFavouritedCombosHandler(repo.Object, completionRepo.Object)
+        var result = await new GetFavouritedCombosHandler(repo.Object, completionRepo.Object, EmptyPersonalReusableRepo())
             .Handle(new GetFavouritedCombosQuery(_userId), CancellationToken.None);
 
         result.Should().HaveCount(1);
@@ -185,7 +195,7 @@ public class ComboQueryHandlerTests
         completionRepo.Setup(r => r.GetCompletionCountsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, int> { [combo.Id] = 4 });
 
-        var result = await new GetComboHandler(repo.Object, favRepo.Object, completionRepo.Object)
+        var result = await new GetComboHandler(repo.Object, favRepo.Object, completionRepo.Object, EmptyPersonalReusableRepo())
             .Handle(new GetComboQuery(combo.Id, _userId), CancellationToken.None);
 
         result.Id.Should().Be(combo.Id);
@@ -204,7 +214,7 @@ public class ComboQueryHandlerTests
         var combo = CreateCombo(Guid.NewGuid(), _otherUserId, "owner", ComboVisibility.Private, DateTime.UtcNow);
         repo.Setup(r => r.GetByIdAsync(combo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(combo);
 
-        Func<Task> act = () => new GetComboHandler(repo.Object, favRepo.Object, completionRepo.Object)
+        Func<Task> act = () => new GetComboHandler(repo.Object, favRepo.Object, completionRepo.Object, EmptyPersonalReusableRepo())
             .Handle(new GetComboQuery(combo.Id, _userId), CancellationToken.None);
 
         await act.Should().ThrowAsync<UnauthorizedAccessException>()
@@ -227,7 +237,7 @@ public class ComboQueryHandlerTests
         trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([nonCrossOver, crossOver]);
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "me" });
 
-        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, EmptyPersonalReusableRepo(), CreateHttp(_userId), userManager.Object);
         var result = await handler.Handle(new UpdateComboCommand(
             combo.Id,
             "  Updated Combo  ",
@@ -257,7 +267,7 @@ public class ComboQueryHandlerTests
         var combo = CreateCombo(Guid.NewGuid(), _otherUserId, "owner", ComboVisibility.Private, DateTime.UtcNow);
         comboRepo.Setup(r => r.GetByIdAsync(combo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(combo);
 
-        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, EmptyPersonalReusableRepo(), CreateHttp(_userId), userManager.Object);
         Func<Task> act = () => handler.Handle(new UpdateComboCommand(combo.Id, "name", null), CancellationToken.None);
 
         await act.Should().ThrowAsync<UnauthorizedAccessException>()
@@ -275,7 +285,7 @@ public class ComboQueryHandlerTests
         comboRepo.Setup(r => r.UpdateAsync(combo, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         userManager.Setup(m => m.FindByIdAsync(combo.OwnerId.ToString())).ReturnsAsync(new AppUser { Id = combo.OwnerId, UserName = "owner" });
 
-        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId, isAdmin: true), userManager.Object);
+        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, EmptyPersonalReusableRepo(), CreateHttp(_userId, isAdmin: true), userManager.Object);
         var result = await handler.Handle(new UpdateComboCommand(combo.Id, "  Admin Edit  ", null), CancellationToken.None);
 
         combo.Visibility.Should().Be(ComboVisibility.Public);
@@ -295,7 +305,7 @@ public class ComboQueryHandlerTests
         comboRepo.Setup(r => r.UpdateAsync(combo, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         userManager.Setup(m => m.FindByIdAsync(combo.OwnerId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "me" });
 
-        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, EmptyPersonalReusableRepo(), CreateHttp(_userId), userManager.Object);
         var result = await handler.Handle(new UpdateComboCommand(combo.Id, "Renamed", null), CancellationToken.None);
 
         combo.Visibility.Should().Be(ComboVisibility.Public);
@@ -310,7 +320,7 @@ public class ComboQueryHandlerTests
         var userManager = CreateUserManagerMock();
         comboRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Combo?)null);
 
-        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, EmptyPersonalReusableRepo(), CreateHttp(_userId), userManager.Object);
         Func<Task> act = () => handler.Handle(new UpdateComboCommand(Guid.NewGuid(), "name", null), CancellationToken.None);
 
         await act.Should().ThrowAsync<KeyNotFoundException>().WithMessage("Combo not found.");
@@ -327,7 +337,7 @@ public class ComboQueryHandlerTests
         comboRepo.Setup(r => r.UpdateAsync(combo, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "me" });
 
-        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, EmptyPersonalReusableRepo(), CreateHttp(_userId), userManager.Object);
         await handler.Handle(new UpdateComboCommand(combo.Id, "New Name", null), CancellationToken.None);
 
         combo.Name.Should().Be("New Name");
@@ -344,7 +354,7 @@ public class ComboQueryHandlerTests
         comboRepo.Setup(r => r.GetByIdAsync(combo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(combo);
         trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([]);
 
-        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, EmptyPersonalReusableRepo(), CreateHttp(_userId), userManager.Object);
         Func<Task> act = () => handler.Handle(
             new UpdateComboCommand(combo.Id, null, [new BuildComboTrickItem(Guid.NewGuid(), null, 1, true, false)]),
             CancellationToken.None);
@@ -397,7 +407,7 @@ public class ComboQueryHandlerTests
         trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([directTrick]);
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(new AppUser { Id = _userId, UserName = "me" });
 
-        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, EmptyPersonalReusableRepo(), CreateHttp(_userId), userManager.Object);
         var result = await handler.Handle(new UpdateComboCommand(
             combo.Id,
             "Updated",
@@ -440,7 +450,7 @@ public class ComboQueryHandlerTests
         comboRepo.Setup(r => r.GetByIdAsync(reusableCombo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(reusableCombo);
         trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([]);
 
-        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, EmptyPersonalReusableRepo(), CreateHttp(_userId), userManager.Object);
         Func<Task> act = () => handler.Handle(
             new UpdateComboCommand(reusableCombo.Id, null, [new BuildComboTrickItem(null, subComboId, 1, false, false)]),
             CancellationToken.None);
@@ -464,7 +474,7 @@ public class ComboQueryHandlerTests
         comboRepo.Setup(r => r.GetByIdAsync(subComboId, It.IsAny<CancellationToken>())).ReturnsAsync(notReusable);
         trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([]);
 
-        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, EmptyPersonalReusableRepo(), CreateHttp(_userId), userManager.Object);
         Func<Task> act = () => handler.Handle(
             new UpdateComboCommand(combo.Id, null, [new BuildComboTrickItem(null, subComboId, 1, false, false)]),
             CancellationToken.None);
@@ -474,10 +484,11 @@ public class ComboQueryHandlerTests
     }
 
     [Fact]
-    public async Task UpdateCombo_WithPersonalReusableSubComboSlot_WorksForOwner()
+    public async Task UpdateCombo_WithPersonalReusableSubComboSlot_WorksWhenCallerHasListedIt()
     {
         var comboRepo = new Mock<IComboRepository>();
         var trickRepo = new Mock<ITrickRepository>();
+        var personalReusableRepo = new Mock<IUserPersonalReusableComboRepository>();
         var userManager = CreateUserManagerMock();
 
         var combo = CreateCombo(Guid.NewGuid(), _userId, "me", ComboVisibility.Private, DateTime.UtcNow);
@@ -487,7 +498,6 @@ public class ComboQueryHandlerTests
             Id = subComboId,
             Name = "My private block",
             IsReusable = false,
-            IsPersonalReusable = true,
             OwnerId = _userId,
             Visibility = ComboVisibility.Private,
             ComboTricks = []
@@ -498,8 +508,9 @@ public class ComboQueryHandlerTests
         comboRepo.Setup(r => r.ReplaceComboTricksAsync(combo.Id, It.IsAny<IEnumerable<ComboTrick>>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         comboRepo.Setup(r => r.UpdateAsync(combo, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        personalReusableRepo.Setup(r => r.ExistsAsync(_userId, subComboId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, personalReusableRepo.Object, CreateHttp(_userId), userManager.Object);
         Func<Task> act = () => handler.Handle(
             new UpdateComboCommand(combo.Id, null, [new BuildComboTrickItem(null, subComboId, 1, false, false)]),
             CancellationToken.None);
@@ -508,30 +519,31 @@ public class ComboQueryHandlerTests
     }
 
     [Fact]
-    public async Task UpdateCombo_Throws_WhenSubComboIsPersonalReusable_ButCallerIsNotOwner()
+    public async Task UpdateCombo_Throws_WhenSubComboNotPersonallyListed_ByCaller()
     {
         var comboRepo = new Mock<IComboRepository>();
         var trickRepo = new Mock<ITrickRepository>();
+        var personalReusableRepo = new Mock<IUserPersonalReusableComboRepository>();
         var userManager = CreateUserManagerMock();
 
         var combo = CreateCombo(Guid.NewGuid(), _userId, "me", ComboVisibility.Private, DateTime.UtcNow);
         var subComboId = Guid.NewGuid();
-        var someoneElsesPersonalReusable = new Combo
+        var someoneElsesCombo = new Combo
         {
             Id = subComboId,
-            Name = "Their private block",
+            Name = "Their combo",
             IsReusable = false,
-            IsPersonalReusable = true,
             OwnerId = Guid.NewGuid(),
             Visibility = ComboVisibility.Private,
             ComboTricks = []
         };
 
         comboRepo.Setup(r => r.GetByIdAsync(combo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(combo);
-        comboRepo.Setup(r => r.GetByIdAsync(subComboId, It.IsAny<CancellationToken>())).ReturnsAsync(someoneElsesPersonalReusable);
+        comboRepo.Setup(r => r.GetByIdAsync(subComboId, It.IsAny<CancellationToken>())).ReturnsAsync(someoneElsesCombo);
         trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        // ExistsAsync unconfigured -> defaults to false (caller hasn't listed it)
 
-        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, personalReusableRepo.Object, CreateHttp(_userId), userManager.Object);
         Func<Task> act = () => handler.Handle(
             new UpdateComboCommand(combo.Id, null, [new BuildComboTrickItem(null, subComboId, 1, false, false)]),
             CancellationToken.None);
@@ -551,7 +563,7 @@ public class ComboQueryHandlerTests
         comboRepo.Setup(r => r.GetByIdAsync(combo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(combo);
         trickRepo.Setup(r => r.GetAllAsync(null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync([]);
 
-        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, CreateHttp(_userId), userManager.Object);
+        var handler = new UpdateComboHandler(comboRepo.Object, trickRepo.Object, EmptyPersonalReusableRepo(), CreateHttp(_userId), userManager.Object);
         // Both TrickId and SubComboId set — violates XOR
         Func<Task> act = () => handler.Handle(
             new UpdateComboCommand(combo.Id, null, [new BuildComboTrickItem(Guid.NewGuid(), Guid.NewGuid(), 1, false, false)]),
@@ -592,7 +604,7 @@ public class ComboQueryHandlerTests
         completionRepo.Setup(r => r.GetCompletionCountsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, int>());
 
-        var result = await new GetMyCombosHandler(repo.Object, favRepo.Object, completionRepo.Object)
+        var result = await new GetMyCombosHandler(repo.Object, favRepo.Object, completionRepo.Object, EmptyPersonalReusableRepo())
             .Handle(new GetMyCombosQuery(_userId, 1, 10, null, Search: "ATW"), CancellationToken.None);
 
         result.Items.Should().HaveCount(1);
@@ -622,7 +634,7 @@ public class ComboQueryHandlerTests
         completionRepo.Setup(r => r.GetCompletionCountsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, int>());
 
-        var result = await new GetMyCombosHandler(repo.Object, favRepo.Object, completionRepo.Object)
+        var result = await new GetMyCombosHandler(repo.Object, favRepo.Object, completionRepo.Object, EmptyPersonalReusableRepo())
             .Handle(new GetMyCombosQuery(_userId, 2, 10, null), CancellationToken.None);
 
         result.TotalCount.Should().Be(15);
@@ -643,7 +655,7 @@ public class ComboQueryHandlerTests
         completionRepo.Setup(r => r.GetCompletionCountsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, int>());
 
-        var result = await new GetPublicCombosHandler(repo.Object, favRepo.Object, completionRepo.Object)
+        var result = await new GetPublicCombosHandler(repo.Object, favRepo.Object, completionRepo.Object, EmptyPersonalReusableRepo())
             .Handle(new GetPublicCombosQuery(1, 10, null, null, null, Search: "atw"), CancellationToken.None);
 
         result.Items.Should().HaveCount(1);

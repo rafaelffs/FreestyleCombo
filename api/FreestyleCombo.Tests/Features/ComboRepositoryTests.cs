@@ -21,7 +21,7 @@ public class ComboRepositoryTests
     private static AppUser CreateUser() =>
         new() { Id = Guid.NewGuid(), UserName = "testuser", Email = "test@example.com", NormalizedUserName = "TESTUSER", NormalizedEmail = "TEST@EXAMPLE.COM", SecurityStamp = Guid.NewGuid().ToString() };
 
-    private static Combo CreateCombo(AppUser owner, bool isReusable = false, ComboVisibility visibility = ComboVisibility.Private, bool isPersonalReusable = false) =>
+    private static Combo CreateCombo(AppUser owner, bool isReusable = false, ComboVisibility visibility = ComboVisibility.Private) =>
         new()
         {
             Id = Guid.NewGuid(),
@@ -32,8 +32,7 @@ public class ComboRepositoryTests
             TrickCount = 1,
             Visibility = visibility,
             CreatedAt = DateTime.UtcNow,
-            IsReusable = isReusable,
-            IsPersonalReusable = isPersonalReusable
+            IsReusable = isReusable
         };
 
     [Fact]
@@ -111,9 +110,10 @@ public class ComboRepositoryTests
         var owner = CreateUser();
         await db.Users.AddAsync(owner);
 
-        var personalReusable = CreateCombo(owner, isPersonalReusable: true, visibility: ComboVisibility.Private);
+        var personalReusable = CreateCombo(owner, visibility: ComboVisibility.Private);
         var notReusableAtAll = CreateCombo(owner, visibility: ComboVisibility.Private);
         await db.Combos.AddRangeAsync(personalReusable, notReusableAtAll);
+        await db.UserPersonalReusableCombos.AddAsync(new UserPersonalReusableCombo { UserId = owner.Id, ComboId = personalReusable.Id, CreatedAt = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
         var repo = new ComboRepository(db);
@@ -131,8 +131,9 @@ public class ComboRepositoryTests
         var otherUser = CreateUser();
         await db.Users.AddRangeAsync(owner, otherUser);
 
-        var ownersPersonalReusable = CreateCombo(owner, isPersonalReusable: true, visibility: ComboVisibility.Private);
+        var ownersPersonalReusable = CreateCombo(owner, visibility: ComboVisibility.Private);
         await db.Combos.AddAsync(ownersPersonalReusable);
+        await db.UserPersonalReusableCombos.AddAsync(new UserPersonalReusableCombo { UserId = owner.Id, ComboId = ownersPersonalReusable.Id, CreatedAt = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
         var repo = new ComboRepository(db);
@@ -148,14 +149,37 @@ public class ComboRepositoryTests
         var owner = CreateUser();
         await db.Users.AddAsync(owner);
 
-        var personalReusable = CreateCombo(owner, isPersonalReusable: true, visibility: ComboVisibility.Private);
+        var personalReusable = CreateCombo(owner, visibility: ComboVisibility.Private);
         await db.Combos.AddAsync(personalReusable);
+        await db.UserPersonalReusableCombos.AddAsync(new UserPersonalReusableCombo { UserId = owner.Id, ComboId = personalReusable.Id, CreatedAt = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
         var repo = new ComboRepository(db);
         var result = await repo.GetReusableAsync(requestingUserId: null);
 
         result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetReusableAsync_IncludesAPublicComboSomeoneElseListed_ForTheUserWhoListedIt()
+    {
+        await using var db = CreateDb();
+        var owner = CreateUser();
+        var otherUser = CreateUser();
+        var thirdUser = CreateUser();
+        await db.Users.AddRangeAsync(owner, otherUser, thirdUser);
+
+        // otherUser bookmarks owner's PUBLIC combo into their own personal list
+        var publicCombo = CreateCombo(owner, visibility: ComboVisibility.Public);
+        await db.Combos.AddAsync(publicCombo);
+        await db.UserPersonalReusableCombos.AddAsync(new UserPersonalReusableCombo { UserId = otherUser.Id, ComboId = publicCombo.Id, CreatedAt = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        var repo = new ComboRepository(db);
+
+        (await repo.GetReusableAsync(requestingUserId: otherUser.Id)).Should().ContainSingle(c => c.Id == publicCombo.Id);
+        // A third user who never listed it doesn't see it as reusable (it's not admin-IsReusable either)
+        (await repo.GetReusableAsync(requestingUserId: thirdUser.Id)).Should().BeEmpty();
     }
 
     [Fact]

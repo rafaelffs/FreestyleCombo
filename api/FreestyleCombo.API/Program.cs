@@ -83,6 +83,7 @@ builder.Services.AddScoped<IUserPreferenceRepository, UserPreferenceRepository>(
 builder.Services.AddScoped<ITrickSubmissionRepository, TrickSubmissionRepository>();
 builder.Services.AddScoped<IUserFavouriteRepository, UserFavouriteRepository>();
 builder.Services.AddScoped<IUserComboCompletionRepository, UserComboCompletionRepository>();
+builder.Services.AddScoped<IUserPersonalReusableComboRepository, UserPersonalReusableComboRepository>();
 
 // AI Services
 builder.Services.AddScoped<IComboEnhancerService, ComboEnhancerService>();

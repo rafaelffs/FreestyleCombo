@@ -89,7 +89,7 @@ public class GetPendingComboReviewsHandler : IRequestHandler<GetPendingComboRevi
             IsCompleted = false,
             CompletionCount = 0,
             IsReusable = c.IsReusable,
-            IsPersonalReusable = c.IsPersonalReusable
+            IsPersonalReusable = false
         }).ToList();
     }
 }

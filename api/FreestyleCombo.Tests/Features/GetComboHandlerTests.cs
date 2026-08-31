@@ -39,7 +39,7 @@ public class GetComboHandlerTests
         var completionRepo = new Mock<IUserComboCompletionRepository>();
         repo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Combo?)null);
 
-        Func<Task> act = () => new GetComboHandler(repo.Object, favRepo.Object, completionRepo.Object)
+        Func<Task> act = () => new GetComboHandler(repo.Object, favRepo.Object, completionRepo.Object, new Mock<IUserPersonalReusableComboRepository>().Object)
             .Handle(new GetComboQuery(Guid.NewGuid(), _userId), CancellationToken.None);
 
         await act.Should().ThrowAsync<KeyNotFoundException>().WithMessage("Combo not found.");
@@ -59,7 +59,7 @@ public class GetComboHandlerTests
         completionRepo.Setup(r => r.GetCompletionCountsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, int>());
 
-        var result = await new GetComboHandler(repo.Object, favRepo.Object, completionRepo.Object)
+        var result = await new GetComboHandler(repo.Object, favRepo.Object, completionRepo.Object, new Mock<IUserPersonalReusableComboRepository>().Object)
             .Handle(new GetComboQuery(combo.Id, _userId), CancellationToken.None);
 
         result.Id.Should().Be(combo.Id);
@@ -75,7 +75,7 @@ public class GetComboHandlerTests
         var combo = MakeCombo(_otherUserId, ComboVisibility.PendingReview);
         repo.Setup(r => r.GetByIdAsync(combo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(combo);
 
-        Func<Task> act = () => new GetComboHandler(repo.Object, favRepo.Object, completionRepo.Object)
+        Func<Task> act = () => new GetComboHandler(repo.Object, favRepo.Object, completionRepo.Object, new Mock<IUserPersonalReusableComboRepository>().Object)
             .Handle(new GetComboQuery(combo.Id, _userId), CancellationToken.None);
 
         await act.Should().ThrowAsync<UnauthorizedAccessException>().WithMessage("Access denied.");
@@ -93,7 +93,7 @@ public class GetComboHandlerTests
         completionRepo.Setup(r => r.GetCompletionCountsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<Guid, int>());
 
-        var result = await new GetComboHandler(repo.Object, favRepo.Object, completionRepo.Object)
+        var result = await new GetComboHandler(repo.Object, favRepo.Object, completionRepo.Object, new Mock<IUserPersonalReusableComboRepository>().Object)
             .Handle(new GetComboQuery(combo.Id, null), CancellationToken.None);
 
         result.IsFavourited.Should().BeFalse();

@@ -12,13 +12,20 @@ public class BuildComboHandler : IRequestHandler<BuildComboCommand, GenerateComb
 {
     private readonly ITrickRepository _trickRepo;
     private readonly IComboRepository _comboRepo;
+    private readonly IUserPersonalReusableComboRepository _personalReusableRepo;
     private readonly IHttpContextAccessor _http;
     private readonly UserManager<AppUser> _userManager;
 
-    public BuildComboHandler(ITrickRepository trickRepo, IComboRepository comboRepo, IHttpContextAccessor http, UserManager<AppUser> userManager)
+    public BuildComboHandler(
+        ITrickRepository trickRepo,
+        IComboRepository comboRepo,
+        IUserPersonalReusableComboRepository personalReusableRepo,
+        IHttpContextAccessor http,
+        UserManager<AppUser> userManager)
     {
         _trickRepo = trickRepo;
         _comboRepo = comboRepo;
+        _personalReusableRepo = personalReusableRepo;
         _http = http;
         _userManager = userManager;
     }
@@ -52,7 +59,7 @@ public class BuildComboHandler : IRequestHandler<BuildComboCommand, GenerateComb
         {
             var sc = await _comboRepo.GetByIdAsync(scId, cancellationToken)
                 ?? throw new KeyNotFoundException($"Sub-combo {scId} not found.");
-            if (!sc.IsReusable && !(sc.IsPersonalReusable && sc.OwnerId == userId))
+            if (!sc.IsReusable && !await _personalReusableRepo.ExistsAsync(userId, scId, cancellationToken))
                 throw new InvalidOperationException($"Combo {scId} is not reusable.");
             if (sc.ComboTricks.Any(ct => ct.SubComboId != null))
                 throw new InvalidOperationException($"Reusable combo {scId} contains nested sub-combos.");
@@ -223,7 +230,6 @@ public class BuildComboHandler : IRequestHandler<BuildComboCommand, GenerateComb
             TrickCount = combo.TrickCount,
             IsPublic = combo.IsPublic,
             IsReusable = combo.IsReusable,
-            IsPersonalReusable = combo.IsPersonalReusable,
             Visibility = combo.Visibility.ToString(),
             CreatedAt = combo.CreatedAt,
             DisplayText = displayText,

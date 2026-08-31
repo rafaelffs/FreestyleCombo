@@ -121,7 +121,8 @@ public class ComboRepository : IComboRepository
 
     public async Task<List<Combo>> GetReusableAsync(Guid? requestingUserId = null, CancellationToken ct = default) =>
         await _db.Combos
-            .Where(c => c.IsReusable || (c.IsPersonalReusable && c.OwnerId == requestingUserId))
+            .Where(c => c.IsReusable || (requestingUserId != null && _db.UserPersonalReusableCombos
+                .Any(upr => upr.ComboId == c.Id && upr.UserId == requestingUserId)))
             .Include(c => c.ComboTricks)
                 .ThenInclude(ct2 => ct2.Trick)
             .Include(c => c.ComboTricks)

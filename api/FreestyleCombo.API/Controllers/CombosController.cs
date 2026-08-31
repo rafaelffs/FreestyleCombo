@@ -14,7 +14,8 @@ using FreestyleCombo.API.Features.Combos.GetPublicCombos;
 using FreestyleCombo.API.Features.Combos.PreviewCombo;
 using FreestyleCombo.API.Features.Combos.RejectComboVisibility;
 using FreestyleCombo.API.Features.Combos.RemoveFavourite;
-using FreestyleCombo.API.Features.Combos.SetPersonalReusable;
+using FreestyleCombo.API.Features.Combos.AddPersonalReusable;
+using FreestyleCombo.API.Features.Combos.RemovePersonalReusable;
 using FreestyleCombo.API.Features.Combos.SetReusable;
 using FreestyleCombo.API.Features.Combos.UpdateCombo;
 using FreestyleCombo.API.Features.Combos.UpdateVisibility;
@@ -168,15 +169,25 @@ public class CombosController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPut("{id:guid}/personal-reusable")]
+    [HttpPost("{id:guid}/personal-reusable")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> SetPersonalReusable(Guid id, [FromBody] SetPersonalReusableRequest body, CancellationToken ct)
+    public async Task<IActionResult> AddPersonalReusable(Guid id, CancellationToken ct)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        await _mediator.Send(new SetPersonalReusableCommand(id, userId, body.IsPersonalReusable), ct);
+        await _mediator.Send(new AddPersonalReusableCommand(id, userId), ct);
+        return Ok();
+    }
+
+    [HttpDelete("{id:guid}/personal-reusable")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> RemovePersonalReusable(Guid id, CancellationToken ct)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        await _mediator.Send(new RemovePersonalReusableCommand(id, userId), ct);
         return Ok();
     }
 
@@ -234,4 +245,3 @@ public class CombosController : ControllerBase
 public record UpdateVisibilityRequest(bool IsPublic);
 public record UpdateComboRequest(string? Name, List<BuildComboTrickItem>? Tricks);
 public record SetReusableRequest(bool IsReusable);
-public record SetPersonalReusableRequest(bool IsPersonalReusable);

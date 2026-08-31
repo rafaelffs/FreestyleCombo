@@ -14,11 +14,11 @@ public class Combo
     public DateTime CreatedAt { get; set; }
     public string? AiDescription { get; set; }
     public bool IsReusable { get; set; }
-    public bool IsPersonalReusable { get; set; }
 
     public AppUser Owner { get; set; } = null!;
     public ICollection<ComboTrick> ComboTricks { get; set; } = [];
     public ICollection<ComboRating> Ratings { get; set; } = [];
     public ICollection<UserFavouriteCombo> FavouritedBy { get; set; } = [];
     public ICollection<UserComboCompletion> CompletedBy { get; set; } = [];
+    public ICollection<UserPersonalReusableCombo> PersonalReusableBy { get; set; } = [];
 }

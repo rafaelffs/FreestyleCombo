@@ -10,6 +10,7 @@ public class AppUser : IdentityUser<Guid>
     public ICollection<TrickSubmission> TrickSubmissions { get; set; } = [];
     public ICollection<UserFavouriteCombo> FavouriteCombos { get; set; } = [];
     public ICollection<UserComboCompletion> CompletedCombos { get; set; } = [];
+    public ICollection<UserPersonalReusableCombo> PersonalReusableCombos { get; set; } = [];
 
     // "Forgot password" flow — a short-lived, hashed numeric code emailed to
     // the user, checked in ResetPasswordHandler. Null when no reset is
