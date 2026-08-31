@@ -426,7 +426,7 @@ class _DetailHero extends StatelessWidget {
                             iconColor: favoured ? AppColors.pink : Colors.white,
                             onTap: favLoading ? null : onToggleFavourite,
                           ),
-                        if (authed && (isOwner || combo.visibility == 'Public')) ...[
+                        if (authed && (isOwner || combo.visibility == 'Public' || isAdmin)) ...[
                           const SizedBox(width: 9),
                           _HeroIconButton(
                             icon: isPersonalReusable ? Icons.link : Icons.link_off,

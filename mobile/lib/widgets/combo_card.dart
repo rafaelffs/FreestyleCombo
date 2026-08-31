@@ -281,7 +281,7 @@ class _ComboCardState extends State<ComboCard> {
                         onTap: _toggleCompleted,
                         label: _completionCount > 0 ? '$_completionCount' : null,
                       ),
-                      if (isOwner || visibilityState == 'public') ...[
+                      if (isOwner || visibilityState == 'public' || isAdmin) ...[
                         const SizedBox(width: 8),
                         _IconToggle(
                           icon: _isPersonalReusable ? Icons.link : Icons.link_off,
