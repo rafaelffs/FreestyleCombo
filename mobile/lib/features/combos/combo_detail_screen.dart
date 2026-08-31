@@ -775,6 +775,7 @@ class _EditComboScreenState extends State<_EditComboScreen> {
   String? _error;
   int _tab = 0;
   late bool _isPublic = widget.combo.visibility != 'Private';
+  late bool _isPersonalReusable = widget.combo.isPersonalReusable;
 
   @override
   void initState() {
@@ -918,6 +919,9 @@ class _EditComboScreenState extends State<_EditComboScreen> {
       if (widget.combo.visibility == 'Private' && _isPublic) {
         await ApiClient.instance.setVisibility(widget.combo.id, true);
       }
+      if (_isPersonalReusable != widget.combo.isPersonalReusable) {
+        await ApiClient.instance.setPersonalReusable(widget.combo.id, _isPersonalReusable);
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
@@ -973,6 +977,15 @@ class _EditComboScreenState extends State<_EditComboScreen> {
               ),
             ),
           ],
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: SubmitToggle(
+              label: 'Reusable for me',
+              value: _isPersonalReusable,
+              onChanged: (v) => setState(() => _isPersonalReusable = v),
+            ),
+          ),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),

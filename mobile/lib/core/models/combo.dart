@@ -253,6 +253,7 @@ class ComboDto {
   final bool isCompleted;
   final int completionCount;
   final bool isReusable;
+  final bool isPersonalReusable;
 
   const ComboDto({
     required this.id,
@@ -273,6 +274,7 @@ class ComboDto {
     this.isCompleted = false,
     this.completionCount = 0,
     this.isReusable = false,
+    this.isPersonalReusable = false,
   });
 
   factory ComboDto.fromJson(Map<String, dynamic> j) => ComboDto(
@@ -296,6 +298,7 @@ class ComboDto {
         isCompleted: j['isCompleted'] as bool? ?? false,
         completionCount: j['completionCount'] as int? ?? 0,
         isReusable: j['isReusable'] as bool? ?? false,
+        isPersonalReusable: j['isPersonalReusable'] as bool? ?? false,
       );
 }
 

@@ -216,6 +216,14 @@ class ApiClient {
     }
   }
 
+  Future<void> setPersonalReusable(String id, bool isPersonalReusable) async {
+    try {
+      await _dio.put('/combos/$id/personal-reusable', data: {'isPersonalReusable': isPersonalReusable});
+    } on DioException catch (e) {
+      throw Exception(_extractMessage(e));
+    }
+  }
+
   Future<ComboDto> buildCombo(
       List<BuildComboTrickItem> tricks, bool isPublic, {String? name}) async {
     try {

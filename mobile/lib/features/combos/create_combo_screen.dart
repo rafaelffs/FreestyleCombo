@@ -127,6 +127,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   _TypeFilter _typeFilter = _TypeFilter.all;
   final List<_SlotItem> _slots = [];
   bool _isPublic = false;
+  bool _isPersonalReusable = false;
   bool _saving = false;
   String? _buildError;
   ComboDto? _buildResult;
@@ -625,6 +626,9 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
       final name = _nameCtrl.text.trim();
       final combo = await ApiClient.instance
           .buildCombo(items, _isPublic, name: name.isEmpty ? null : name);
+      if (_isPersonalReusable) {
+        await ApiClient.instance.setPersonalReusable(combo.id, true);
+      }
       setState(() => _buildResult = combo);
     } catch (e) {
       setState(
@@ -1501,6 +1505,12 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                   label: 'Submit as public',
                   value: _isPublic,
                   onChanged: (v) => setState(() => _isPublic = v),
+                ),
+                const SizedBox(height: 10),
+                _ToggleRow(
+                  label: 'Reusable for me',
+                  value: _isPersonalReusable,
+                  onChanged: (v) => setState(() => _isPersonalReusable = v),
                 ),
                 if (_buildError != null) ...[
                   const SizedBox(height: 8),
