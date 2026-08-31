@@ -9,6 +9,7 @@ import '../../core/models/user_preference.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/combo_card.dart' show TrickNameDisplay;
 import '../../widgets/difficulty_chip.dart';
+import '../../widgets/submit_trick_sheet.dart';
 import 'unsaved_combo_guard.dart';
 
 enum _Mode { choose, generate, build }
@@ -1340,23 +1341,83 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
           child: _loadingTricks
               ? const Center(
                   child: CircularProgressIndicator(color: AppColors.indigo))
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
-                  itemCount: rest.length,
-                  itemBuilder: (_, i) {
-                    final item = rest[i];
-                    if (item is TrickItem) {
-                      return _PickerTrickRow(
-                          item: item, onAdd: () => _promptAddTrick(item));
-                    } else if (item is ComboItem) {
-                      return _PickerComboRow(
-                          item: item, onAdd: () => _promptAddCombo(item));
-                    }
-                    return const SizedBox.shrink();
-                  },
-                ),
+              : filtered.isEmpty
+                  ? _buildPickerEmptyState()
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
+                      itemCount: rest.length,
+                      itemBuilder: (_, i) {
+                        final item = rest[i];
+                        if (item is TrickItem) {
+                          return _PickerTrickRow(
+                              item: item, onAdd: () => _promptAddTrick(item));
+                        } else if (item is ComboItem) {
+                          return _PickerComboRow(
+                              item: item, onAdd: () => _promptAddCombo(item));
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
         ),
       ],
+    );
+  }
+
+  Widget _buildPickerEmptyState() {
+    final query = _search.trim();
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              query.isEmpty ? 'No tricks found.' : 'No tricks found for "$query".',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(color: AppColors.muted, fontWeight: FontWeight.w600),
+            ),
+            if (query.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Missing a trick?',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(color: AppColors.ink2, fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+              const SizedBox(height: 14),
+              GestureDetector(
+                onTap: () => showSubmitTrickSheet(
+                  context,
+                  initialName: query,
+                  onSubmitted: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Trick submitted for review!')),
+                    );
+                  },
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.grad,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.add, size: 18, color: Colors.white),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Submit "$query"',
+                        style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13.5),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
