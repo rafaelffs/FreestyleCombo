@@ -23,6 +23,14 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 Print current App Store Connect listing metadata for verification
 
+### ios check_version_status
+
+```sh
+[bundle exec] fastlane ios check_version_status
+```
+
+Show the in-flight App Store version's state, review status, and any rejection/agreement blockers
+
 ### ios check_builds
 
 ```sh

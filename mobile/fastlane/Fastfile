@@ -41,6 +41,41 @@ platform :ios do
     end
   end
 
+  desc "Show the in-flight App Store version's state, review status, and any rejection/agreement blockers"
+  lane :check_version_status do
+    auth
+    app = Spaceship::ConnectAPI::App.find("com.rafaelffs.freestyleCombo")
+    versions = app.get_app_store_versions(
+      filter: { platform: "IOS" },
+      includes: "appStoreVersionSubmission,appStoreReviewDetail"
+    )
+    if versions.empty?
+      UI.important("No App Store versions exist yet — nothing has been created for review.")
+    else
+      versions.each do |v|
+        UI.message("Version #{v.version_string} — appStoreState=#{v.app_store_state} — appVersionState=#{v.app_version_state} — releaseType=#{v.release_type} — createdDate=#{v.created_date}")
+        begin
+          review_detail = v.fetch_app_store_review_detail
+          UI.message("  Review detail contact: #{review_detail&.contact_email.inspect}") if review_detail
+        rescue StandardError => e
+          UI.message("  (no review detail / #{e.message})")
+        end
+        submission = v.app_store_version_submission
+        UI.message("  Submission: #{submission.inspect}") if submission
+      end
+    end
+
+    # Agreements/Tax/Banking issues are one of the most common silent
+    # blockers — surface it explicitly rather than making the human dig
+    # through App Store Connect's Agreements tab themselves.
+    begin
+      agreements = Spaceship::ConnectAPI.get_territories # cheap authenticated call to confirm API access works at all
+      UI.message("API access confirmed (#{agreements.count} territories visible) — if the version is stuck, check Business → Agreements, Tax, and Banking in the App Store Connect UI directly, since the API doesn't expose agreement-signature status.")
+    rescue StandardError => e
+      UI.important("API call failed: #{e.message}")
+    end
+  end
+
   desc "List uploaded TestFlight builds and their processing state"
   lane :check_builds do
     auth
