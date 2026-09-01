@@ -76,6 +76,44 @@ platform :ios do
     end
   end
 
+  desc "Swap the in-flight App Store version onto a newer build, ready to submit. Usage: fastlane ios resubmit_for_review build:7"
+  lane :resubmit_for_review do |options|
+    auth
+    build_number = options[:build] || UI.user_error!("Pass the TestFlight build number to submit, e.g. build:7")
+
+    app = Spaceship::ConnectAPI::App.find("com.rafaelffs.freestyleCombo")
+    version = app.get_app_store_versions(
+      filter: { platform: "IOS" },
+      includes: "appStoreVersionSubmission,build"
+    ).first
+    UI.user_error!("No App Store version found to resubmit") unless version
+
+    target_build = Spaceship::ConnectAPI::Build.all(app_id: app.id, build_number: build_number.to_s).first
+    UI.user_error!("Build #{build_number} not found via API") unless target_build
+    UI.user_error!("Build #{build_number} isn't done processing yet (state=#{target_build.processing_state})") unless target_build.processing_state == "VALID"
+
+    if version.app_store_version_submission
+      UI.message("Version #{version.version_string} is currently #{version.app_store_state} — removing from review so the build can be swapped...")
+      begin
+        version.app_store_version_submission.delete!
+        UI.success("Removed existing submission")
+      rescue StandardError => e
+        UI.user_error!("Couldn't remove the existing submission (#{e.message}) — pull it back manually in App Store Connect (Remove from Review) first.")
+      end
+    end
+
+    Spaceship::ConnectAPI.patch_app_store_version_with_build(app_store_version_id: version.id, build_id: target_build.id)
+    UI.success("Attached build #{build_number} to version #{version.version_string} (now PREPARE_FOR_SUBMISSION)")
+
+    # POST appStoreVersionSubmissions is rejected outright by the ASC API for
+    # this app ("does not allow 'CREATE'. Allowed operation is: DELETE") even
+    # though canReject/DELETE works fine — the actual "Submit for Review"
+    # click has to happen in the App Store Connect web UI (Distribution tab).
+    # Confirmed this isn't fixable via a different request shape; don't
+    # re-attempt it here.
+    UI.important("Build attached — now go submit it manually: App Store Connect → App → Distribution → this version → Submit for Review. The ASC API itself refuses to create a new submission for this app.")
+  end
+
   desc "List uploaded TestFlight builds and their processing state"
   lane :check_builds do
     auth
@@ -416,4 +454,5 @@ platform :ios do
       end
     end
   end
+
 end

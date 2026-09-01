@@ -31,6 +31,14 @@ Print current App Store Connect listing metadata for verification
 
 Show the in-flight App Store version's state, review status, and any rejection/agreement blockers
 
+### ios resubmit_for_review
+
+```sh
+[bundle exec] fastlane ios resubmit_for_review
+```
+
+Swap the in-flight App Store version onto a newer build, ready to submit. Usage: fastlane ios resubmit_for_review build:7
+
 ### ios check_builds
 
 ```sh
