@@ -28,7 +28,7 @@ class FootToggle extends StatelessWidget {
     final trackW = 28.0 * scale;
     final trackH = 14.0 * scale;
     final knob = 12.0 * scale;
-    final footSize = 8.0 * scale;
+    final footSize = 11.0 * scale;
     final fontSize = 10.0 * scale;
     final gap = 4.0 * scale;
     final radius = 7.0 * scale;
