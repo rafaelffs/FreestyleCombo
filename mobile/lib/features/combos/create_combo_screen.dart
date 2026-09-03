@@ -9,6 +9,7 @@ import '../../core/models/user_preference.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/combo_card.dart' show TrickNameDisplay;
 import '../../widgets/difficulty_chip.dart';
+import '../../widgets/foot_toggle.dart';
 import '../../widgets/submit_trick_sheet.dart';
 import 'unsaved_combo_guard.dart';
 
@@ -1811,9 +1812,8 @@ class _SlotTile extends StatelessWidget {
           // A transition trick (e.g. "Combo") is a connector, not a move —
           // strong/weak foot and no-touch don't apply to it.
           if (!slot.isTransition) ...[
-            _SlotFlagToggle(
-              label: 'WF',
-              active: !slot.strongFoot,
+            FootToggle(
+              value: slot.strongFoot,
               onTap: () => onToggleStrongFoot(!slot.strongFoot),
             ),
             const SizedBox(width: 6),

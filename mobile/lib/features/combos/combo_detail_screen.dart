@@ -9,6 +9,7 @@ import '../../theme/app_colors.dart';
 import '../../widgets/combo_card.dart' show TrickNameDisplay;
 import '../../widgets/confirm_sheet.dart';
 import '../../widgets/difficulty_chip.dart';
+import '../../widgets/foot_toggle.dart';
 import '../../widgets/rate_combo_dialog.dart';
 import '../../widgets/submit_trick_sheet.dart' show SubmitToggle;
 
@@ -763,8 +764,8 @@ class _SequenceStepState extends State<_SequenceStep> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (!t.strongFoot && !t.isTransition) ...[
-            _FlagTag(label: 'weak', bg: AppColors.amberBg, fg: AppColors.amber),
+          if (!t.isTransition) ...[
+            FootToggle(value: t.strongFoot),
             const SizedBox(width: 6),
           ],
           if (t.noTouch && !t.isTransition) ...[
@@ -1416,9 +1417,8 @@ class _EditSlot extends StatelessWidget {
             ),
           ),
           if (!slot.isTransition) ...[
-            _EditFlagToggle(
-              label: 'SF',
-              active: slot.strongFoot,
+            FootToggle(
+              value: slot.strongFoot,
               onTap: () => onToggleStrongFoot(!slot.strongFoot),
             ),
             const SizedBox(width: 6),
