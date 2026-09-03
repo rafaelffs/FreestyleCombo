@@ -523,10 +523,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                   onChanged: (v) => setSt(() => noTouch = v),
                 ),
               ],
-              // Extra breathing room here (vs. the usual 32) — the FootToggle's
-              // knob overflows its track and casts a shadow past it, which the
-              // default gap wasn't tall enough to clear before the button.
-              const SizedBox(height: 44),
+              const SizedBox(height: 32),
               SizedBox(
                 height: 52,
                 child: FilledButton(
