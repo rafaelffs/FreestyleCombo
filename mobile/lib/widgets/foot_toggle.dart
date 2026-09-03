@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../core/prefs/foot_orientation.dart';
 import '../theme/app_colors.dart';
 
@@ -8,11 +9,10 @@ import '../theme/app_colors.dart';
 /// combo" sheet (create_combo_screen.dart) as the sole focus of that screen.
 /// Every other trick-slot surface (sequence lists, build/edit slot rows)
 /// intentionally uses a plain compact "WF"/"SF" square instead — this wider
-/// switch control doesn't fit those denser rows. No icon in the knob: after
-/// a few failed attempts at a recognizable single-foot glyph (two-foot
-/// pictograms, disconnected-blob composition, a shape that read as a
-/// pointer/cursor), a plain colored knob reads unambiguously and needs no
-/// icon to convey state — the WF/SF labels already do that.
+/// switch control doesn't fit those denser rows. The knob icon is
+/// `LucideIcons.footprints`, the exact same icon web uses (lucide-react's
+/// `Footprints`) — it reads as two feet rather than one, but that's what web
+/// itself renders too, so this is matching parity, not a compromise.
 /// [scale] multiplies every dimension — pass a larger value (e.g. 1.9) to
 /// make the control clearly the sheet's focal point. Which side shows WF vs
 /// SF is controlled by [FootOrientation] (Profile → "My strong foot").
@@ -28,6 +28,7 @@ class FootToggle extends StatelessWidget {
     final trackW = 28.0 * scale;
     final trackH = 14.0 * scale;
     final knob = 12.0 * scale;
+    final footSize = 8.0 * scale;
     final fontSize = 10.0 * scale;
     final gap = 4.0 * scale;
     final radius = 7.0 * scale;
@@ -73,10 +74,12 @@ class FootToggle extends StatelessWidget {
               child: Container(
                 width: knob,
                 height: knob,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: value ? AppColors.indigo : AppColors.muted,
                   shape: BoxShape.circle,
                 ),
+                child: Icon(LucideIcons.footprints, size: footSize, color: Colors.white),
               ),
             ),
           ),
