@@ -82,6 +82,32 @@ class _ComboCardState extends State<ComboCard> {
     _isPersonalReusable = widget.combo.isPersonalReusable;
   }
 
+  @override
+  void didUpdateWidget(covariant ComboCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The list this card lives in re-fetches independently of this widget's
+    // own local optimistic-toggle state (favourite/done/personal-reusable
+    // icons) — without resyncing here, a card keeps showing whatever it last
+    // locally toggled even after a fresh fetch reports otherwise (e.g. a
+    // combo shown as "done" while sitting in a "Not done" filtered list,
+    // because its old toggle from a previous state never got flushed).
+    // Only resync fields that actually changed, so an in-flight optimistic
+    // toggle on THIS combo isn't clobbered by an unrelated ancestor rebuild
+    // that still carries the pre-toggle snapshot.
+    if (oldWidget.combo.isFavourited != widget.combo.isFavourited) {
+      _favoured = widget.combo.isFavourited;
+    }
+    if (oldWidget.combo.isCompleted != widget.combo.isCompleted) {
+      _completed = widget.combo.isCompleted;
+    }
+    if (oldWidget.combo.completionCount != widget.combo.completionCount) {
+      _completionCount = widget.combo.completionCount;
+    }
+    if (oldWidget.combo.isPersonalReusable != widget.combo.isPersonalReusable) {
+      _isPersonalReusable = widget.combo.isPersonalReusable;
+    }
+  }
+
   String get _comboLabel =>
       (widget.combo.name != null && widget.combo.name!.isNotEmpty) ? widget.combo.name! : widget.combo.displayText;
 
