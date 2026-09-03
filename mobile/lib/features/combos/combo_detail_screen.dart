@@ -11,7 +11,7 @@ import '../../widgets/confirm_sheet.dart';
 import '../../widgets/difficulty_chip.dart';
 import '../../widgets/foot_toggle.dart';
 import '../../widgets/rate_combo_dialog.dart';
-import '../../widgets/submit_trick_sheet.dart' show SubmitToggle;
+import '../../widgets/setting_icon_button.dart';
 
 class _SlotItem {
   final String? trickId;
@@ -1101,25 +1101,37 @@ class _EditComboScreenState extends State<_EditComboScreen> {
               ),
             ),
           ),
-          if (widget.combo.visibility == 'Private') ...[
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: SubmitToggle(
-                label: 'Submit as public',
-                value: _isPublic,
-                onChanged: (v) => setState(() => _isPublic = v),
-              ),
-            ),
-          ],
           const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22),
-            child: SubmitToggle(
-              label: 'List combo in the trick list',
-              value: _isPersonalReusable,
-              onChanged: (v) => setState(() => _isPersonalReusable = v),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (widget.combo.visibility == 'Private')
+                SettingIconButton(
+                  activeIcon: Icons.public,
+                  inactiveIcon: Icons.public_off,
+                  active: _isPublic,
+                  activeColor: AppColors.indigo,
+                  title: _isPublic ? 'Stop submitting as public?' : 'Submit as public?',
+                  description: _isPublic
+                      ? "This combo will be saved as private instead — it won't be sent for admin review or shown to other users."
+                      : 'An admin will review this combo before it becomes visible to everyone. Until approved, only you can see it.',
+                  confirmLabel: _isPublic ? 'Keep it private' : 'Submit for review',
+                  onChanged: (v) => setState(() => _isPublic = v),
+                ),
+              if (widget.combo.visibility == 'Private') const SizedBox(width: 12),
+              SettingIconButton(
+                activeIcon: Icons.link,
+                inactiveIcon: Icons.link_off,
+                active: _isPersonalReusable,
+                activeColor: AppColors.violet,
+                title: _isPersonalReusable ? 'Remove from your trick list?' : 'List combo in your trick list?',
+                description: _isPersonalReusable
+                    ? "This combo will no longer show up when you're building other combos."
+                    : "This combo will show up as a selectable item — alongside tricks — when you're building other combos. Only you will see it there.",
+                confirmLabel: _isPersonalReusable ? 'Remove' : 'List it',
+                onChanged: (v) => setState(() => _isPersonalReusable = v),
+              ),
+            ],
           ),
           if (_error != null)
             Padding(
