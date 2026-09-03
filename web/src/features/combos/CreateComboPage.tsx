@@ -6,6 +6,7 @@ import { GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
 import { FootToggle } from '@/components/ui/foot-toggle'
 import { combosApi, tricksApi, preferencesApi, extractError, comboDisplayName, type GenerateComboOverrides, type TrickItem, type ComboItem, type BuildComboTrickItem } from '@/lib/api'
 import { isAuthenticated, setPendingCombo } from '@/lib/auth'
+import { getShowDifficulty } from '@/lib/displayPrefs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -249,13 +250,22 @@ export function CreateComboPage() {
     })
   }
 
-  const filteredTricks = tricks.filter(
-    (tr) => tr.name.toLowerCase().includes(search.toLowerCase()) || tr.abbreviation.toLowerCase().includes(search.toLowerCase()),
-  )
+  const searchQ = search.toLowerCase()
+  const filteredTricks = tricks
+    .filter((tr) => tr.name.toLowerCase().includes(searchQ) || tr.abbreviation.toLowerCase().includes(searchQ))
+    .sort((a, b) => {
+      if (searchQ === '') return 0
+      const exact = (tr: TrickItem) => (tr.abbreviation.toLowerCase() === searchQ || tr.name.toLowerCase() === searchQ ? 0 : 1)
+      return exact(a) - exact(b)
+    })
 
-  const filteredCombos = comboItems.filter(
-    (c) => comboDisplayName(c).toLowerCase().includes(search.toLowerCase()),
-  )
+  const filteredCombos = comboItems
+    .filter((c) => comboDisplayName(c).toLowerCase().includes(searchQ))
+    .sort((a, b) => {
+      if (searchQ === '') return 0
+      const exact = (c: ComboItem) => (comboDisplayName(c).toLowerCase() === searchQ ? 0 : 1)
+      return exact(a) - exact(b)
+    })
 
   // Calculate summary expanding sub-combo tricks
   const { totalTricks, totalDifficulty } = slots.reduce(
@@ -556,7 +566,9 @@ export function CreateComboPage() {
                     <div className="flex items-center gap-1">
                       {trick.crossOver && <Badge variant="secondary">CO</Badge>}
                       {trick.knee && <Badge variant="secondary">K</Badge>}
-                      <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(trick.difficulty)}`}>{trick.difficulty}</span>
+                      {getShowDifficulty() && (
+                        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(trick.difficulty)}`}>{trick.difficulty}</span>
+                      )}
                     </div>
                   </button>
                 ))}

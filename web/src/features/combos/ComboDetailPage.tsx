@@ -6,6 +6,7 @@ import { GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
 import { FootToggle } from '@/components/ui/foot-toggle'
 import { combosApi, tricksApi, extractError, type BuildComboTrickItem, type TrickItem } from '@/lib/api'
 import { getUserId, isAdmin } from '@/lib/auth'
+import { getShowDifficulty } from '@/lib/displayPrefs'
 import { SEO } from '@/components/SEO'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -211,9 +212,14 @@ export function ComboDetailPage() {
     }))
   }
 
-  const filteredTricks = tricks.filter(
-    (t_) => t_.name.toLowerCase().includes(trickSearch.toLowerCase()) || t_.abbreviation.toLowerCase().includes(trickSearch.toLowerCase()),
-  )
+  const trickSearchQ = trickSearch.toLowerCase()
+  const filteredTricks = tricks
+    .filter((t_) => t_.name.toLowerCase().includes(trickSearchQ) || t_.abbreviation.toLowerCase().includes(trickSearchQ))
+    .sort((a, b) => {
+      if (trickSearchQ === '') return 0
+      const exact = (t_: TrickItem) => (t_.abbreviation.toLowerCase() === trickSearchQ || t_.name.toLowerCase() === trickSearchQ ? 0 : 1)
+      return exact(a) - exact(b)
+    })
 
   return (
     <div className="space-y-6">
@@ -272,7 +278,9 @@ export function ComboDetailPage() {
                         <span className="font-mono text-xs font-semibold text-gray-900">{trick.abbreviation}</span>
                         {!abbrevOnly && <span className="ml-1.5 text-sm text-gray-500">{trick.name}</span>}
                       </div>
-                      <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(trick.difficulty ?? 0)}`}>{trick.difficulty}</span>
+                      {getShowDifficulty() && (
+                        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(trick.difficulty ?? 0)}`}>{trick.difficulty}</span>
+                      )}
                       {!trick.isTransition && (
                         <>
                           <FootToggle value={trick.strongFoot} onChange={() => {}} />
@@ -313,7 +321,9 @@ export function ComboDetailPage() {
                               <span className="font-mono text-xs font-semibold text-gray-700">{st.abbreviation}</span>
                               {!abbrevOnly && <span className="ml-1.5 text-xs text-gray-500">{st.name}</span>}
                             </div>
-                            <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(st.difficulty ?? 0)}`}>{st.difficulty}</span>
+                            {getShowDifficulty() && (
+                              <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(st.difficulty ?? 0)}`}>{st.difficulty}</span>
+                            )}
                             {!st.isTransition && (
                               <>
                                 <FootToggle value={st.strongFoot} onChange={() => {}} />
@@ -415,7 +425,9 @@ export function ComboDetailPage() {
                   {filteredTricks.map((trick) => (
                     <button key={trick.id} type="button" onClick={() => addTrick(trick)} className="flex w-full items-center justify-between px-2 py-1.5 text-left hover:bg-indigo-50 transition-colors">
                       <span className="text-sm">{trick.name} <span className="font-mono text-xs text-gray-400">{trick.abbreviation}</span></span>
-                      <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(trick.difficulty)}`}>{trick.difficulty}</span>
+                      {getShowDifficulty() && (
+                        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(trick.difficulty)}`}>{trick.difficulty}</span>
+                      )}
                     </button>
                   ))}
                 </div>

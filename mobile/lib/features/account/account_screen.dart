@@ -38,7 +38,7 @@ class _AccountScreenState extends State<AccountScreen> {
       var ratingSum = 0.0;
       var ratingWeight = 0;
       for (final c in combos.items) {
-        done += c.completionCount;
+        if (c.isCompleted) done++;
         if (c.totalRatings > 0) {
           ratingSum += c.averageRating * c.totalRatings;
           ratingWeight += c.totalRatings;
@@ -124,6 +124,7 @@ class _AccountScreenState extends State<AccountScreen> {
                         comboCount: _comboCount,
                         doneCount: _doneCount,
                         avgRating: _avgRating,
+                        onDoneTap: () => context.push('/combos', extra: true),
                       ),
                     ),
                     SliverPadding(
@@ -185,12 +186,14 @@ class _ProfileHeader extends StatelessWidget {
   final int comboCount;
   final int doneCount;
   final double? avgRating;
+  final VoidCallback onDoneTap;
 
   const _ProfileHeader({
     required this.profile,
     required this.comboCount,
     required this.doneCount,
     required this.avgRating,
+    required this.onDoneTap,
   });
 
   @override
@@ -259,7 +262,7 @@ class _ProfileHeader extends StatelessWidget {
                       children: [
                         Expanded(child: _StatTile(value: '$comboCount', label: 'Combos')),
                         const SizedBox(width: 10),
-                        Expanded(child: _StatTile(value: '$doneCount', label: 'Done')),
+                        Expanded(child: _StatTile(value: '$doneCount', label: 'Done', onTap: onDoneTap)),
                         const SizedBox(width: 10),
                         Expanded(child: _StatTile(value: avgRating != null ? avgRating!.toStringAsFixed(1) : '—', label: 'Avg ★')),
                       ],
@@ -278,11 +281,12 @@ class _ProfileHeader extends StatelessWidget {
 class _StatTile extends StatelessWidget {
   final String value;
   final String label;
-  const _StatTile({required this.value, required this.label});
+  final VoidCallback? onTap;
+  const _StatTile({required this.value, required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final content = Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.14),
@@ -299,6 +303,12 @@ class _StatTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+    if (onTap == null) return content;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: content,
     );
   }
 }

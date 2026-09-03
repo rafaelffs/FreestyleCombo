@@ -184,6 +184,7 @@ class ApiClient {
     int page = 1,
     int pageSize = 10,
     int? maxDifficulty,
+    String? search,
   }) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(
@@ -192,6 +193,7 @@ class ApiClient {
           'page': page,
           'pageSize': pageSize,
           if (maxDifficulty != null) 'maxDifficulty': maxDifficulty,
+          if (search != null && search.isNotEmpty) 'search': search,
         },
       );
       final d = res.data!;
@@ -212,6 +214,7 @@ class ApiClient {
     int page = 1,
     int pageSize = 10,
     bool? isPublic,
+    String? search,
   }) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(
@@ -220,6 +223,7 @@ class ApiClient {
           'page': page,
           'pageSize': pageSize,
           if (isPublic != null) 'isPublic': isPublic,
+          if (search != null && search.isNotEmpty) 'search': search,
         },
       );
       final d = res.data!;

@@ -333,6 +333,14 @@ class _TricksScreenState extends State<TricksScreen> {
 
     combos.sort((a, b) => a.displayName.compareTo(b.displayName));
 
+    if (q.isNotEmpty) {
+      final exactTricks = tricks.where((t) => t.abbreviation.toLowerCase() == q || t.name.toLowerCase() == q).toList();
+      final restTricks = tricks.where((t) => !(t.abbreviation.toLowerCase() == q || t.name.toLowerCase() == q)).toList();
+      tricks
+        ..clear()
+        ..addAll([...exactTricks, ...restTricks]);
+    }
+
     return [...tricks, ...combos];
   }
 
@@ -499,6 +507,21 @@ class _TricksScreenState extends State<TricksScreen> {
             color: active ? Colors.white : AppColors.ink2,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _difficultyToggleChip() {
+    final active = DifficultyDisplay.show;
+    return GestureDetector(
+      onTap: () => setState(() => DifficultyDisplay.show = !DifficultyDisplay.show),
+      child: Container(
+        padding: const EdgeInsets.all(7),
+        decoration: BoxDecoration(
+          color: active ? AppColors.indigo : AppColors.chipBg,
+          borderRadius: BorderRadius.circular(11),
+        ),
+        child: Icon(Icons.speed, size: 18, color: active ? Colors.white : AppColors.ink2),
       ),
     );
   }
@@ -894,6 +917,8 @@ class _TricksScreenState extends State<TricksScreen> {
                 const SizedBox(width: 6),
                 _nameFormatChip('Abbr.', !TrickNameDisplay.showFullName),
                 const SizedBox(width: 6),
+                _difficultyToggleChip(),
+                const SizedBox(width: 6),
                 GestureDetector(
                   onTap: _showSortSheet,
                   child: Container(
@@ -1210,6 +1235,8 @@ class _EditDialogField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      autocorrect: false,
+      enableSuggestions: false,
       style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
       decoration: InputDecoration(
         labelText: label,

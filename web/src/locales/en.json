@@ -250,6 +250,7 @@
     "filterRevOptionPlural": "{{rev}} revs",
     "filterCOOnly": "CO only",
     "filterKneeOnly": "Knee only",
+    "showDifficulty": "Show difficulty",
     "colAbbrev": "Abbrev",
     "colName": "Name",
     "colRevs": "Revs",

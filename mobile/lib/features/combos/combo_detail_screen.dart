@@ -925,7 +925,7 @@ class _EditComboScreenState extends State<_EditComboScreen> {
   List<TrickListItem> get _filtered {
     final q = _search.toLowerCase();
     if (q.isEmpty) return _items;
-    return _items.where((item) {
+    final list = _items.where((item) {
       if (item is TrickItem) {
         return item.name.toLowerCase().contains(q) || item.abbreviation.toLowerCase().contains(q);
       } else if (item is ComboItem) {
@@ -933,6 +933,14 @@ class _EditComboScreenState extends State<_EditComboScreen> {
       }
       return false;
     }).toList();
+
+    bool isExact(TrickListItem item) {
+      if (item is TrickItem) return item.abbreviation.toLowerCase() == q || item.name.toLowerCase() == q;
+      if (item is ComboItem) return item.displayName.toLowerCase() == q;
+      return false;
+    }
+
+    return [...list.where(isExact), ...list.where((item) => !isExact(item))];
   }
 
   void _addTrick(TrickItem trick) {
@@ -1106,6 +1114,8 @@ class _EditComboScreenState extends State<_EditComboScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 22),
           child: TextField(
             controller: _searchCtrl,
+            autocorrect: false,
+            enableSuggestions: false,
             style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
             decoration: InputDecoration(
               hintText: 'Search…',

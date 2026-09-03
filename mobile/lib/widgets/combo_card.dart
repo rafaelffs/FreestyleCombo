@@ -6,6 +6,7 @@ import '../core/auth/auth_service.dart';
 import '../core/models/combo.dart';
 import '../theme/app_colors.dart';
 import 'confirm_sheet.dart';
+import 'difficulty_chip.dart';
 import 'rate_combo_dialog.dart';
 
 /// Whether combo trick sequences (card titles, chips) show full trick names
@@ -346,8 +347,10 @@ class _ComboCardState extends State<ComboCard> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    _DiffBadge(value: combo.totalDifficulty.toInt()),
+                    if (DifficultyDisplay.show) ...[
+                      const SizedBox(width: 12),
+                      _DiffBadge(value: combo.totalDifficulty.toInt()),
+                    ],
                   ],
                 ),
                 if (combo.tricks != null && combo.tricks!.isNotEmpty) ...[

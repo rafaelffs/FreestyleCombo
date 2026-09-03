@@ -169,11 +169,15 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) {
-          final filtered = _allTricksForPicker!.where((t) {
-            if (search.isEmpty) return true;
-            final q = search.toLowerCase();
-            return t.name.toLowerCase().contains(q) || t.abbreviation.toLowerCase().contains(q);
+          final pickerQ = search.toLowerCase();
+          var filtered = _allTricksForPicker!.where((t) {
+            if (pickerQ.isEmpty) return true;
+            return t.name.toLowerCase().contains(pickerQ) || t.abbreviation.toLowerCase().contains(pickerQ);
           }).toList();
+          if (pickerQ.isNotEmpty) {
+            bool exact(TrickItem t) => t.abbreviation.toLowerCase() == pickerQ || t.name.toLowerCase() == pickerQ;
+            filtered = [...filtered.where(exact), ...filtered.where((t) => !exact(t))];
+          }
           return SafeArea(
             child: Padding(
               padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
@@ -640,7 +644,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
 
   List<TrickListItem> get _filtered {
     final q = _search.toLowerCase();
-    return _items.where((item) {
+    final list = _items.where((item) {
       if (item is TrickItem) {
         if (_typeFilter == _TypeFilter.combos) return false;
         if (q.isEmpty) return true;
@@ -653,6 +657,18 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
       }
       return false;
     }).toList();
+
+    if (q.isEmpty) return list;
+
+    bool isExact(TrickListItem item) {
+      if (item is TrickItem) return item.abbreviation.toLowerCase() == q || item.name.toLowerCase() == q;
+      if (item is ComboItem) return item.displayName.toLowerCase() == q;
+      return false;
+    }
+
+    final exact = list.where(isExact).toList();
+    final rest = list.where((item) => !isExact(item)).toList();
+    return [...exact, ...rest];
   }
 
   int get _totalDiff {
@@ -2089,6 +2105,8 @@ class _SearchField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      autocorrect: false,
+      enableSuggestions: false,
       style: GoogleFonts.plusJakartaSans(
           fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
       decoration: InputDecoration(

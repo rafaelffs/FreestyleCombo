@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,9 +8,12 @@ import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/combo_card.dart';
+import '../../widgets/difficulty_chip.dart';
 
 class CombosScreen extends StatefulWidget {
-  const CombosScreen({super.key});
+  final bool initialDoneOnly;
+
+  const CombosScreen({super.key, this.initialDoneOnly = false});
 
   @override
   State<CombosScreen> createState() => _CombosScreenState();
@@ -24,10 +29,14 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
   int? _publicCount;
   int? _mineCount;
   bool _doneOnly = false;
+  final _searchCtrl = TextEditingController();
+  String _search = '';
+  Timer? _searchDebounce;
 
   @override
   void initState() {
     super.initState();
+    _doneOnly = widget.initialDoneOnly;
     final tabCount = _authed ? 3 : 1;
     _tabController = TabController(length: tabCount, vsync: this, initialIndex: _authed ? 1 : 0);
     _tabController.addListener(() {
@@ -43,11 +52,22 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
   @override
   void dispose() {
     _tabController.dispose();
+    _searchCtrl.dispose();
+    _searchDebounce?.cancel();
     super.dispose();
   }
 
+  void _onSearchChanged(String v) {
+    setState(() => _search = v);
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+      _loadPublic();
+      if (_authed) _loadMine();
+    });
+  }
+
   void _loadPublic() {
-    final future = ApiClient.instance.getPublicCombos();
+    final future = ApiClient.instance.getPublicCombos(search: _search.isEmpty ? null : _search);
     setState(() { _publicFuture = future; });
     future.then((r) {
       if (mounted) setState(() => _publicCount = r.totalCount);
@@ -55,7 +75,7 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
   }
 
   void _loadMine() {
-    final future = ApiClient.instance.getMyCombos();
+    final future = ApiClient.instance.getMyCombos(search: _search.isEmpty ? null : _search);
     setState(() { _mineFuture = future; });
     future.then((r) {
       if (mounted) setState(() => _mineCount = r.totalCount);
@@ -107,7 +127,14 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
         if (snap.hasError) {
           return _errorView(snap.error.toString(), onRefresh);
         }
-        final items = (snap.data ?? []).where((c) => !_doneOnly || c.isCompleted).toList();
+        final q = _search.toLowerCase();
+        final items = (snap.data ?? [])
+            .where((c) => !_doneOnly || c.isCompleted)
+            .where((c) =>
+                q.isEmpty ||
+                (c.name ?? c.displayText).toLowerCase().contains(q) ||
+                (c.ownerUserName ?? '').toLowerCase().contains(q))
+            .toList();
         if (items.isEmpty) return Center(child: _doneOnly ? _emptyState(Icons.check_circle_outline, "You haven't marked any of these as done yet.") : emptyWidget);
         return _listView(items, showActions, onRefresh);
       },
@@ -187,6 +214,21 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _difficultyToggleChip() {
+    final active = DifficultyDisplay.show;
+    return GestureDetector(
+      onTap: () => setState(() => DifficultyDisplay.show = !DifficultyDisplay.show),
+      child: Container(
+        padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          color: active ? AppColors.indigo : AppColors.chipBg,
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Icon(Icons.speed, size: 16, color: active ? Colors.white : AppColors.ink2),
       ),
     );
   }
@@ -300,6 +342,36 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(22, 0, 22, 10),
+              child: TextField(
+                controller: _searchCtrl,
+                autocorrect: false,
+                enableSuggestions: false,
+                style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
+                decoration: InputDecoration(
+                  hintText: 'Search combos…',
+                  hintStyle: GoogleFonts.plusJakartaSans(color: AppColors.faint, fontWeight: FontWeight.w600),
+                  prefixIcon: const Icon(Icons.search, color: AppColors.faint),
+                  filled: true,
+                  fillColor: AppColors.surface,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.line2)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.line2)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.indigo, width: 1.5)),
+                  suffixIcon: _search.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, color: AppColors.faint),
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            _onSearchChanged('');
+                          },
+                        )
+                      : null,
+                ),
+                onChanged: _onSearchChanged,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 0, 22, 10),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -312,6 +384,8 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
                       _nameFormatChip('Full name', TrickNameDisplay.showFullName),
                       const SizedBox(width: 6),
                       _nameFormatChip('Abbr.', !TrickNameDisplay.showFullName),
+                      const SizedBox(width: 6),
+                      _difficultyToggleChip(),
                     ],
                   ),
                 ],

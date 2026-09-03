@@ -37,7 +37,10 @@ final appRouter = GoRouter(
     ShellRoute(
       builder: (context, state, child) => MainShell(child: child),
       routes: [
-        GoRoute(path: '/combos', builder: (_, __) => const CombosScreen()),
+        GoRoute(
+          path: '/combos',
+          builder: (_, state) => CombosScreen(initialDoneOnly: state.extra == true),
+        ),
         GoRoute(path: '/tricks', builder: (_, __) => const TricksScreen()),
         GoRoute(path: '/combos/create', builder: (_, __) => const CreateComboScreen()),
         GoRoute(path: '/preferences', builder: (_, __) => const PreferencesScreen()),
