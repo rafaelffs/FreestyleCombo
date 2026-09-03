@@ -15,7 +15,11 @@ import '../theme/app_colors.dart';
 /// itself renders too, so this is matching parity, not a compromise.
 /// [scale] multiplies every dimension — pass a larger value (e.g. 1.9) to
 /// make the control clearly the sheet's focal point. Which side shows WF vs
-/// SF is controlled by [FootOrientation] (Profile → "My strong foot").
+/// SF is controlled by [FootOrientation] (Profile → "My strong foot"). The
+/// badge is a sibling of the track inside a [Stack], not a child laid out
+/// inside it — its size is unrelated to the track's own height, and paint
+/// order (badge added after the track) is what puts it visually in front,
+/// riding above the track's top/bottom edge as it slides between sides.
 class FootToggle extends StatelessWidget {
   final bool value; // true = SF (strong foot), false = WF (weak foot)
   final VoidCallback? onTap;
@@ -25,18 +29,21 @@ class FootToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final trackW = 28.0 * scale;
-    final trackH = 14.0 * scale;
-    final knob = 12.0 * scale;
-    final footSize = 11.0 * scale;
+    final trackW = 34.0 * scale;
+    final trackH = 16.0 * scale;
+    final badge = 20.0 * scale;
+    final footSize = 12.0 * scale;
     final fontSize = 10.0 * scale;
     final gap = 4.0 * scale;
-    final radius = 7.0 * scale;
+    final radius = 8.0 * scale;
 
     final leftIsStrong = !FootOrientation.strongFootIsRight;
-    // The knob sits on the "strong" side when value is true (SF), the "weak"
-    // side otherwise — which physical side that is depends on orientation.
-    final knobOnLeft = value ? leftIsStrong : !leftIsStrong;
+    // The badge sits on the "strong" side when value is true (SF), the
+    // "weak" side otherwise — which physical side that is depends on
+    // orientation. Flush with the track's own left/right edge (not
+    // overshooting past it) so it never overlaps the WF/SF labels.
+    final badgeOnLeft = value ? leftIsStrong : !leftIsStrong;
+    final badgeLeft = badgeOnLeft ? 0.0 : trackW - badge;
 
     Widget label(String text, bool isStrong) {
       final active = isStrong == value;
@@ -57,30 +64,50 @@ class FootToggle extends StatelessWidget {
         children: [
           label(leftIsStrong ? 'SF' : 'WF', leftIsStrong),
           SizedBox(width: gap),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
+          SizedBox(
             width: trackW,
-            height: trackH,
-            padding: EdgeInsets.all(scale),
-            decoration: BoxDecoration(
-              color: value ? AppColors.indigoTint : AppColors.chipBg,
-              borderRadius: BorderRadius.circular(radius),
-              border: Border.all(color: value ? const Color(0xFFC7CCF7) : AppColors.line2),
-            ),
-            child: AnimatedAlign(
-              duration: const Duration(milliseconds: 150),
-              curve: Curves.easeOut,
-              alignment: knobOnLeft ? Alignment.centerLeft : Alignment.centerRight,
-              child: Container(
-                width: knob,
-                height: knob,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: value ? AppColors.indigo : AppColors.muted,
-                  shape: BoxShape.circle,
+            height: badge,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: (badge - trackH) / 2,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    height: trackH,
+                    decoration: BoxDecoration(
+                      color: value ? AppColors.indigoTint : AppColors.chipBg,
+                      borderRadius: BorderRadius.circular(radius),
+                      border: Border.all(color: value ? const Color(0xFFC7CCF7) : AppColors.line2),
+                    ),
+                  ),
                 ),
-                child: Icon(LucideIcons.footprints, size: footSize, color: Colors.white),
-              ),
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutBack,
+                  left: badgeLeft,
+                  top: 0,
+                  child: Container(
+                    width: badge,
+                    height: badge,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: value ? AppColors.indigo : AppColors.muted,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: (value ? AppColors.indigo : AppColors.muted).withValues(alpha: 0.35),
+                          blurRadius: 5 * scale,
+                          offset: Offset(0, 2 * scale),
+                        ),
+                      ],
+                    ),
+                    child: Icon(LucideIcons.footprints, size: footSize, color: Colors.white),
+                  ),
+                ),
+              ],
             ),
           ),
           SizedBox(width: gap),
