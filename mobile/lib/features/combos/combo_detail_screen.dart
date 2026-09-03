@@ -9,7 +9,6 @@ import '../../theme/app_colors.dart';
 import '../../widgets/combo_card.dart' show TrickNameDisplay;
 import '../../widgets/confirm_sheet.dart';
 import '../../widgets/difficulty_chip.dart';
-import '../../widgets/foot_toggle.dart';
 import '../../widgets/rate_combo_dialog.dart';
 import '../../widgets/setting_icon_button.dart';
 
@@ -28,6 +27,7 @@ class _SlotItem {
   final String? subComboId;
   final String? subComboName;
   final List<ComboTrickDto>? subComboTricks;
+  bool expanded;
 
   _SlotItem({
     this.trickId,
@@ -42,6 +42,7 @@ class _SlotItem {
     this.subComboId,
     this.subComboName,
     this.subComboTricks,
+    this.expanded = false,
   });
 }
 
@@ -138,15 +139,25 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
     );
   }
 
-  Future<void> _toggleFavourite(String comboId) async {
+  String _comboLabel(ComboDto combo) =>
+      (combo.name != null && combo.name!.isNotEmpty) ? combo.name! : combo.displayText;
+
+  void _showToast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _toggleFavourite(ComboDto combo) async {
     setState(() => _favLoading = true);
     try {
       if (_favoured) {
-        await ApiClient.instance.removeFavourite(comboId);
+        await ApiClient.instance.removeFavourite(combo.id);
       } else {
-        await ApiClient.instance.addFavourite(comboId);
+        await ApiClient.instance.addFavourite(combo.id);
       }
-      setState(() => _favoured = !_favoured);
+      final nowFavoured = !_favoured;
+      setState(() => _favoured = nowFavoured);
+      if (nowFavoured) _showToast('Added "${_comboLabel(combo)}" to favourites');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -206,15 +217,17 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
     context.push('/combos/create', extra: CopyFromCombo(tricks: combo.tricks ?? [], name: combo.name));
   }
 
-  Future<void> _toggleCompleted(String comboId) async {
+  Future<void> _toggleCompleted(ComboDto combo) async {
     setState(() => _completedLoading = true);
     try {
       if (_completed) {
-        await ApiClient.instance.unmarkCompleted(comboId);
+        await ApiClient.instance.unmarkCompleted(combo.id);
       } else {
-        await ApiClient.instance.markCompleted(comboId);
+        await ApiClient.instance.markCompleted(combo.id);
       }
-      setState(() => _completed = !_completed);
+      final nowCompleted = !_completed;
+      setState(() => _completed = nowCompleted);
+      if (nowCompleted) _showToast('You landed "${_comboLabel(combo)}"!');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -254,7 +267,7 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
                   authed: authed,
                   favoured: _favoured,
                   favLoading: _favLoading,
-                  onToggleFavourite: () => _toggleFavourite(combo.id),
+                  onToggleFavourite: () => _toggleFavourite(combo),
                   isPersonalReusable: _isPersonalReusable,
                   personalReusableLoading: _personalReusableLoading,
                   onTogglePersonalReusable: () => _togglePersonalReusable(combo.id),
@@ -352,7 +365,7 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
                     child: SizedBox(
                       height: 52,
                       child: FilledButton.icon(
-                        onPressed: _completedLoading ? null : () => _toggleCompleted(combo.id),
+                        onPressed: _completedLoading ? null : () => _toggleCompleted(combo),
                         style: FilledButton.styleFrom(
                           backgroundColor: _completed ? AppColors.green : AppColors.indigo,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -764,8 +777,8 @@ class _SequenceStepState extends State<_SequenceStep> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (!t.isTransition) ...[
-            FootToggle(value: t.strongFoot),
+          if (!t.strongFoot && !t.isTransition) ...[
+            _FlagTag(label: 'weak', bg: AppColors.amberBg, fg: AppColors.amber),
             const SizedBox(width: 6),
           ],
           if (t.noTouch && !t.isTransition) ...[
@@ -1021,6 +1034,15 @@ class _EditComboScreenState extends State<_EditComboScreen> {
     });
   }
 
+  void _reorderSlot(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) newIndex -= 1;
+      final item = _slots.removeAt(oldIndex);
+      _slots.insert(newIndex, item);
+      for (var i = 0; i < _slots.length; i++) _slots[i].position = i + 1;
+    });
+  }
+
   Future<void> _save() async {
     if (_slots.isEmpty) return;
     setState(() { _saving = true; _error = null; });
@@ -1229,16 +1251,27 @@ class _EditComboScreenState extends State<_EditComboScreen> {
         ),
       );
     }
-    return ListView.builder(
+    return ReorderableListView.builder(
+      buildDefaultDragHandles: false,
       padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
       itemCount: _slots.length,
+      onReorder: _reorderSlot,
       itemBuilder: (_, i) {
         final s = _slots[i];
         if (s.isSubCombo) {
-          return _EditSubComboSlot(slot: s, onRemove: () => _removeSlot(i));
+          return _EditSubComboSlot(
+            key: ObjectKey(s),
+            index: i,
+            slot: s,
+            onRemove: () => _removeSlot(i),
+            onToggleExpand: () => setState(() => s.expanded = !s.expanded),
+          );
         }
         return _EditSlot(
+          key: ObjectKey(s),
+          index: i,
           slot: s,
+          showAbbrev: !TrickNameDisplay.showFullName,
           onRemove: () => _removeSlot(i),
           onToggleStrongFoot: (v) => setState(() => s.strongFoot = v),
           onToggleNoTouch: (v) => setState(() => s.noTouch = v),
@@ -1375,13 +1408,18 @@ class _EditPickerRow extends StatelessWidget {
 }
 
 class _EditSlot extends StatelessWidget {
+  final int index;
   final _SlotItem slot;
+  final bool showAbbrev;
   final VoidCallback onRemove;
   final ValueChanged<bool> onToggleStrongFoot;
   final ValueChanged<bool> onToggleNoTouch;
 
   const _EditSlot({
+    super.key,
+    required this.index,
     required this.slot,
+    required this.showAbbrev,
     required this.onRemove,
     required this.onToggleStrongFoot,
     required this.onToggleNoTouch,
@@ -1399,6 +1437,11 @@ class _EditSlot extends StatelessWidget {
       ),
       child: Row(
         children: [
+          ReorderableDragStartListener(
+            index: index,
+            child: const Icon(Icons.drag_indicator, size: 18, color: AppColors.faint),
+          ),
+          const SizedBox(width: 8),
           Container(
             width: 30,
             height: 30,
@@ -1411,27 +1454,19 @@ class _EditSlot extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  slot.trickName,
-                  style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  slot.abbreviation,
-                  style: GoogleFonts.jetBrainsMono(fontSize: 11, color: AppColors.muted, fontWeight: FontWeight.w600),
-                ),
-              ],
+            child: Text(
+              slot.isTransition ? slot.abbreviation : (showAbbrev ? slot.abbreviation : slot.trickName),
+              style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           if (!slot.isTransition) ...[
-            FootToggle(
-              value: slot.strongFoot,
+            _EditFlagToggle(
+              label: 'SF',
+              active: slot.strongFoot,
               onTap: () => onToggleStrongFoot(!slot.strongFoot),
             ),
-            const SizedBox(width: 6),
             _EditFlagToggle(
               label: 'NT',
               active: slot.noTouch,
@@ -1476,60 +1511,105 @@ class _EditFlagToggle extends StatelessWidget {
 }
 
 class _EditSubComboSlot extends StatelessWidget {
+  final int index;
   final _SlotItem slot;
   final VoidCallback onRemove;
+  final VoidCallback onToggleExpand;
 
-  const _EditSubComboSlot({required this.slot, required this.onRemove});
+  const _EditSubComboSlot({
+    super.key,
+    required this.index,
+    required this.slot,
+    required this.onRemove,
+    required this.onToggleExpand,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
       decoration: BoxDecoration(
         color: AppColors.noTouchBg,
         border: Border.all(color: const Color(0xFFE5E0FB)),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 30,
-            height: 30,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(color: const Color(0xFFEDE9FE), borderRadius: BorderRadius.circular(9)),
-            child: Text(
-              '${slot.position}',
-              style: GoogleFonts.jetBrainsMono(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.noTouchText),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+            child: Row(
+              children: [
+                ReorderableDragStartListener(
+                  index: index,
+                  child: const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: Icon(Icons.drag_indicator, size: 18, color: AppColors.noTouchText),
+                  ),
+                ),
+                Container(
+                  width: 30,
+                  height: 30,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: const Color(0xFFEDE9FE), borderRadius: BorderRadius.circular(9)),
+                  child: Text(
+                    '${slot.position}',
+                    style: GoogleFonts.jetBrainsMono(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.noTouchText),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(color: const Color(0xFFEDE9FE), borderRadius: BorderRadius.circular(6)),
+                  child: Text(
+                    'COMBO',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 9.5, fontWeight: FontWeight.w800, color: AppColors.noTouchText, letterSpacing: 0.4),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    slot.subComboName ?? '',
+                    style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 14),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(slot.expanded ? Icons.expand_less : Icons.expand_more, size: 20, color: AppColors.noTouchText),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: onToggleExpand,
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 18, color: AppColors.muted),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: onRemove,
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-            decoration: BoxDecoration(color: const Color(0xFFEDE9FE), borderRadius: BorderRadius.circular(6)),
-            child: Text(
-              'COMBO',
-              style: GoogleFonts.plusJakartaSans(fontSize: 9.5, fontWeight: FontWeight.w800, color: AppColors.noTouchText, letterSpacing: 0.4),
+          if (slot.expanded && slot.subComboTricks != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(13, 0, 13, 12),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: slot.subComboTricks!.map((t) {
+                  final suffix = t.noTouch ? '·nt' : (!t.strongFoot ? '·wf' : '');
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(9)),
+                    child: Text(
+                      '${t.position}. ${t.abbreviation ?? ''}$suffix',
+                      style: GoogleFonts.jetBrainsMono(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.ink2),
+                    ),
+                  );
+                }).toList(),
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              slot.subComboName ?? '',
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 14),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Text(
-            '${slot.subComboTricks?.length ?? 0} tricks',
-            style: GoogleFonts.plusJakartaSans(fontSize: 11.5, color: AppColors.muted, fontWeight: FontWeight.w600),
-          ),
-          IconButton(
-            icon: const Icon(Icons.close, size: 18, color: AppColors.muted),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: onRemove,
-          ),
         ],
       ),
     );

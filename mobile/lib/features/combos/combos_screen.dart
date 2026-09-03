@@ -10,6 +10,8 @@ import '../../theme/app_colors.dart';
 import '../../widgets/combo_card.dart';
 import '../../widgets/display_options.dart';
 
+enum _DoneFilter { all, done, undone }
+
 class CombosScreen extends StatefulWidget {
   final bool initialDoneOnly;
 
@@ -21,6 +23,7 @@ class CombosScreen extends StatefulWidget {
 
 class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  late Future<List<ComboDto>> _allFuture;
   late Future<PagedResult<ComboDto>> _publicFuture;
   late Future<PagedResult<ComboDto>> _mineFuture;
   late Future<List<ComboDto>> _favouritesFuture;
@@ -28,7 +31,7 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
 
   int? _publicCount;
   int? _mineCount;
-  bool _doneOnly = false;
+  _DoneFilter _doneFilter = _DoneFilter.all;
   final _searchCtrl = TextEditingController();
   String _search = '';
   Timer? _searchDebounce;
@@ -36,9 +39,11 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    _doneOnly = widget.initialDoneOnly;
-    final tabCount = _authed ? 3 : 1;
-    _tabController = TabController(length: tabCount, vsync: this, initialIndex: _authed ? 1 : 0);
+    _doneFilter = widget.initialDoneOnly ? _DoneFilter.done : _DoneFilter.all;
+    // Segments (when authed): All, Public, Mine, Favourites — default lands
+    // on "Mine" (index 2) same as before "All" was added.
+    final tabCount = _authed ? 4 : 1;
+    _tabController = TabController(length: tabCount, vsync: this, initialIndex: _authed ? 2 : 0);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) setState(() {});
     });
@@ -46,6 +51,7 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
     if (_authed) {
       _loadMine();
       _loadFavourites();
+      _loadAll();
     }
   }
 
@@ -62,9 +68,37 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 350), () {
       _loadPublic();
-      if (_authed) _loadMine();
+      if (_authed) {
+        _loadMine();
+        _loadAll();
+      }
     });
   }
+
+  // "All" = every Public combo, plus your own combos regardless of
+  // visibility (Private/PendingReview ones only you can see) — merged and
+  // de-duplicated client-side, since there's no single paginated endpoint
+  // for "everything visible to me". Favourites stays its own thing (only
+  // combos you've explicitly favourited), unaffected by this tab.
+  Future<List<ComboDto>> _fetchAllCombined() async {
+    final results = await Future.wait([
+      ApiClient.instance.getPublicCombos(search: _search.isEmpty ? null : _search, pageSize: 50),
+      ApiClient.instance.getMyCombos(search: _search.isEmpty ? null : _search, pageSize: 50),
+    ]);
+    final merged = <String, ComboDto>{};
+    for (final c in results[1].items) {
+      merged[c.id] = c; // "mine" first — carries the full owner-context flags
+    }
+    for (final c in results[0].items) {
+      merged.putIfAbsent(c.id, () => c);
+    }
+    final list = merged.values.toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
+
+  void _loadAll() => setState(() {
+        _allFuture = _fetchAllCombined();
+      });
 
   void _loadPublic() {
     final future = ApiClient.instance.getPublicCombos(search: _search.isEmpty ? null : _search);
@@ -104,9 +138,9 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
         }
         final items = (snap.data?.items ?? [])
             .where((c) => !filterPublic || c.visibility != 'Public')
-            .where((c) => !_doneOnly || c.isCompleted)
+            .where(_matchesDoneFilter)
             .toList();
-        if (items.isEmpty) return Center(child: _doneOnly ? _emptyState(Icons.check_circle_outline, "You haven't marked any of these as done yet.") : emptyWidget);
+        if (items.isEmpty) return Center(child: _doneEmptyState() ?? emptyWidget);
         return _listView(items, showActions, onRefresh);
       },
     );
@@ -129,13 +163,13 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
         }
         final q = _search.toLowerCase();
         final items = (snap.data ?? [])
-            .where((c) => !_doneOnly || c.isCompleted)
+            .where(_matchesDoneFilter)
             .where((c) =>
                 q.isEmpty ||
                 (c.name ?? c.displayText).toLowerCase().contains(q) ||
                 (c.ownerUserName ?? '').toLowerCase().contains(q))
             .toList();
-        if (items.isEmpty) return Center(child: _doneOnly ? _emptyState(Icons.check_circle_outline, "You haven't marked any of these as done yet.") : emptyWidget);
+        if (items.isEmpty) return Center(child: _doneEmptyState() ?? emptyWidget);
         return _listView(items, showActions, onRefresh);
       },
     );
@@ -186,30 +220,63 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
         ],
       );
 
+  bool _matchesDoneFilter(ComboDto c) {
+    switch (_doneFilter) {
+      case _DoneFilter.all:
+        return true;
+      case _DoneFilter.done:
+        return c.isCompleted;
+      case _DoneFilter.undone:
+        return !c.isCompleted;
+    }
+  }
+
+  Widget? _doneEmptyState() {
+    switch (_doneFilter) {
+      case _DoneFilter.all:
+        return null;
+      case _DoneFilter.done:
+        return _emptyState(Icons.check_circle_outline, "You haven't marked any of these as done yet.");
+      case _DoneFilter.undone:
+        return _emptyState(Icons.check_circle, "You've marked all of these as done.");
+    }
+  }
+
+  // Cycles All -> Done -> Undone -> All on tap, one click per state (not a
+  // 2-click round trip back to "off") — label and icon change together so
+  // the current state is always legible at a glance, not just implied by color.
   Widget _doneFilterChip() {
+    final (label, icon) = switch (_doneFilter) {
+      _DoneFilter.all => ('All', Icons.list_alt),
+      _DoneFilter.done => ('Done', Icons.check_circle),
+      _DoneFilter.undone => ('Not done', Icons.radio_button_unchecked),
+    };
+    final active = _doneFilter != _DoneFilter.all;
     return GestureDetector(
-      onTap: () => setState(() => _doneOnly = !_doneOnly),
+      onTap: () => setState(() {
+        _doneFilter = switch (_doneFilter) {
+          _DoneFilter.all => _DoneFilter.done,
+          _DoneFilter.done => _DoneFilter.undone,
+          _DoneFilter.undone => _DoneFilter.all,
+        };
+      }),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: _doneOnly ? AppColors.indigo : AppColors.chipBg,
+          color: active ? AppColors.indigo : AppColors.chipBg,
           borderRadius: BorderRadius.circular(9),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              _doneOnly ? Icons.check_circle : Icons.check_circle_outline,
-              size: 14,
-              color: _doneOnly ? Colors.white : AppColors.ink2,
-            ),
+            Icon(icon, size: 14, color: active ? Colors.white : AppColors.ink2),
             const SizedBox(width: 4),
             Text(
-              'Done',
+              label,
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w700,
-                color: _doneOnly ? Colors.white : AppColors.ink2,
+                color: active ? Colors.white : AppColors.ink2,
               ),
             ),
           ],
@@ -275,6 +342,7 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     final segments = [
+      if (_authed) 'All',
       'Public',
       if (_authed) 'Mine',
       if (_authed) 'Favourites',
@@ -325,6 +393,7 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
                 if (_authed) {
                   _loadMine();
                   _loadFavourites();
+                  _loadAll();
                 }
               },
             ),
@@ -337,7 +406,10 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
               onTap: () => context.push('/combos/create').then((_) {
                 if (mounted) {
                   _loadPublic();
-                  if (_authed) _loadMine();
+                  if (_authed) {
+                    _loadMine();
+                    _loadAll();
+                  }
                 }
               }),
             ),
@@ -410,6 +482,13 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
               child: TabBarView(
                 controller: _tabController,
                 children: [
+                  if (_authed)
+                    _buildSimpleList(
+                      _allFuture,
+                      true,
+                      _loadAll,
+                      _emptyState(Icons.layers_outlined, 'No combos yet.'),
+                    ),
                   _buildPagedList(
                     _publicFuture,
                     _authed,
@@ -426,7 +505,10 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
                         "You haven't created any combos yet.",
                         ctaLabel: 'Create your first combo',
                         onCta: () => context.push('/combos/create').then((_) {
-                          if (mounted) _loadMine();
+                          if (mounted) {
+                            _loadMine();
+                            _loadAll();
+                          }
                         }),
                       ),
                       filterPublic: true,

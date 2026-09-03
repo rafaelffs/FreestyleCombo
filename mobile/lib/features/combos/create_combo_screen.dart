@@ -1822,11 +1822,11 @@ class _SlotTile extends StatelessWidget {
           // A transition trick (e.g. "Combo") is a connector, not a move —
           // strong/weak foot and no-touch don't apply to it.
           if (!slot.isTransition) ...[
-            FootToggle(
-              value: slot.strongFoot,
+            _SlotFlagToggle(
+              label: 'WF',
+              active: !slot.strongFoot,
               onTap: () => onToggleStrongFoot(!slot.strongFoot),
             ),
-            const SizedBox(width: 6),
             _SlotFlagToggle(
               label: 'NT',
               active: slot.noTouch,

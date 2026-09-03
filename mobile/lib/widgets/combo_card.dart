@@ -82,6 +82,14 @@ class _ComboCardState extends State<ComboCard> {
     _isPersonalReusable = widget.combo.isPersonalReusable;
   }
 
+  String get _comboLabel =>
+      (widget.combo.name != null && widget.combo.name!.isNotEmpty) ? widget.combo.name! : widget.combo.displayText;
+
+  void _showToast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _toggleFavourite() async {
     setState(() => _favLoading = true);
     try {
@@ -90,8 +98,10 @@ class _ComboCardState extends State<ComboCard> {
       } else {
         await ApiClient.instance.addFavourite(widget.combo.id);
       }
-      setState(() => _favoured = !_favoured);
+      final nowFavoured = !_favoured;
+      setState(() => _favoured = nowFavoured);
       widget.onRefresh?.call();
+      if (nowFavoured) _showToast('Added "$_comboLabel" to favourites');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -117,6 +127,7 @@ class _ComboCardState extends State<ComboCard> {
           _completed = true;
           _completionCount = _completionCount + 1;
         });
+        _showToast('You landed "$_comboLabel"!');
       }
       widget.onRefresh?.call();
     } catch (e) {
