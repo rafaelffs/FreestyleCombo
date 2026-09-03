@@ -271,7 +271,7 @@ export function TricksPage() {
     })
 
     if (q !== '') {
-      const exactRank = (tr: TrickDto) =>
+      const exactRank = (tr: TrickItem) =>
         tr.abbreviation.toLowerCase() === q || tr.name.toLowerCase() === q ? 0 : 1
       list = [...list].sort((a, b) => exactRank(a) - exactRank(b))
     }

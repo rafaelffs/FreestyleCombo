@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import '../core/auth/auth_service.dart';
+import '../core/models/combo.dart';
 import '../features/auth/forgot_password_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/register_screen.dart';
@@ -42,7 +43,10 @@ final appRouter = GoRouter(
           builder: (_, state) => CombosScreen(initialDoneOnly: state.extra == true),
         ),
         GoRoute(path: '/tricks', builder: (_, __) => const TricksScreen()),
-        GoRoute(path: '/combos/create', builder: (_, __) => const CreateComboScreen()),
+        GoRoute(
+          path: '/combos/create',
+          builder: (_, state) => CreateComboScreen(copyFrom: state.extra as CopyFromCombo?),
+        ),
         GoRoute(path: '/preferences', builder: (_, __) => const PreferencesScreen()),
         GoRoute(path: '/account', builder: (_, __) => const AccountScreen()),
         GoRoute(path: '/admin/approvals', builder: (_, __) => const AdminSubmissionsScreen()),

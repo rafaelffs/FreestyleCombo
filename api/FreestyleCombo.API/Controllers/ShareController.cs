@@ -19,8 +19,9 @@ public class ShareController : ControllerBase
     {
         var combo = await _repo.GetByIdAsync(id, ct);
 
-        // Only publicly visible combos are shareable
-        if (combo is null || combo.Visibility != Core.Entities.ComboVisibility.Public)
+        // Anyone holding a combo's id can view it regardless of Visibility —
+        // same "anyone with the link can view" model as GetComboHandler.
+        if (combo is null)
             return Redirect("/combos");
 
         var appOrigin = $"{Request.Scheme}://{Request.Host}";

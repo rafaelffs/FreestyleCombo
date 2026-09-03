@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
 import { FootToggle } from '@/components/ui/foot-toggle'
-import { combosApi, tricksApi, preferencesApi, extractError, comboDisplayName, type GenerateComboOverrides, type TrickItem, type ComboItem, type BuildComboTrickItem } from '@/lib/api'
+import { combosApi, tricksApi, preferencesApi, extractError, comboDisplayName, type GenerateComboOverrides, type TrickItem, type ComboItem, type BuildComboTrickItem, type ComboTrickDto } from '@/lib/api'
 import { isAuthenticated, setPendingCombo } from '@/lib/auth'
 import { getShowDifficulty } from '@/lib/displayPrefs'
 import { Button } from '@/components/ui/button'
@@ -59,6 +59,35 @@ function prevLastTrickIsCrossOver(slots: SlotItem[], i: number): boolean {
   return false
 }
 
+function slotsFromComboTricks(tricks: ComboTrickDto[]): SlotItem[] {
+  return tricks.map((t_): SlotItem => {
+    if (t_.type === 'combo') {
+      return {
+        type: 'combo',
+        subComboId: t_.subComboId,
+        position: t_.position,
+        strongFoot: false,
+        noTouch: false,
+        comboName: t_.subComboName ?? '',
+        trickCount: t_.subComboTricks.length,
+        totalDifficulty: t_.subComboTricks.reduce((sum, st) => sum + st.difficulty, 0),
+        trickSlots: t_.subComboTricks.map((st) => ({ abbreviation: st.abbreviation, noTouch: st.noTouch })),
+      }
+    }
+    return {
+      type: 'trick',
+      trickId: t_.trickId,
+      position: t_.position,
+      strongFoot: t_.strongFoot,
+      noTouch: t_.noTouch,
+      trickName: t_.name,
+      abbreviation: t_.abbreviation,
+      crossOver: t_.crossOver,
+      isTransition: t_.isTransition,
+    }
+  })
+}
+
 function applyNoTouchRules(slots: SlotItem[]): SlotItem[] {
   return slots.map((slot, i) => {
     if (slot.type === 'combo') return slot
@@ -67,8 +96,14 @@ function applyNoTouchRules(slots: SlotItem[]): SlotItem[] {
   })
 }
 
+interface CopyFromComboState {
+  copyFromTricks: ComboTrickDto[]
+  copyFromName?: string | null
+}
+
 export function CreateComboPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const authed = isAuthenticated()
   const { t } = useTranslation()
   const [mode, setMode] = useState<'choose' | 'generate' | 'build'>('choose')
@@ -95,6 +130,20 @@ export function CreateComboPage() {
   const touchDragOverIndex = useRef<number | null>(null)
   const [touchHeldIndex, setTouchHeldIndex] = useState<number | null>(null)
   const slotsContainerRef = useRef<HTMLDivElement>(null)
+
+  // Arrived here from a combo's "Save a copy" action — pre-fill the build
+  // screen with the source combo's tricks so the user can save immediately
+  // or tweak first, then clear the state so a refresh/back doesn't re-apply it.
+  useEffect(() => {
+    const copyState = location.state as CopyFromComboState | null
+    if (!copyState?.copyFromTricks) return
+    setName(copyState.copyFromName ?? '')
+    setSlots(applyNoTouchRules(slotsFromComboTricks(copyState.copyFromTricks)))
+    setMobileBuildTab('combo')
+    setMode('build')
+    navigate(location.pathname, { replace: true, state: null })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const el = slotsContainerRef.current

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
@@ -183,6 +184,19 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
     }
   }
 
+  Future<void> _shareCombo(ComboDto combo) async {
+    final url = 'https://www.fscombo.com/share/combos/${combo.id}';
+    await Share.share(url, subject: combo.name ?? combo.displayText);
+  }
+
+  void _saveCopy(ComboDto combo) {
+    if (!AuthService.instance.isAuthenticated) {
+      context.push('/login');
+      return;
+    }
+    context.push('/combos/create', extra: CopyFromCombo(tricks: combo.tricks ?? [], name: combo.name));
+  }
+
   Future<void> _toggleCompleted(String comboId) async {
     setState(() => _completedLoading = true);
     try {
@@ -237,6 +251,8 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
                   onTogglePersonalReusable: () => _togglePersonalReusable(combo.id),
                   onEdit: () => _openEdit(combo),
                   onDelete: () => _deleteCombo(combo.id),
+                  onShare: () => _shareCombo(combo),
+                  onSaveCopy: isOwner ? null : () => _saveCopy(combo),
                 ),
               ),
               SliverPadding(
@@ -401,6 +417,8 @@ class _DetailHero extends StatelessWidget {
   final VoidCallback onTogglePersonalReusable;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onShare;
+  final VoidCallback? onSaveCopy;
 
   const _DetailHero({
     required this.combo,
@@ -415,6 +433,8 @@ class _DetailHero extends StatelessWidget {
     required this.onTogglePersonalReusable,
     required this.onEdit,
     required this.onDelete,
+    required this.onShare,
+    required this.onSaveCopy,
   });
 
   @override
@@ -466,6 +486,14 @@ class _DetailHero extends StatelessWidget {
                             iconColor: isPersonalReusable ? AppColors.lime : Colors.white,
                             onTap: personalReusableLoading ? null : onTogglePersonalReusable,
                           ),
+                        ],
+                        if (isOwner || combo.visibility == 'Public') ...[
+                          const SizedBox(width: 9),
+                          _HeroIconButton(icon: Icons.ios_share, onTap: onShare),
+                        ],
+                        if (!isOwner && onSaveCopy != null) ...[
+                          const SizedBox(width: 9),
+                          _HeroIconButton(icon: Icons.playlist_add, onTap: onSaveCopy),
                         ],
                         if (isOwner) ...[
                           const SizedBox(width: 9),

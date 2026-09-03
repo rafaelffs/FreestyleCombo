@@ -200,6 +200,8 @@
     "ratings": "{{count}} ratings",
     "rateCombo": "Rate this combo",
     "editCombo": "Edit combo",
+    "saveCopy": "Save a copy",
+    "loginToSave": "Log in to save a copy",
     "deleteCombo": "Delete combo",
     "deleteConfirm": "Delete this combo? This action cannot be undone.",
     "deleteFailed": "Delete failed",

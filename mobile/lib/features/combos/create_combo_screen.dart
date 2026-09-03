@@ -17,7 +17,9 @@ enum _Mode { choose, generate, build }
 enum _TypeFilter { all, tricks, combos }
 
 class CreateComboScreen extends StatefulWidget {
-  const CreateComboScreen({super.key});
+  final CopyFromCombo? copyFrom;
+
+  const CreateComboScreen({super.key, this.copyFrom});
 
   @override
   State<CreateComboScreen> createState() => _CreateComboScreenState();
@@ -132,6 +134,44 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   String? _buildError;
   ComboDto? _buildResult;
   int _buildTab = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    final copyFrom = widget.copyFrom;
+    if (copyFrom != null) {
+      _nameCtrl.text = copyFrom.name ?? '';
+      _populateSlotsFromComboTricks(copyFrom.tricks);
+      _mode = _Mode.build;
+      _buildTab = 1;
+      _loadTricks();
+    }
+  }
+
+  void _populateSlotsFromComboTricks(List<ComboTrickDto> tricks) {
+    _slots.clear();
+    for (final t in tricks) {
+      if (t.type == 'combo') {
+        _slots.add(_SlotItem.combo(
+          subComboId: t.subComboId!,
+          subComboName: t.subComboName ?? '',
+          subComboTricks: t.subComboTricks ?? [],
+          position: t.position,
+        ));
+      } else {
+        _slots.add(_SlotItem.trick(
+          trickId: t.trickId!,
+          trickName: t.name ?? '',
+          abbreviation: t.abbreviation ?? '',
+          crossOver: t.crossOver,
+          position: t.position,
+          strongFoot: t.strongFoot,
+          noTouch: t.noTouch,
+          isTransition: t.isTransition,
+        ));
+      }
+    }
+  }
 
   @override
   void dispose() {

@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
 import { FootToggle } from '@/components/ui/foot-toggle'
 import { combosApi, tricksApi, extractError, type BuildComboTrickItem, type TrickItem } from '@/lib/api'
-import { getUserId, isAdmin } from '@/lib/auth'
+import { getUserId, isAdmin, isAuthenticated } from '@/lib/auth'
 import { getShowDifficulty } from '@/lib/displayPrefs'
 import { SEO } from '@/components/SEO'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -135,6 +135,32 @@ export function ComboDetailPage() {
     onError: (err) => setReusableError(extractError(err, t('comboDetail.setReusableFailed'))),
   })
 
+  const [copied, setCopied] = useState(false)
+  const handleShare = useCallback(async () => {
+    if (!combo) return
+    const spaUrl = `${window.location.origin}/combos/${combo.id}`
+    const shareUrl = `${window.location.origin}/share/combos/${combo.id}`
+    const shareData = { title: combo.name ?? combo.displayText, url: shareUrl }
+    if (navigator.share && navigator.canShare?.(shareData)) {
+      try {
+        await navigator.share(shareData)
+      } catch {
+        // user cancelled or share failed — no-op
+      }
+    } else {
+      await navigator.clipboard.writeText(spaUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }, [combo])
+
+  const saveCopy = useCallback(() => {
+    if (!combo) return
+    navigate('/combos/create', {
+      state: { copyFromTricks: combo.tricks ?? [], copyFromName: combo.name },
+    })
+  }, [combo, navigate])
+
   if (isLoading) return <p className="text-gray-500">{t('comboDetail.loading')}</p>
   if (error || !combo) return <p className="text-red-600">{t('comboDetail.notFound')}</p>
 
@@ -228,10 +254,15 @@ export function ComboDetailPage() {
         description={combo.aiDescription ?? `A freestyle football combo with ${combo.trickCount} tricks.`}
         path={`/combos/${id}`}
       />
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3">
         <Link to="/combos" className="text-sm text-gray-500 hover:text-gray-700">
           {t('comboDetail.back')}
         </Link>
+        {(isOwner || combo.visibility === 'Public') && (
+          <Button variant="outline" size="sm" onClick={() => void handleShare()}>
+            {copied ? t('combos.shareCopied') : t('combos.share')}
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -350,6 +381,17 @@ export function ComboDetailPage() {
               <Button variant="outline" onClick={() => setRatingOpen(true)}>
                 {t('comboDetail.rateCombo')}
               </Button>
+            )}
+            {!isOwner && (
+              isAuthenticated() ? (
+                <Button variant="outline" onClick={saveCopy}>
+                  {t('comboDetail.saveCopy')}
+                </Button>
+              ) : (
+                <Button variant="outline" onClick={() => navigate('/login')}>
+                  {t('comboDetail.loginToSave')}
+                </Button>
+              )
             )}
             {isOwner && !editing && (
               <Button variant="outline" onClick={startEdit}>

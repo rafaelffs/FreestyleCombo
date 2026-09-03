@@ -307,7 +307,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
                 <HalfStarIcon />
               </button>
             )}
-            {combo.visibility === 'Public' && (
+            {(isOwner || combo.visibility === 'Public') && (
               <button
                 type="button"
                 onClick={() => void handleShare()}

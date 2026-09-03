@@ -239,6 +239,16 @@ class ComboTrickDto {
   }
 }
 
+/// Passed via go_router `extra` from a combo's "Save a copy" action to the
+/// create-combo screen, which pre-fills build mode with these tricks so the
+/// user can save immediately or tweak first.
+class CopyFromCombo {
+  final List<ComboTrickDto> tricks;
+  final String? name;
+
+  const CopyFromCombo({required this.tricks, this.name});
+}
+
 // ── ComboDto ───────────────────────────────────────────────────────────────────
 
 class ComboDto {
