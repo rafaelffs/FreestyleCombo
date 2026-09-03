@@ -86,9 +86,9 @@ class FootToggle extends StatelessWidget {
                   border: Border.all(color: Colors.white, width: 2.2 * scale),
                   boxShadow: [
                     BoxShadow(
-                      color: (value ? AppColors.indigo : AppColors.muted).withValues(alpha: 0.45),
-                      blurRadius: 6 * scale,
-                      offset: Offset(0, 2 * scale),
+                      color: (value ? AppColors.indigo : AppColors.muted).withValues(alpha: 0.4),
+                      blurRadius: 4 * scale,
+                      offset: Offset(0, 1.5 * scale),
                     ),
                   ],
                 ),
