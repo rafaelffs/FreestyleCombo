@@ -54,6 +54,7 @@ class ComboDetailScreen extends StatefulWidget {
 
 class _ComboDetailScreenState extends State<ComboDetailScreen> {
   late Future<ComboDto> _future;
+  final _shareButtonKey = GlobalKey();
 
   bool _favLoading = false;
   bool _favoured = false;
@@ -186,7 +187,14 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
 
   Future<void> _shareCombo(ComboDto combo) async {
     final url = 'https://www.fscombo.com/share/combos/${combo.id}';
-    await Share.share(url, subject: combo.name ?? combo.displayText);
+    // iOS requires a non-zero sharePositionOrigin (the share sheet's popover
+    // anchor) — without it the native call throws PlatformException instead
+    // of presenting anything, even on iPhone.
+    final box = _shareButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    final origin = box != null && box.hasSize
+        ? (box.localToGlobal(Offset.zero) & box.size)
+        : const Rect.fromLTWH(0, 0, 1, 1); // just needs to be non-zero; only affects iPad popover arrow position
+    await Share.share(url, subject: combo.name ?? combo.displayText, sharePositionOrigin: origin);
   }
 
   void _saveCopy(ComboDto combo) {
@@ -253,6 +261,7 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
                   onDelete: () => _deleteCombo(combo.id),
                   onShare: () => _shareCombo(combo),
                   onSaveCopy: isOwner ? null : () => _saveCopy(combo),
+                  shareButtonKey: _shareButtonKey,
                 ),
               ),
               SliverPadding(
@@ -419,6 +428,7 @@ class _DetailHero extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback onShare;
   final VoidCallback? onSaveCopy;
+  final Key shareButtonKey;
 
   const _DetailHero({
     required this.combo,
@@ -435,6 +445,7 @@ class _DetailHero extends StatelessWidget {
     required this.onDelete,
     required this.onShare,
     required this.onSaveCopy,
+    required this.shareButtonKey,
   });
 
   @override
@@ -489,7 +500,7 @@ class _DetailHero extends StatelessWidget {
                         ],
                         if (isOwner || combo.visibility == 'Public') ...[
                           const SizedBox(width: 9),
-                          _HeroIconButton(icon: Icons.ios_share, onTap: onShare),
+                          _HeroIconButton(key: shareButtonKey, icon: Icons.ios_share, onTap: onShare),
                         ],
                         if (!isOwner && onSaveCopy != null) ...[
                           const SizedBox(width: 9),
@@ -560,7 +571,7 @@ class _HeroIconButton extends StatelessWidget {
   final Color? iconColor;
   final VoidCallback? onTap;
 
-  const _HeroIconButton({required this.icon, this.iconColor, this.onTap});
+  const _HeroIconButton({super.key, required this.icon, this.iconColor, this.onTap});
 
   @override
   Widget build(BuildContext context) {

@@ -8,7 +8,7 @@ import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/combo_card.dart';
-import '../../widgets/difficulty_chip.dart';
+import '../../widgets/display_options.dart';
 
 class CombosScreen extends StatefulWidget {
   final bool initialDoneOnly;
@@ -218,36 +218,39 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _difficultyToggleChip() {
-    final active = DifficultyDisplay.show;
-    return GestureDetector(
-      onTap: () => setState(() => DifficultyDisplay.show = !DifficultyDisplay.show),
-      child: Container(
-        padding: const EdgeInsets.all(5),
-        decoration: BoxDecoration(
-          color: active ? AppColors.indigo : AppColors.chipBg,
-          borderRadius: BorderRadius.circular(9),
-        ),
-        child: Icon(Icons.speed, size: 16, color: active ? Colors.white : AppColors.ink2),
-      ),
-    );
-  }
-
-  Widget _nameFormatChip(String label, bool active) {
-    return GestureDetector(
-      onTap: () => setState(() => TrickNameDisplay.showFullName = label == 'Full name'),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: active ? AppColors.indigo : AppColors.chipBg,
-          borderRadius: BorderRadius.circular(9),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 11.5,
-            fontWeight: FontWeight.w700,
-            color: active ? Colors.white : AppColors.ink2,
+  void _showDisplaySheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.bg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 12),
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: AppColors.line2, borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 16, 22, 8),
+                  child: Text(
+                    'Display',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
+                  child: buildDisplayOptionsSection(onChanged: () => setSt(() => setState(() {}))),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -314,7 +317,7 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
         ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 22),
+            padding: const EdgeInsets.only(right: 8),
             child: _AppBarIconButton(
               icon: Icons.refresh,
               onTap: () {
@@ -324,6 +327,19 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
                   _loadFavourites();
                 }
               },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 22),
+            child: _AppBarIconButton(
+              icon: Icons.add,
+              gradient: true,
+              onTap: () => context.push('/combos/create').then((_) {
+                if (mounted) {
+                  _loadPublic();
+                  if (_authed) _loadMine();
+                }
+              }),
             ),
           ),
         ],
@@ -379,14 +395,13 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
                     _doneFilterChip()
                   else
                     const SizedBox.shrink(),
-                  Row(
-                    children: [
-                      _nameFormatChip('Full name', TrickNameDisplay.showFullName),
-                      const SizedBox(width: 6),
-                      _nameFormatChip('Abbr.', !TrickNameDisplay.showFullName),
-                      const SizedBox(width: 6),
-                      _difficultyToggleChip(),
-                    ],
+                  GestureDetector(
+                    onTap: _showDisplaySheet,
+                    child: Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(color: AppColors.chipBg, borderRadius: BorderRadius.circular(11)),
+                      child: const Icon(Icons.tune, size: 18, color: AppColors.ink2),
+                    ),
                   ),
                 ],
               ),
@@ -436,13 +451,17 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
 class _AppBarIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-  const _AppBarIconButton({required this.icon, required this.onTap});
+  final bool gradient;
+  const _AppBarIconButton({required this.icon, required this.onTap, this.gradient = false});
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(13),
+      color: gradient ? Colors.transparent : AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(13),
+        side: gradient ? BorderSide.none : const BorderSide(color: AppColors.line2),
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(13),
         onTap: onTap,
@@ -450,10 +469,10 @@ class _AppBarIconButton extends StatelessWidget {
           width: 42,
           height: 42,
           decoration: BoxDecoration(
+            gradient: gradient ? AppColors.grad : null,
             borderRadius: BorderRadius.circular(13),
-            border: Border.all(color: AppColors.line2),
           ),
-          child: Icon(icon, size: 20, color: AppColors.ink2),
+          child: Icon(icon, size: 20, color: gradient ? Colors.white : AppColors.ink2),
         ),
       ),
     );

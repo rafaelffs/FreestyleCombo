@@ -6,6 +6,7 @@ import '../../core/models/combo.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/combo_card.dart' show TrickNameDisplay;
 import '../../widgets/difficulty_chip.dart';
+import '../../widgets/display_options.dart';
 import '../../widgets/submit_trick_sheet.dart';
 
 enum _SortKey { abbreviation, name, revolution, difficulty }
@@ -386,6 +387,17 @@ class _TricksScreenState extends State<TricksScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(22, 16, 22, 8),
                   child: Text(
+                    'Display',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
+                  child: buildDisplayOptionsSection(onChanged: () => setSt(() => setState(() {}))),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 8, 22, 8),
+                  child: Text(
                     'Sort by',
                     style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
                   ),
@@ -503,42 +515,6 @@ class _TricksScreenState extends State<TricksScreen> {
           label,
           style: GoogleFonts.plusJakartaSans(
             fontSize: 12.5,
-            fontWeight: FontWeight.w700,
-            color: active ? Colors.white : AppColors.ink2,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _difficultyToggleChip() {
-    final active = DifficultyDisplay.show;
-    return GestureDetector(
-      onTap: () => setState(() => DifficultyDisplay.show = !DifficultyDisplay.show),
-      child: Container(
-        padding: const EdgeInsets.all(7),
-        decoration: BoxDecoration(
-          color: active ? AppColors.indigo : AppColors.chipBg,
-          borderRadius: BorderRadius.circular(11),
-        ),
-        child: Icon(Icons.speed, size: 18, color: active ? Colors.white : AppColors.ink2),
-      ),
-    );
-  }
-
-  Widget _nameFormatChip(String label, bool active) {
-    return GestureDetector(
-      onTap: () => setState(() => TrickNameDisplay.showFullName = label == 'Name'),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          color: active ? AppColors.indigo : AppColors.chipBg,
-          borderRadius: BorderRadius.circular(11),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 11.5,
             fontWeight: FontWeight.w700,
             color: active ? Colors.white : AppColors.ink2,
           ),
@@ -913,11 +889,6 @@ class _TricksScreenState extends State<TricksScreen> {
                     ),
                   ),
                 ),
-                _nameFormatChip('Name', TrickNameDisplay.showFullName),
-                const SizedBox(width: 6),
-                _nameFormatChip('Abbr.', !TrickNameDisplay.showFullName),
-                const SizedBox(width: 6),
-                _difficultyToggleChip(),
                 const SizedBox(width: 6),
                 GestureDetector(
                   onTap: _showSortSheet,
