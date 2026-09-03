@@ -343,6 +343,7 @@ class PreviewTrickItem {
   final int difficulty;
   final bool crossOver;
   final double revolution;
+  final bool isTransition;
 
   const PreviewTrickItem({
     required this.trickId,
@@ -354,6 +355,7 @@ class PreviewTrickItem {
     required this.difficulty,
     required this.crossOver,
     required this.revolution,
+    this.isTransition = false,
   });
 
   factory PreviewTrickItem.fromJson(Map<String, dynamic> j) => PreviewTrickItem(
@@ -366,6 +368,7 @@ class PreviewTrickItem {
         difficulty: j['difficulty'] as int,
         crossOver: j['crossOver'] as bool,
         revolution: (j['revolution'] as num).toDouble(),
+        isTransition: j['isTransition'] as bool? ?? false,
       );
 }
 

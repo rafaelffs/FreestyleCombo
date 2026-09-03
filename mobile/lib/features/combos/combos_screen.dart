@@ -345,7 +345,7 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
       if (_authed) 'All',
       'Public',
       if (_authed) 'Mine',
-      if (_authed) 'Favourites',
+      if (_authed) Icons.favorite,
     ];
 
     final subtitleParts = <String>[
@@ -562,7 +562,7 @@ class _AppBarIconButton extends StatelessWidget {
 }
 
 class _Segmented extends StatelessWidget {
-  final List<String> labels;
+  final List<Object> labels; // String label or IconData for an icon-only segment
   final int selectedIndex;
   final ValueChanged<int> onSelected;
 
@@ -602,15 +602,21 @@ class _Segmented extends StatelessWidget {
                           ]
                         : null,
                   ),
-                  child: Text(
-                    labels[i],
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      color: i == selectedIndex ? AppColors.ink : AppColors.muted,
-                    ),
-                  ),
+                  child: labels[i] is IconData
+                      ? Icon(
+                          labels[i] as IconData,
+                          size: 18,
+                          color: i == selectedIndex ? AppColors.ink : AppColors.muted,
+                        )
+                      : Text(
+                          labels[i] as String,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: i == selectedIndex ? AppColors.ink : AppColors.muted,
+                          ),
+                        ),
                 ),
               ),
             ),

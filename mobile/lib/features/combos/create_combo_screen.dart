@@ -363,6 +363,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
           position: t.position,
           strongFoot: t.strongFoot,
           noTouch: t.noTouch,
+          isTransition: t.isTransition,
         ));
       }
       setState(() {
