@@ -15,7 +15,12 @@ import '../theme/app_colors.dart';
 /// itself renders too, so this is matching parity, not a compromise.
 /// [scale] multiplies every dimension — pass a larger value (e.g. 1.9) to
 /// make the control clearly the sheet's focal point. Which side shows WF vs
-/// SF is controlled by [FootOrientation] (Profile → "My strong foot").
+/// SF is controlled by [FootOrientation] (Profile → "My strong foot"). The
+/// knob is taller than the track and rides a white ring + shadow, so it
+/// visually pops in front of the track and overflows its top/bottom edge —
+/// the same "floating disc, borders outside the bar" treatment as the
+/// bottom-nav Generate FAB in design/mobile-redesign/mocks.html
+/// (`.fab{margin-top:-14px;border:3px solid #fff}`).
 class FootToggle extends StatelessWidget {
   final bool value; // true = SF (strong foot), false = WF (weak foot)
   final VoidCallback? onTap;
@@ -27,8 +32,8 @@ class FootToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final trackW = 28.0 * scale;
     final trackH = 14.0 * scale;
-    final knob = 12.0 * scale;
-    final footSize = 11.0 * scale;
+    final knob = 20.0 * scale;
+    final footSize = 13.0 * scale;
     final fontSize = 10.0 * scale;
     final gap = 4.0 * scale;
     final radius = 7.0 * scale;
@@ -78,6 +83,14 @@ class FootToggle extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: value ? AppColors.indigo : AppColors.muted,
                   shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2.2 * scale),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (value ? AppColors.indigo : AppColors.muted).withValues(alpha: 0.45),
+                      blurRadius: 6 * scale,
+                      offset: Offset(0, 2 * scale),
+                    ),
+                  ],
                 ),
                 child: Icon(LucideIcons.footprints, size: footSize, color: Colors.white),
               ),
