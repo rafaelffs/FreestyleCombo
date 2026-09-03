@@ -186,7 +186,7 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
   }
 
   Future<void> _shareCombo(ComboDto combo) async {
-    final url = 'https://www.fscombo.com/share/combos/${combo.id}';
+    final url = '$kWebOrigin/share/combos/${combo.id}';
     // iOS requires a non-zero sharePositionOrigin (the share sheet's popover
     // anchor) — without it the native call throws PlatformException instead
     // of presenting anything, even on iPhone.
