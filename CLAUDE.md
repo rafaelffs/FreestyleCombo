@@ -71,6 +71,7 @@ Trick delete throws `InvalidOperationException` ("This trick is used in X combo(
 ### Combos extra endpoints
 | Method | Route | Auth | Description |
 |---|---|---|---|
+| `GET` | `/api/combos/{id}` | Public (optionally authed) | Get one combo — **viewable by anyone holding its id, regardless of `Visibility`** (see "Combo link sharing" below); `IsFavourited`/`IsCompleted`/`IsPersonalReusable` are still per-requesting-user. |
 | `POST` | `/api/combos/preview` | User | Preview combo (no save, no AI) — returns `PreviewComboResponse { Tricks, Warnings }` |
 | `POST` | `/api/combos/build` | User | Build combo manually — accepts optional `name`; no AI description (`AiDescription = null`); sets `Visibility = PendingReview` if `isPublic = true` |
 | `PUT` | `/api/combos/{id}` | User/Admin | Update combo (name + tricks) — owner or admin only; if combo was `Public`, resets to `PendingReview` |
@@ -95,6 +96,18 @@ Trick delete throws `InvalidOperationException` ("This trick is used in X combo(
 A lighter, per-user alternative to the admin-gated `IsReusable`: **any** user can add **any** combo to their own personal trick-building list via `UserPersonalReusableCombo` (a join table, not a flag on `Combo` — a single bool couldn't represent "Alice and Bob each independently bookmarked someone else's public combo"). Who can add what: the owner can add their own combo at any visibility (Private/PendingReview/Public); a non-owner can only add a combo that's already `Public`, unless they're an admin — admins bypass the visibility check entirely, same as every other elevated combo permission in this codebase (`AddPersonalReusableHandler` injects `IHttpContextAccessor` and checks `IsInRole("Admin")`). Once added, that combo becomes selectable as a sub-combo/reusable block **only in that adder's own** `GET /api/tricks` result and sub-combo slot validation — nobody else sees it there just because someone else added it. The existing admin `IsReusable` mechanic (Public-only, admin-only, visible to everyone) is completely unchanged and independent of this.
 
 `IComboRepository.GetReusableAsync(Guid? requestingUserId, ...)` implements the merge (`WHERE IsReusable OR EXISTS (SELECT 1 FROM UserPersonalReusableCombos WHERE ComboId = c.Id AND UserId = requestingUserId)`); `TricksController.GetTricks` resolves `requestingUserId` from the JWT when present, same pattern as `CombosController.GetPublic`. Mobile/web UI: an instant "list in trick list" link-icon toggle sits next to the favourite icon (combo detail hero, and every combo card in the list — owner-only, or non-owner when the combo is `Public`), each firing a confirm sheet/dialog before calling the add/remove endpoint; a "List combo in the trick list" checkbox is also present in the manual build-save panel and the post-save edit screen (owner-only there, since those screens only ever act on your own combo). See `docs/superpowers/specs/2026-08-31-personal-reusable-combos-design.md` for the original design (note: that doc's "owner-only" authorization was later corrected to the owner-or-public rule described here, and the `Combo.IsPersonalReusable` bool it specifies was replaced by the `UserPersonalReusableCombo` relation — this section is the current source of truth).
+
+#### Combo link sharing
+
+`GET /api/combos/{id}` (`GetComboHandler`) deliberately has **no ownership/visibility gate** — anyone holding a combo's id can view it via this endpoint regardless of `Visibility` (Private/PendingReview/Public). Same "anyone with the link can view" trust model as Google Docs/Figma share links: GUIDs aren't enumerable, and the listing endpoints (`GetPublicCombos`/`GetMyCombos`) still filter by `Visibility`, so a non-public combo stays undiscoverable by browsing — only reachable if its id was deliberately shared. The mapping logic is factored into `ComboDetailMapper.Map(...)` (`FreestyleCombo.API/Features/Combos/GetCombo/ComboDetailMapper.cs`), shared by `GetComboHandler`.
+
+`ShareController` (`FreestyleCombo.API/Controllers/ShareController.cs`, route `share/combos/{id}`, **not** under `/api/`) serves a server-rendered HTML page with Open Graph / Twitter Card meta tags (title/description/image, built from the combo's name-or-abbreviation-sequence, trick count, difficulty, owner) plus a `<meta http-equiv="refresh">` + JS redirect to the real SPA URL (`/combos/{id}`) — this is what makes shared links render as rich preview cards in iMessage/WhatsApp/Slack instead of a bare URL. Also has no visibility gate (matches `GetComboHandler`). **Must be reverse-proxied**: this route lives outside `/api/`, so both `nginx/nginx.conf` (production) and `web/vite.config.ts` (local dev) need an explicit `/share/` proxy block to `127.0.0.1:5050` — the production nginx config was missing this for a while (dev's Vite proxy had it, production's nginx didn't), which silently broke every shared link in production; fixed by adding a matching `location /share/` block to `nginx/nginx.conf`.
+
+Share UI: web `ComboCard.tsx`/`ComboDetailPage.tsx` and mobile `combo_card.dart`/`combo_detail_screen.dart` (via the `share_plus` package) show a share affordance for the combo's owner (any visibility) or anyone when the combo is `Public`. `navigator.share`/`Share.share` (native share sheet, when available) shares the `share/combos/{id}` URL (for the rich-preview redirect); the desktop clipboard-copy fallback copies the plain `/combos/{id}` SPA URL directly.
+
+**Save a copy**: a non-owner viewing any combo (via a shared link or normal browsing) sees "Save a copy" (authed) or "Log in to save a copy" (unauthed — saving to "your own account" requires having one). This does **not** call a dedicated copy/fork endpoint — it reuses the existing manual-build screen entirely: the viewed combo's `Tricks` (already carrying `TrickId`/`SubComboId`/`Position`/`StrongFoot`/`NoTouch` per slot) are passed to the create-combo screen (web: React Router `navigate(..., { state: { copyFromTricks, copyFromName } })`; mobile: go_router `extra: CopyFromCombo(...)`, a small model in `core/models/combo.dart`), which pre-fills build mode with those slots so the user can hit Save immediately ("save straight away") or edit first ("edit before saving") — one UI path serves both asks. The resulting combo is a fully independent copy (new id, owned by the saver, `Private` by default) via the normal `POST /api/combos/build` call; the original is untouched.
+
+**iOS Universal Links**: `mobile/ios/Runner/Runner.entitlements` has `com.apple.developer.associated-domains = ["applinks:www.fscombo.com"]`; `web/public/.well-known/apple-app-site-association` (mirrored at `web/public/apple-app-site-association` for older-iOS compatibility) declares `paths: ["/combos/*"]` for App ID `6K8AXR83Y3.com.rafaelffs.freestyleCombo` — nginx serves both as `application/json` (`location = /.well-known/apple-app-site-association` / `location = /apple-app-site-association`, extensionless, no redirects, per Apple's requirements). Deliberately **not** `/share/combos/*` — that path always goes through Safari (needed for the OG-preview redirect to work reliably; a client-side JS redirect to a Universal-Link-eligible URL doesn't reliably re-trigger app-opening), then self-heals to the in-app-openable `/combos/{id}` on the next hop. The `ASSOCIATED_DOMAINS` App ID capability was enabled via the ConnectAPI directly (`Spaceship::ConnectAPI::BundleIdCapability.create(bundle_id_id:, capability_type: "ASSOCIATED_DOMAINS")`) rather than the manual Xcode "+Capability" click Sign In with Apple needed — no interactive portal step required this time. **Not yet built/shipped**: per the established lesson (see "iOS release process" below), a capability change requires `fastlane ios setup_signing` to regenerate the provisioning profile before the next build — do that before the first build that needs to test this.
 
 `GenerateComboCommand(Guid? PreferenceId, GenerateComboOverrides? Overrides, string? Name)` — `PreferenceId` replaces the old `UsePreferences` bool. When set, the handler fetches that preference by ID and verifies ownership; when null, uses inline `Overrides`. Saved as `null` if Name is blank/whitespace. **No longer generates an AI description** — `AiDescription` is always `null` for new combos.
 
@@ -305,18 +318,25 @@ Navbar right side shows a profile dropdown (username + chevron) when authenticat
 - No Private/Public text badges on combo cards
 - Delete button removed from cards; deletion is available on `ComboDetailPage` only (owner or admin)
 - Weak-foot tricks shown as `(wf)` (not `wk`)
+- Share button (`ComboCard`/`ComboDetailPage`) shown for the owner (any visibility) or anyone when `Public` — see "Combo link sharing" above
+- Non-owner viewers get "Save a copy" / "Log in to save a copy" — see "Combo link sharing" above
 
 ### Difficulty badge
 - No "d" prefix — just the number
 - Color-coded: `bg-green-100 text-green-800` (1–4), `bg-yellow-100 text-yellow-800` (5–7), `bg-red-100 text-red-800` (8–10)
-- Applied in `CreateComboPage` build mode (trick picker) and `TricksPage` (Diff column)
+- Applied in `CreateComboPage` build mode (trick picker), `TricksPage` (Diff column), `ComboCard`/`ComboDetailPage`
 - `TricksPage` no longer shows a "Level" (commonLevel) column in the table
+- **Show/hide toggle**: a "Show difficulty" checkbox (`web/src/lib/displayPrefs.ts`, `localStorage` key `fc_show_difficulty`, default shown) on `TricksPage`/`CombosPage` hides every difficulty badge across trick and combo lists/detail/build screens when off — each component reads `getShowDifficulty()` itself (no shared React context; toggling re-renders the page it's on, other pages pick up the new value on their own next mount)
+
+### Trick/combo search
+- `TricksPage`, `CreateComboPage`'s build-mode picker, and `ComboDetailPage`'s edit-panel picker all boost an **exact** abbreviation/name match (case-insensitive) to the top of the filtered list, ahead of the existing sort/insertion order — implemented as a stable partition (exact matches, then the rest), not a comparator, so the existing order within each group is preserved
+- `CombosPage` already had a debounced (350ms) search box wired to the server (`search` query param on `GET /api/combos/public`/`mine`); Favourites has no search UI (client-only unpaginated list)
 
 ### Path alias
 `@/` → `web/src/` (configured in `vite.config.ts` + `tsconfig.app.json`)
 
 ### API proxy
-Dev server proxies `/api/*` → `http://localhost:5050` (Vite `server.proxy`)
+Dev server proxies `/api/*` and `/share/*` → `http://localhost:5050` (Vite `server.proxy`) — the `/share/*` entry already existed here even though production nginx was missing the equivalent block until the combo-sharing fix (see "Combo link sharing" above).
 
 ---
 
@@ -356,7 +376,7 @@ docker-compose up
 ## Mobile — Flutter (Phase 3)
 
 ### Tech stack
-- **Flutter 3.19+** · **Dart 3.3+** · **go_router** (navigation) · **dio** (HTTP) · **shared_preferences** (token storage) · **google_fonts** (Plus Jakarta Sans + JetBrains Mono, see "Visual design" below)
+- **Flutter 3.19+** · **Dart 3.3+** · **go_router** (navigation) · **dio** (HTTP) · **shared_preferences** (token storage) · **google_fonts** (Plus Jakarta Sans + JetBrains Mono, see "Visual design" below) · **share_plus** (native share sheet, combo link sharing)
 - No external state management library — plain `StatefulWidget` + `FutureBuilder`
 
 ### Visual design (redesign, post-merge)
@@ -442,6 +462,10 @@ New mobile routes: none added — `/account`, `/users/:id`, `/admin/users` alrea
 
 `combos_screen.dart` has a "Done" filter chip (authed only, next to the Full name/Abbr. toggle) that client-side filters whichever tab (Public/Mine/Favourites) is active down to `combo.isCompleted`. `ComboCard`'s completion toggle now calls `widget.onRefresh?.call()` after marking/unmarking done (previously only the favourite toggle did this) so the parent list's cached `isCompleted` — and this filter — stays in sync immediately.
 
+`combos_screen.dart` also has a debounced (350ms) search box (`Search combos…`) — `ApiClient.getPublicCombos`/`getMyCombos` gained a `search` param threading through to the API's existing `search` query param (the API already supported it for web; mobile just never passed it). Favourites tab filters client-side (name/displayText/ownerUserName substring match) since it's a single unpaginated fetch.
+
+`account_screen.dart`'s "Done" stat tile is now tappable (`context.push('/combos', extra: true)` → `CombosScreen(initialDoneOnly: true)`, read via `app_router.dart`'s `state.extra`), landing on the Mine tab with the Done filter chip pre-applied. Also fixed what the stat counts: it summed `completionCount` (completions *received* on combos the user owns, by anyone) instead of combos the user has personally marked done — now counts `c.isCompleted` across `getMyCombos()`, matching what the target screen shows.
+
 ### combo_card.dart features
 - Shows `combo.name` (bold, 17/800) above `displayText` (JetBrains Mono) when present, with a gradient `DIFF` badge (top-right) showing `totalDifficulty`
 - Shows `combo.ownerUserName` (not ownerEmail) as an indigo "by [username]" link → `/users/{ownerId}` when set
@@ -455,6 +479,13 @@ New mobile routes: none added — `/account`, `/users/:id`, `/admin/users` alrea
 - Shared `DifficultyChip(int)` in `widgets/difficulty_chip.dart` — green/greenBg (1–4), amber/amberBg (5–7), red/redBg (8–10), JetBrains Mono numeral
 - Used in `tricks_screen.dart` rows, `combo_detail_screen.dart` sequence, `create_combo_screen.dart` trick picker, and combo cards' gradient DIFF badge (a separate, larger `_DiffBadge` widget local to `combo_card.dart`)
 - `tricks_screen.dart` subtitle still doesn't show common level (`lvl X`)
+- **Show/hide toggle**: `DifficultyDisplay.show` (static flag in `difficulty_chip.dart`, same "global static flag" pattern as `TrickNameDisplay.showFullName`) — `DifficultyChip.build()` and `combo_card.dart`'s `_DiffBadge` usage both check it and render `SizedBox.shrink()` when off, so every existing call site is covered with no per-site changes. Toggle chip (speedometer icon) added next to the Full name/Abbr. chips on `tricks_screen.dart` and `combos_screen.dart` (the two *list* screens); since the flag is global, turning it off there also hides difficulty in `create_combo_screen.dart`/`combo_detail_screen.dart` (no separate toggle UI added on those build/edit screens).
+
+### Trick search exact-match ordering (mobile)
+`tricks_screen.dart`, `create_combo_screen.dart` (both the build-mode picker and the generate-mode "Allowed tricks" sheet), and `combo_detail_screen.dart`'s edit-picker all boost an exact abbreviation/name match to the top of the filtered list — same stable-partition approach as web (Dart's `List.sort` isn't guaranteed stable, so this is done via `[...where(exact), ...where(!exact)]` rather than a comparator).
+
+### Autocorrect disabled on trick-name inputs
+`autocorrect: false, enableSuggestions: false` added to the four mobile text fields that still had Flutter's default (on): `widgets/submit_trick_sheet.dart`'s `_SubmitField` (submit-trick form's Abbreviation/Name), `tricks_screen.dart`'s `_EditDialogField` (admin edit-trick dialog), `create_combo_screen.dart`'s `_SearchField` (build-mode picker search), `combo_detail_screen.dart`'s edit-picker search field. The two dedicated trick-library search boxes (`tricks_screen.dart` main search, `create_combo_screen.dart`'s allowed-tricks sheet search) already had it disabled.
 
 ### Setup (Flutter must be installed first)
 ```bash
@@ -534,7 +565,7 @@ cd api
 dotnet test
 ```
 
-230 unit tests covering: combo generation/build/preview, combo visibility and deletion permissions, combo query/update handlers, pending combo review mapping, favourites/completions, auth login/register flows, account/admin handler flows, trick CRUD handlers, preference CRUD handlers, trick submission review flows, query handlers (tricks/preferences/ratings/pending approvals/submissions), revolution boundary validation (trick create/update/submission — including the half-increment constraint, preference and combo override allowed revolutions, preview override validation, rating score bounds), weight adjustment job/aggregator behavior, reusable combo repository methods, GetTricks unified response, SetReusable endpoint, BuildCombo/UpdateCombo sub-combo slot support, DeleteCombo sub-combo guard, reusable combo visibility guard (cannot be set non-public), personal reusable combos (AddPersonalReusable/RemovePersonalReusable authorization — owner at any visibility, non-owner only on Public, admin bypass on non-Public combos, GetReusableAsync per-user merge including a combo someone else added, BuildCombo/UpdateCombo sub-combo acceptance for whoever added it vs. rejection for anyone who hasn't), and Google/Apple external sign-in (`ExternalSignInHandler` — subject-first match, email fallback with provider/subject backfill onto an existing password account including overwrite-on-second-provider, auto-generated/collision-checked username on new-account creation, invalid-token and no-match-no-email rejection).
+230 unit tests covering: combo generation/build/preview, combo deletion permissions, `GetComboHandler`'s deliberate lack of a visibility gate (non-owner can view a Private/PendingReview combo by id — see "Combo link sharing"), combo query/update handlers, pending combo review mapping, favourites/completions, auth login/register flows, account/admin handler flows, trick CRUD handlers, preference CRUD handlers, trick submission review flows, query handlers (tricks/preferences/ratings/pending approvals/submissions), revolution boundary validation (trick create/update/submission — including the half-increment constraint, preference and combo override allowed revolutions, preview override validation, rating score bounds), weight adjustment job/aggregator behavior, reusable combo repository methods, GetTricks unified response, SetReusable endpoint, BuildCombo/UpdateCombo sub-combo slot support, DeleteCombo sub-combo guard, reusable combo visibility guard (cannot be set non-public), personal reusable combos (AddPersonalReusable/RemovePersonalReusable authorization — owner at any visibility, non-owner only on Public, admin bypass on non-Public combos, GetReusableAsync per-user merge including a combo someone else added, BuildCombo/UpdateCombo sub-combo acceptance for whoever added it vs. rejection for anyone who hasn't), and Google/Apple external sign-in (`ExternalSignInHandler` — subject-first match, email fallback with provider/subject backfill onto an existing password account including overwrite-on-second-provider, auto-generated/collision-checked username on new-account creation, invalid-token and no-match-no-email rejection).
 
 ---
 

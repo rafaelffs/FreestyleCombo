@@ -2,6 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 
+/// Global show/hide switch for difficulty indicators across trick and combo
+/// lists (DifficultyChip and combo_card.dart's DIFF badge both check this).
+class DifficultyDisplay {
+  DifficultyDisplay._();
+  static bool show = true;
+}
+
 /// Small mono-numeral difficulty pill: green (1–4), amber (5–7), red (8–10).
 class DifficultyChip extends StatelessWidget {
   final int difficulty;
@@ -29,6 +36,7 @@ class DifficultyChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!DifficultyDisplay.show) return const SizedBox.shrink();
     return Container(
       padding: padding,
       decoration: BoxDecoration(

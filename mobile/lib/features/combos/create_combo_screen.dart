@@ -9,6 +9,8 @@ import '../../core/models/user_preference.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/combo_card.dart' show TrickNameDisplay;
 import '../../widgets/difficulty_chip.dart';
+import '../../widgets/foot_toggle.dart';
+import '../../widgets/setting_icon_button.dart';
 import '../../widgets/submit_trick_sheet.dart';
 import 'unsaved_combo_guard.dart';
 
@@ -17,7 +19,9 @@ enum _Mode { choose, generate, build }
 enum _TypeFilter { all, tricks, combos }
 
 class CreateComboScreen extends StatefulWidget {
-  const CreateComboScreen({super.key});
+  final CopyFromCombo? copyFrom;
+
+  const CreateComboScreen({super.key, this.copyFrom});
 
   @override
   State<CreateComboScreen> createState() => _CreateComboScreenState();
@@ -134,6 +138,44 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   int _buildTab = 0;
 
   @override
+  void initState() {
+    super.initState();
+    final copyFrom = widget.copyFrom;
+    if (copyFrom != null) {
+      _nameCtrl.text = copyFrom.name ?? '';
+      _populateSlotsFromComboTricks(copyFrom.tricks);
+      _mode = _Mode.build;
+      _buildTab = 1;
+      _loadTricks();
+    }
+  }
+
+  void _populateSlotsFromComboTricks(List<ComboTrickDto> tricks) {
+    _slots.clear();
+    for (final t in tricks) {
+      if (t.type == 'combo') {
+        _slots.add(_SlotItem.combo(
+          subComboId: t.subComboId!,
+          subComboName: t.subComboName ?? '',
+          subComboTricks: t.subComboTricks ?? [],
+          position: t.position,
+        ));
+      } else {
+        _slots.add(_SlotItem.trick(
+          trickId: t.trickId!,
+          trickName: t.name ?? '',
+          abbreviation: t.abbreviation ?? '',
+          crossOver: t.crossOver,
+          position: t.position,
+          strongFoot: t.strongFoot,
+          noTouch: t.noTouch,
+          isTransition: t.isTransition,
+        ));
+      }
+    }
+  }
+
+  @override
   void dispose() {
     UnsavedComboGuard.clear();
     _nameCtrl.dispose();
@@ -169,11 +211,15 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) {
-          final filtered = _allTricksForPicker!.where((t) {
-            if (search.isEmpty) return true;
-            final q = search.toLowerCase();
-            return t.name.toLowerCase().contains(q) || t.abbreviation.toLowerCase().contains(q);
+          final pickerQ = search.toLowerCase();
+          var filtered = _allTricksForPicker!.where((t) {
+            if (pickerQ.isEmpty) return true;
+            return t.name.toLowerCase().contains(pickerQ) || t.abbreviation.toLowerCase().contains(pickerQ);
           }).toList();
+          if (pickerQ.isNotEmpty) {
+            bool exact(TrickItem t) => t.abbreviation.toLowerCase() == pickerQ || t.name.toLowerCase() == pickerQ;
+            filtered = [...filtered.where(exact), ...filtered.where((t) => !exact(t))];
+          }
           return SafeArea(
             child: Padding(
               padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
@@ -317,6 +363,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
           position: t.position,
           strongFoot: t.strongFoot,
           noTouch: t.noTouch,
+          isTransition: t.isTransition,
         ));
       }
       setState(() {
@@ -461,20 +508,12 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
               const SizedBox(height: 22),
               _FieldLabel('Foot'),
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                      child: _PresetChip(
-                          label: 'Weak foot',
-                          selected: !strongFoot,
-                          onTap: () => setSt(() => strongFoot = false))),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: _PresetChip(
-                          label: 'Strong foot',
-                          selected: strongFoot,
-                          onTap: () => setSt(() => strongFoot = true))),
-                ],
+              Center(
+                child: FootToggle(
+                  value: strongFoot,
+                  onTap: () => setSt(() => strongFoot = !strongFoot),
+                  scale: 1.9,
+                ),
               ),
               if (allowNoTouch) ...[
                 const SizedBox(height: 18),
@@ -640,7 +679,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
 
   List<TrickListItem> get _filtered {
     final q = _search.toLowerCase();
-    return _items.where((item) {
+    final list = _items.where((item) {
       if (item is TrickItem) {
         if (_typeFilter == _TypeFilter.combos) return false;
         if (q.isEmpty) return true;
@@ -653,6 +692,18 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
       }
       return false;
     }).toList();
+
+    if (q.isEmpty) return list;
+
+    bool isExact(TrickListItem item) {
+      if (item is TrickItem) return item.abbreviation.toLowerCase() == q || item.name.toLowerCase() == q;
+      if (item is ComboItem) return item.displayName.toLowerCase() == q;
+      return false;
+    }
+
+    final exact = list.where(isExact).toList();
+    final rest = list.where((item) => !isExact(item)).toList();
+    return [...exact, ...rest];
   }
 
   int get _totalDiff {
@@ -1501,16 +1552,33 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
-                _ToggleRow(
-                  label: 'Submit as public',
-                  value: _isPublic,
-                  onChanged: (v) => setState(() => _isPublic = v),
-                ),
-                const SizedBox(height: 10),
-                _ToggleRow(
-                  label: 'List combo in the trick list',
-                  value: _isPersonalReusable,
-                  onChanged: (v) => setState(() => _isPersonalReusable = v),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SettingIconButton(
+                      activeIcon: Icons.public,
+                      inactiveIcon: Icons.public_off,
+                      active: _isPublic,
+                      activeColor: AppColors.indigo,
+                      title: _isPublic ? 'Stop submitting as public?' : 'Submit as public?',
+                      description: _isPublic
+                          ? "This combo will be saved as private instead — it won't be sent for admin review or shown to other users."
+                          : 'An admin will review this combo before it becomes visible to everyone. Until approved, only you can see it.',
+                      onChanged: (v) => setState(() => _isPublic = v),
+                    ),
+                    const SizedBox(width: 12),
+                    SettingIconButton(
+                      activeIcon: Icons.link,
+                      inactiveIcon: Icons.link_off,
+                      active: _isPersonalReusable,
+                      activeColor: AppColors.violet,
+                      title: _isPersonalReusable ? 'Remove from your trick list?' : 'List combo in your trick list?',
+                      description: _isPersonalReusable
+                          ? "This combo will no longer show up when you're building other combos."
+                          : "This combo will show up as a selectable item — alongside tricks — when you're building other combos. Only you will see it there.",
+                      onChanged: (v) => setState(() => _isPersonalReusable = v),
+                    ),
+                  ],
                 ),
                 if (_buildError != null) ...[
                   const SizedBox(height: 8),
@@ -1760,7 +1828,6 @@ class _SlotTile extends StatelessWidget {
               active: !slot.strongFoot,
               onTap: () => onToggleStrongFoot(!slot.strongFoot),
             ),
-            const SizedBox(width: 6),
             _SlotFlagToggle(
               label: 'NT',
               active: slot.noTouch,
@@ -2089,6 +2156,8 @@ class _SearchField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      autocorrect: false,
+      enableSuggestions: false,
       style: GoogleFonts.plusJakartaSans(
           fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
       decoration: InputDecoration(

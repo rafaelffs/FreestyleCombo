@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { tricksApi, trickSubmissionsApi, combosApi, extractError, comboDisplayName, type TrickDto, type SubmitTrickRequest, type TrickItem, type ComboItem } from '@/lib/api'
 import { isAdmin, isAuthenticated } from '@/lib/auth'
+import { getShowDifficulty, setShowDifficulty } from '@/lib/displayPrefs'
 import { SEO } from '@/components/SEO'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -85,6 +86,15 @@ export function TricksPage() {
   const { t } = useTranslation()
 
   // Filters
+  const [showDifficulty, setShowDifficultyState] = useState(getShowDifficulty)
+  const toggleShowDifficulty = () => {
+    setShowDifficultyState((prev) => {
+      const next = !prev
+      setShowDifficulty(next)
+      return next
+    })
+  }
+
   const [search, setSearch] = useState('')
   const [minDiff, setMinDiff] = useState<number | undefined>()
   const [maxDiff, setMaxDiff] = useState<number | undefined>()
@@ -259,6 +269,12 @@ export function TricksPage() {
       if (av > bv) return sortDir === 'asc' ? 1 : -1
       return 0
     })
+
+    if (q !== '') {
+      const exactRank = (tr: TrickItem) =>
+        tr.abbreviation.toLowerCase() === q || tr.name.toLowerCase() === q ? 0 : 1
+      list = [...list].sort((a, b) => exactRank(a) - exactRank(b))
+    }
 
     return list
   }, [tricks, search, minDiff, maxDiff, filterRevs, filterCrossOver, filterKnee, sortKey, sortDir])
@@ -468,6 +484,15 @@ export function TricksPage() {
                 />
                 {t('tricks.filterKneeOnly')}
               </label>
+              <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showDifficulty}
+                  onChange={toggleShowDifficulty}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+                />
+                {t('tricks.showDifficulty')}
+              </label>
             </div>
           </div>
         </CardContent>
@@ -500,9 +525,11 @@ export function TricksPage() {
                   <td className="px-4 py-2 text-gray-700">{trick.name}</td>
                   <td className="px-4 py-2 text-center text-gray-600">{trick.revolution}</td>
                   <td className="px-4 py-2 text-center">
-                    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(trick.difficulty)}`}>
-                      {trick.difficulty}
-                    </span>
+                    {showDifficulty && (
+                      <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(trick.difficulty)}`}>
+                        {trick.difficulty}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-2 text-center">
                     {trick.crossOver ? <Badge variant="secondary">CO</Badge> : '—'}
@@ -560,9 +587,11 @@ export function TricksPage() {
                       </td>
                       <td className="px-4 py-2 text-center text-gray-400">—</td>
                       <td className="px-4 py-2 text-center">
-                        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(combo.totalDifficulty)}`}>
-                          {combo.totalDifficulty}
-                        </span>
+                        {showDifficulty && (
+                          <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(combo.totalDifficulty)}`}>
+                            {combo.totalDifficulty}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-2 text-center text-gray-400">—</td>
                       <td className="px-4 py-2 text-center text-gray-400">—</td>
@@ -598,9 +627,11 @@ export function TricksPage() {
                                 <span className="font-mono font-semibold text-gray-900">{slot.abbreviation}</span>
                                 {!slot.isTransition && slot.noTouch && <span className="text-indigo-500 font-medium">(nt)</span>}
                                 {!slot.isTransition && !slot.strongFoot && <span className="text-orange-500 font-medium">(wf)</span>}
-                                <span className={`rounded px-1 py-0.5 text-[10px] font-medium ${diffColor(slot.difficulty)}`}>
-                                  {slot.difficulty}
-                                </span>
+                                {showDifficulty && (
+                                  <span className={`rounded px-1 py-0.5 text-[10px] font-medium ${diffColor(slot.difficulty)}`}>
+                                    {slot.difficulty}
+                                  </span>
+                                )}
                               </span>
                             ))}
                           </div>

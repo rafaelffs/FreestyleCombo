@@ -174,6 +174,8 @@ class _SubmitField extends StatelessWidget {
     return TextField(
       controller: controller,
       textCapitalization: textCapitalization,
+      autocorrect: false,
+      enableSuggestions: false,
       style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
       decoration: InputDecoration(
         labelText: label,

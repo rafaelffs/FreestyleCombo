@@ -1,11 +1,12 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
 import { FootToggle } from '@/components/ui/foot-toggle'
 import { combosApi, tricksApi, extractError, type BuildComboTrickItem, type TrickItem } from '@/lib/api'
-import { getUserId, isAdmin } from '@/lib/auth'
+import { getUserId, isAdmin, isAuthenticated } from '@/lib/auth'
+import { getShowDifficulty } from '@/lib/displayPrefs'
 import { SEO } from '@/components/SEO'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -134,6 +135,32 @@ export function ComboDetailPage() {
     onError: (err) => setReusableError(extractError(err, t('comboDetail.setReusableFailed'))),
   })
 
+  const [copied, setCopied] = useState(false)
+  const handleShare = useCallback(async () => {
+    if (!combo) return
+    const spaUrl = `${window.location.origin}/combos/${combo.id}`
+    const shareUrl = `${window.location.origin}/share/combos/${combo.id}`
+    const shareData = { title: combo.name ?? combo.displayText, url: shareUrl }
+    if (navigator.share && navigator.canShare?.(shareData)) {
+      try {
+        await navigator.share(shareData)
+      } catch {
+        // user cancelled or share failed — no-op
+      }
+    } else {
+      await navigator.clipboard.writeText(spaUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }, [combo])
+
+  const saveCopy = useCallback(() => {
+    if (!combo) return
+    navigate('/combos/create', {
+      state: { copyFromTricks: combo.tricks ?? [], copyFromName: combo.name },
+    })
+  }, [combo, navigate])
+
   if (isLoading) return <p className="text-gray-500">{t('comboDetail.loading')}</p>
   if (error || !combo) return <p className="text-red-600">{t('comboDetail.notFound')}</p>
 
@@ -211,9 +238,14 @@ export function ComboDetailPage() {
     }))
   }
 
-  const filteredTricks = tricks.filter(
-    (t_) => t_.name.toLowerCase().includes(trickSearch.toLowerCase()) || t_.abbreviation.toLowerCase().includes(trickSearch.toLowerCase()),
-  )
+  const trickSearchQ = trickSearch.toLowerCase()
+  const filteredTricks = tricks
+    .filter((t_) => t_.name.toLowerCase().includes(trickSearchQ) || t_.abbreviation.toLowerCase().includes(trickSearchQ))
+    .sort((a, b) => {
+      if (trickSearchQ === '') return 0
+      const exact = (t_: TrickItem) => (t_.abbreviation.toLowerCase() === trickSearchQ || t_.name.toLowerCase() === trickSearchQ ? 0 : 1)
+      return exact(a) - exact(b)
+    })
 
   return (
     <div className="space-y-6">
@@ -222,10 +254,15 @@ export function ComboDetailPage() {
         description={combo.aiDescription ?? `A freestyle football combo with ${combo.trickCount} tricks.`}
         path={`/combos/${id}`}
       />
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3">
         <Link to="/combos" className="text-sm text-gray-500 hover:text-gray-700">
           {t('comboDetail.back')}
         </Link>
+        {(isOwner || combo.visibility === 'Public') && (
+          <Button variant="outline" size="sm" onClick={() => void handleShare()}>
+            {copied ? t('combos.shareCopied') : t('combos.share')}
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -272,7 +309,9 @@ export function ComboDetailPage() {
                         <span className="font-mono text-xs font-semibold text-gray-900">{trick.abbreviation}</span>
                         {!abbrevOnly && <span className="ml-1.5 text-sm text-gray-500">{trick.name}</span>}
                       </div>
-                      <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(trick.difficulty ?? 0)}`}>{trick.difficulty}</span>
+                      {getShowDifficulty() && (
+                        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(trick.difficulty ?? 0)}`}>{trick.difficulty}</span>
+                      )}
                       {!trick.isTransition && (
                         <>
                           <FootToggle value={trick.strongFoot} onChange={() => {}} />
@@ -313,7 +352,9 @@ export function ComboDetailPage() {
                               <span className="font-mono text-xs font-semibold text-gray-700">{st.abbreviation}</span>
                               {!abbrevOnly && <span className="ml-1.5 text-xs text-gray-500">{st.name}</span>}
                             </div>
-                            <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(st.difficulty ?? 0)}`}>{st.difficulty}</span>
+                            {getShowDifficulty() && (
+                              <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(st.difficulty ?? 0)}`}>{st.difficulty}</span>
+                            )}
                             {!st.isTransition && (
                               <>
                                 <FootToggle value={st.strongFoot} onChange={() => {}} />
@@ -340,6 +381,17 @@ export function ComboDetailPage() {
               <Button variant="outline" onClick={() => setRatingOpen(true)}>
                 {t('comboDetail.rateCombo')}
               </Button>
+            )}
+            {!isOwner && (
+              isAuthenticated() ? (
+                <Button variant="outline" onClick={saveCopy}>
+                  {t('comboDetail.saveCopy')}
+                </Button>
+              ) : (
+                <Button variant="outline" onClick={() => navigate('/login')}>
+                  {t('comboDetail.loginToSave')}
+                </Button>
+              )
             )}
             {isOwner && !editing && (
               <Button variant="outline" onClick={startEdit}>
@@ -415,7 +467,9 @@ export function ComboDetailPage() {
                   {filteredTricks.map((trick) => (
                     <button key={trick.id} type="button" onClick={() => addTrick(trick)} className="flex w-full items-center justify-between px-2 py-1.5 text-left hover:bg-indigo-50 transition-colors">
                       <span className="text-sm">{trick.name} <span className="font-mono text-xs text-gray-400">{trick.abbreviation}</span></span>
-                      <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(trick.difficulty)}`}>{trick.difficulty}</span>
+                      {getShowDifficulty() && (
+                        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${diffColor(trick.difficulty)}`}>{trick.difficulty}</span>
+                      )}
                     </button>
                   ))}
                 </div>

@@ -206,19 +206,25 @@ public class ComboQueryHandlerTests
     }
 
     [Fact]
-    public async Task GetCombo_PrivateComboForNonOwner_ThrowsUnauthorizedAccessException()
+    public async Task GetCombo_PrivateComboForNonOwner_ReturnsDto()
     {
+        // Anyone holding a combo's id (e.g. via a shared link) can view it
+        // regardless of Visibility — see GetComboHandler for the rationale.
         var repo = new Mock<IComboRepository>();
         var favRepo = new Mock<IUserFavouriteRepository>();
         var completionRepo = new Mock<IUserComboCompletionRepository>();
         var combo = CreateCombo(Guid.NewGuid(), _otherUserId, "owner", ComboVisibility.Private, DateTime.UtcNow);
         repo.Setup(r => r.GetByIdAsync(combo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(combo);
+        favRepo.Setup(r => r.ExistsAsync(_userId, combo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        completionRepo.Setup(r => r.ExistsAsync(_userId, combo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        completionRepo.Setup(r => r.GetCompletionCountsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, int>());
 
-        Func<Task> act = () => new GetComboHandler(repo.Object, favRepo.Object, completionRepo.Object, EmptyPersonalReusableRepo())
+        var result = await new GetComboHandler(repo.Object, favRepo.Object, completionRepo.Object, EmptyPersonalReusableRepo())
             .Handle(new GetComboQuery(combo.Id, _userId), CancellationToken.None);
 
-        await act.Should().ThrowAsync<UnauthorizedAccessException>()
-            .WithMessage("Access denied.");
+        result.Id.Should().Be(combo.Id);
+        result.Visibility.Should().Be("Private");
     }
 
     [Fact]

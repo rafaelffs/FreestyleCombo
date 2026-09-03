@@ -6,6 +6,7 @@ import '../core/auth/auth_service.dart';
 import '../core/models/combo.dart';
 import '../theme/app_colors.dart';
 import 'confirm_sheet.dart';
+import 'difficulty_chip.dart';
 import 'rate_combo_dialog.dart';
 
 /// Whether combo trick sequences (card titles, chips) show full trick names
@@ -81,6 +82,40 @@ class _ComboCardState extends State<ComboCard> {
     _isPersonalReusable = widget.combo.isPersonalReusable;
   }
 
+  @override
+  void didUpdateWidget(covariant ComboCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The list this card lives in re-fetches independently of this widget's
+    // own local optimistic-toggle state (favourite/done/personal-reusable
+    // icons) — without resyncing here, a card keeps showing whatever it last
+    // locally toggled even after a fresh fetch reports otherwise (e.g. a
+    // combo shown as "done" while sitting in a "Not done" filtered list,
+    // because its old toggle from a previous state never got flushed).
+    // Only resync fields that actually changed, so an in-flight optimistic
+    // toggle on THIS combo isn't clobbered by an unrelated ancestor rebuild
+    // that still carries the pre-toggle snapshot.
+    if (oldWidget.combo.isFavourited != widget.combo.isFavourited) {
+      _favoured = widget.combo.isFavourited;
+    }
+    if (oldWidget.combo.isCompleted != widget.combo.isCompleted) {
+      _completed = widget.combo.isCompleted;
+    }
+    if (oldWidget.combo.completionCount != widget.combo.completionCount) {
+      _completionCount = widget.combo.completionCount;
+    }
+    if (oldWidget.combo.isPersonalReusable != widget.combo.isPersonalReusable) {
+      _isPersonalReusable = widget.combo.isPersonalReusable;
+    }
+  }
+
+  String get _comboLabel =>
+      (widget.combo.name != null && widget.combo.name!.isNotEmpty) ? widget.combo.name! : widget.combo.displayText;
+
+  void _showToast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _toggleFavourite() async {
     setState(() => _favLoading = true);
     try {
@@ -89,8 +124,10 @@ class _ComboCardState extends State<ComboCard> {
       } else {
         await ApiClient.instance.addFavourite(widget.combo.id);
       }
-      setState(() => _favoured = !_favoured);
+      final nowFavoured = !_favoured;
+      setState(() => _favoured = nowFavoured);
       widget.onRefresh?.call();
+      if (nowFavoured) _showToast('Added "$_comboLabel" to favourites');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -116,6 +153,7 @@ class _ComboCardState extends State<ComboCard> {
           _completed = true;
           _completionCount = _completionCount + 1;
         });
+        _showToast('You landed "$_comboLabel"!');
       }
       widget.onRefresh?.call();
     } catch (e) {
@@ -346,8 +384,10 @@ class _ComboCardState extends State<ComboCard> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    _DiffBadge(value: combo.totalDifficulty.toInt()),
+                    if (DifficultyDisplay.show) ...[
+                      const SizedBox(width: 12),
+                      _DiffBadge(value: combo.totalDifficulty.toInt()),
+                    ],
                   ],
                 ),
                 if (combo.tricks != null && combo.tricks!.isNotEmpty) ...[

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
@@ -9,7 +10,7 @@ import '../../widgets/combo_card.dart' show TrickNameDisplay;
 import '../../widgets/confirm_sheet.dart';
 import '../../widgets/difficulty_chip.dart';
 import '../../widgets/rate_combo_dialog.dart';
-import '../../widgets/submit_trick_sheet.dart' show SubmitToggle;
+import '../../widgets/setting_icon_button.dart';
 
 class _SlotItem {
   final String? trickId;
@@ -26,6 +27,7 @@ class _SlotItem {
   final String? subComboId;
   final String? subComboName;
   final List<ComboTrickDto>? subComboTricks;
+  bool expanded;
 
   _SlotItem({
     this.trickId,
@@ -40,6 +42,7 @@ class _SlotItem {
     this.subComboId,
     this.subComboName,
     this.subComboTricks,
+    this.expanded = false,
   });
 }
 
@@ -53,6 +56,7 @@ class ComboDetailScreen extends StatefulWidget {
 
 class _ComboDetailScreenState extends State<ComboDetailScreen> {
   late Future<ComboDto> _future;
+  final _shareButtonKey = GlobalKey();
 
   bool _favLoading = false;
   bool _favoured = false;
@@ -135,15 +139,25 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
     );
   }
 
-  Future<void> _toggleFavourite(String comboId) async {
+  String _comboLabel(ComboDto combo) =>
+      (combo.name != null && combo.name!.isNotEmpty) ? combo.name! : combo.displayText;
+
+  void _showToast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _toggleFavourite(ComboDto combo) async {
     setState(() => _favLoading = true);
     try {
       if (_favoured) {
-        await ApiClient.instance.removeFavourite(comboId);
+        await ApiClient.instance.removeFavourite(combo.id);
       } else {
-        await ApiClient.instance.addFavourite(comboId);
+        await ApiClient.instance.addFavourite(combo.id);
       }
-      setState(() => _favoured = !_favoured);
+      final nowFavoured = !_favoured;
+      setState(() => _favoured = nowFavoured);
+      if (nowFavoured) _showToast('Added "${_comboLabel(combo)}" to favourites');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -183,15 +197,37 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
     }
   }
 
-  Future<void> _toggleCompleted(String comboId) async {
+  Future<void> _shareCombo(ComboDto combo) async {
+    final url = '$kWebOrigin/share/combos/${combo.id}';
+    // iOS requires a non-zero sharePositionOrigin (the share sheet's popover
+    // anchor) — without it the native call throws PlatformException instead
+    // of presenting anything, even on iPhone.
+    final box = _shareButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    final origin = box != null && box.hasSize
+        ? (box.localToGlobal(Offset.zero) & box.size)
+        : const Rect.fromLTWH(0, 0, 1, 1); // just needs to be non-zero; only affects iPad popover arrow position
+    await Share.share(url, subject: combo.name ?? combo.displayText, sharePositionOrigin: origin);
+  }
+
+  void _saveCopy(ComboDto combo) {
+    if (!AuthService.instance.isAuthenticated) {
+      context.push('/login');
+      return;
+    }
+    context.push('/combos/create', extra: CopyFromCombo(tricks: combo.tricks ?? [], name: combo.name));
+  }
+
+  Future<void> _toggleCompleted(ComboDto combo) async {
     setState(() => _completedLoading = true);
     try {
       if (_completed) {
-        await ApiClient.instance.unmarkCompleted(comboId);
+        await ApiClient.instance.unmarkCompleted(combo.id);
       } else {
-        await ApiClient.instance.markCompleted(comboId);
+        await ApiClient.instance.markCompleted(combo.id);
       }
-      setState(() => _completed = !_completed);
+      final nowCompleted = !_completed;
+      setState(() => _completed = nowCompleted);
+      if (nowCompleted) _showToast('You landed "${_comboLabel(combo)}"!');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -231,12 +267,15 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
                   authed: authed,
                   favoured: _favoured,
                   favLoading: _favLoading,
-                  onToggleFavourite: () => _toggleFavourite(combo.id),
+                  onToggleFavourite: () => _toggleFavourite(combo),
                   isPersonalReusable: _isPersonalReusable,
                   personalReusableLoading: _personalReusableLoading,
                   onTogglePersonalReusable: () => _togglePersonalReusable(combo.id),
                   onEdit: () => _openEdit(combo),
                   onDelete: () => _deleteCombo(combo.id),
+                  onShare: () => _shareCombo(combo),
+                  onSaveCopy: isOwner ? null : () => _saveCopy(combo),
+                  shareButtonKey: _shareButtonKey,
                 ),
               ),
               SliverPadding(
@@ -326,7 +365,7 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
                     child: SizedBox(
                       height: 52,
                       child: FilledButton.icon(
-                        onPressed: _completedLoading ? null : () => _toggleCompleted(combo.id),
+                        onPressed: _completedLoading ? null : () => _toggleCompleted(combo),
                         style: FilledButton.styleFrom(
                           backgroundColor: _completed ? AppColors.green : AppColors.indigo,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -401,6 +440,9 @@ class _DetailHero extends StatelessWidget {
   final VoidCallback onTogglePersonalReusable;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onShare;
+  final VoidCallback? onSaveCopy;
+  final Key shareButtonKey;
 
   const _DetailHero({
     required this.combo,
@@ -415,6 +457,9 @@ class _DetailHero extends StatelessWidget {
     required this.onTogglePersonalReusable,
     required this.onEdit,
     required this.onDelete,
+    required this.onShare,
+    required this.onSaveCopy,
+    required this.shareButtonKey,
   });
 
   @override
@@ -466,6 +511,14 @@ class _DetailHero extends StatelessWidget {
                             iconColor: isPersonalReusable ? AppColors.lime : Colors.white,
                             onTap: personalReusableLoading ? null : onTogglePersonalReusable,
                           ),
+                        ],
+                        if (isOwner || combo.visibility == 'Public') ...[
+                          const SizedBox(width: 9),
+                          _HeroIconButton(key: shareButtonKey, icon: Icons.ios_share, onTap: onShare),
+                        ],
+                        if (!isOwner && onSaveCopy != null) ...[
+                          const SizedBox(width: 9),
+                          _HeroIconButton(icon: Icons.playlist_add, onTap: onSaveCopy),
                         ],
                         if (isOwner) ...[
                           const SizedBox(width: 9),
@@ -532,7 +585,7 @@ class _HeroIconButton extends StatelessWidget {
   final Color? iconColor;
   final VoidCallback? onTap;
 
-  const _HeroIconButton({required this.icon, this.iconColor, this.onTap});
+  const _HeroIconButton({super.key, required this.icon, this.iconColor, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -925,7 +978,7 @@ class _EditComboScreenState extends State<_EditComboScreen> {
   List<TrickListItem> get _filtered {
     final q = _search.toLowerCase();
     if (q.isEmpty) return _items;
-    return _items.where((item) {
+    final list = _items.where((item) {
       if (item is TrickItem) {
         return item.name.toLowerCase().contains(q) || item.abbreviation.toLowerCase().contains(q);
       } else if (item is ComboItem) {
@@ -933,6 +986,14 @@ class _EditComboScreenState extends State<_EditComboScreen> {
       }
       return false;
     }).toList();
+
+    bool isExact(TrickListItem item) {
+      if (item is TrickItem) return item.abbreviation.toLowerCase() == q || item.name.toLowerCase() == q;
+      if (item is ComboItem) return item.displayName.toLowerCase() == q;
+      return false;
+    }
+
+    return [...list.where(isExact), ...list.where((item) => !isExact(item))];
   }
 
   void _addTrick(TrickItem trick) {
@@ -969,6 +1030,15 @@ class _EditComboScreenState extends State<_EditComboScreen> {
   void _removeSlot(int index) {
     setState(() {
       _slots.removeAt(index);
+      for (var i = 0; i < _slots.length; i++) _slots[i].position = i + 1;
+    });
+  }
+
+  void _reorderSlot(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) newIndex -= 1;
+      final item = _slots.removeAt(oldIndex);
+      _slots.insert(newIndex, item);
       for (var i = 0; i < _slots.length; i++) _slots[i].position = i + 1;
     });
   }
@@ -1053,25 +1123,35 @@ class _EditComboScreenState extends State<_EditComboScreen> {
               ),
             ),
           ),
-          if (widget.combo.visibility == 'Private') ...[
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: SubmitToggle(
-                label: 'Submit as public',
-                value: _isPublic,
-                onChanged: (v) => setState(() => _isPublic = v),
-              ),
-            ),
-          ],
           const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22),
-            child: SubmitToggle(
-              label: 'List combo in the trick list',
-              value: _isPersonalReusable,
-              onChanged: (v) => setState(() => _isPersonalReusable = v),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (widget.combo.visibility == 'Private')
+                SettingIconButton(
+                  activeIcon: Icons.public,
+                  inactiveIcon: Icons.public_off,
+                  active: _isPublic,
+                  activeColor: AppColors.indigo,
+                  title: _isPublic ? 'Stop submitting as public?' : 'Submit as public?',
+                  description: _isPublic
+                      ? "This combo will be saved as private instead — it won't be sent for admin review or shown to other users."
+                      : 'An admin will review this combo before it becomes visible to everyone. Until approved, only you can see it.',
+                  onChanged: (v) => setState(() => _isPublic = v),
+                ),
+              if (widget.combo.visibility == 'Private') const SizedBox(width: 12),
+              SettingIconButton(
+                activeIcon: Icons.link,
+                inactiveIcon: Icons.link_off,
+                active: _isPersonalReusable,
+                activeColor: AppColors.violet,
+                title: _isPersonalReusable ? 'Remove from your trick list?' : 'List combo in your trick list?',
+                description: _isPersonalReusable
+                    ? "This combo will no longer show up when you're building other combos."
+                    : "This combo will show up as a selectable item — alongside tricks — when you're building other combos. Only you will see it there.",
+                onChanged: (v) => setState(() => _isPersonalReusable = v),
+              ),
+            ],
           ),
           if (_error != null)
             Padding(
@@ -1106,6 +1186,8 @@ class _EditComboScreenState extends State<_EditComboScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 22),
           child: TextField(
             controller: _searchCtrl,
+            autocorrect: false,
+            enableSuggestions: false,
             style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
             decoration: InputDecoration(
               hintText: 'Search…',
@@ -1169,16 +1251,27 @@ class _EditComboScreenState extends State<_EditComboScreen> {
         ),
       );
     }
-    return ListView.builder(
+    return ReorderableListView.builder(
+      buildDefaultDragHandles: false,
       padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
       itemCount: _slots.length,
+      onReorder: _reorderSlot,
       itemBuilder: (_, i) {
         final s = _slots[i];
         if (s.isSubCombo) {
-          return _EditSubComboSlot(slot: s, onRemove: () => _removeSlot(i));
+          return _EditSubComboSlot(
+            key: ObjectKey(s),
+            index: i,
+            slot: s,
+            onRemove: () => _removeSlot(i),
+            onToggleExpand: () => setState(() => s.expanded = !s.expanded),
+          );
         }
         return _EditSlot(
+          key: ObjectKey(s),
+          index: i,
           slot: s,
+          showAbbrev: !TrickNameDisplay.showFullName,
           onRemove: () => _removeSlot(i),
           onToggleStrongFoot: (v) => setState(() => s.strongFoot = v),
           onToggleNoTouch: (v) => setState(() => s.noTouch = v),
@@ -1315,13 +1408,18 @@ class _EditPickerRow extends StatelessWidget {
 }
 
 class _EditSlot extends StatelessWidget {
+  final int index;
   final _SlotItem slot;
+  final bool showAbbrev;
   final VoidCallback onRemove;
   final ValueChanged<bool> onToggleStrongFoot;
   final ValueChanged<bool> onToggleNoTouch;
 
   const _EditSlot({
+    super.key,
+    required this.index,
     required this.slot,
+    required this.showAbbrev,
     required this.onRemove,
     required this.onToggleStrongFoot,
     required this.onToggleNoTouch,
@@ -1339,6 +1437,11 @@ class _EditSlot extends StatelessWidget {
       ),
       child: Row(
         children: [
+          ReorderableDragStartListener(
+            index: index,
+            child: const Icon(Icons.drag_indicator, size: 18, color: AppColors.faint),
+          ),
+          const SizedBox(width: 8),
           Container(
             width: 30,
             height: 30,
@@ -1351,19 +1454,11 @@ class _EditSlot extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  slot.trickName,
-                  style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  slot.abbreviation,
-                  style: GoogleFonts.jetBrainsMono(fontSize: 11, color: AppColors.muted, fontWeight: FontWeight.w600),
-                ),
-              ],
+            child: Text(
+              slot.isTransition ? slot.abbreviation : (showAbbrev ? slot.abbreviation : slot.trickName),
+              style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           if (!slot.isTransition) ...[
@@ -1372,7 +1467,6 @@ class _EditSlot extends StatelessWidget {
               active: slot.strongFoot,
               onTap: () => onToggleStrongFoot(!slot.strongFoot),
             ),
-            const SizedBox(width: 6),
             _EditFlagToggle(
               label: 'NT',
               active: slot.noTouch,
@@ -1417,60 +1511,105 @@ class _EditFlagToggle extends StatelessWidget {
 }
 
 class _EditSubComboSlot extends StatelessWidget {
+  final int index;
   final _SlotItem slot;
   final VoidCallback onRemove;
+  final VoidCallback onToggleExpand;
 
-  const _EditSubComboSlot({required this.slot, required this.onRemove});
+  const _EditSubComboSlot({
+    super.key,
+    required this.index,
+    required this.slot,
+    required this.onRemove,
+    required this.onToggleExpand,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
       decoration: BoxDecoration(
         color: AppColors.noTouchBg,
         border: Border.all(color: const Color(0xFFE5E0FB)),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 30,
-            height: 30,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(color: const Color(0xFFEDE9FE), borderRadius: BorderRadius.circular(9)),
-            child: Text(
-              '${slot.position}',
-              style: GoogleFonts.jetBrainsMono(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.noTouchText),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+            child: Row(
+              children: [
+                ReorderableDragStartListener(
+                  index: index,
+                  child: const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: Icon(Icons.drag_indicator, size: 18, color: AppColors.noTouchText),
+                  ),
+                ),
+                Container(
+                  width: 30,
+                  height: 30,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: const Color(0xFFEDE9FE), borderRadius: BorderRadius.circular(9)),
+                  child: Text(
+                    '${slot.position}',
+                    style: GoogleFonts.jetBrainsMono(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.noTouchText),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(color: const Color(0xFFEDE9FE), borderRadius: BorderRadius.circular(6)),
+                  child: Text(
+                    'COMBO',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 9.5, fontWeight: FontWeight.w800, color: AppColors.noTouchText, letterSpacing: 0.4),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    slot.subComboName ?? '',
+                    style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 14),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(slot.expanded ? Icons.expand_less : Icons.expand_more, size: 20, color: AppColors.noTouchText),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: onToggleExpand,
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 18, color: AppColors.muted),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: onRemove,
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-            decoration: BoxDecoration(color: const Color(0xFFEDE9FE), borderRadius: BorderRadius.circular(6)),
-            child: Text(
-              'COMBO',
-              style: GoogleFonts.plusJakartaSans(fontSize: 9.5, fontWeight: FontWeight.w800, color: AppColors.noTouchText, letterSpacing: 0.4),
+          if (slot.expanded && slot.subComboTricks != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(13, 0, 13, 12),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: slot.subComboTricks!.map((t) {
+                  final suffix = t.noTouch ? '·nt' : (!t.strongFoot ? '·wf' : '');
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(9)),
+                    child: Text(
+                      '${t.position}. ${t.abbreviation ?? ''}$suffix',
+                      style: GoogleFonts.jetBrainsMono(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.ink2),
+                    ),
+                  );
+                }).toList(),
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              slot.subComboName ?? '',
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 14),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Text(
-            '${slot.subComboTricks?.length ?? 0} tricks',
-            style: GoogleFonts.plusJakartaSans(fontSize: 11.5, color: AppColors.muted, fontWeight: FontWeight.w600),
-          ),
-          IconButton(
-            icon: const Icon(Icons.close, size: 18, color: AppColors.muted),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: onRemove,
-          ),
         ],
       ),
     );

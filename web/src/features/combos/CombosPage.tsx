@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { combosApi } from '@/lib/api'
 import { ComboCard } from './ComboCard'
 import { isAuthenticated } from '@/lib/auth'
+import { getShowDifficulty, setShowDifficulty } from '@/lib/displayPrefs'
 import { SEO } from '@/components/SEO'
 
 type Tab = 'public' | 'mine' | 'favourites'
@@ -66,6 +67,14 @@ export function CombosPage() {
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState('')
   const [maxDifficulty, setMaxDifficulty] = useState('')
+  const [showDifficulty, setShowDifficultyState] = useState(getShowDifficulty)
+  const toggleShowDifficulty = () => {
+    setShowDifficultyState((prev) => {
+      const next = !prev
+      setShowDifficulty(next)
+      return next
+    })
+  }
   const debouncedSearch = useDebounce(search, 350)
 
   // Reset to page 1 when filters change
@@ -171,6 +180,15 @@ export function CombosPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
+          <label className="flex items-center gap-1.5 text-sm cursor-pointer text-gray-600 whitespace-nowrap">
+            <input
+              type="checkbox"
+              checked={showDifficulty}
+              onChange={toggleShowDifficulty}
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+            />
+            {t('tricks.showDifficulty')}
+          </label>
           {tab === 'public' && (
             <>
               <select

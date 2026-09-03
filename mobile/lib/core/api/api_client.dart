@@ -12,6 +12,14 @@ import '../models/user.dart';
 // iOS simulator / web: http://localhost:5050
 const String kBaseUrl = kReleaseMode ? 'https://www.fscombo.com/api' : 'http://localhost:5050/api';
 
+// Web app origin — used for building shareable combo links (ShareController's
+// server-rendered OG-preview page, then the SPA URL it redirects to). Debug
+// builds point at the local Vite dev server (`npm run dev`, port 5173), which
+// proxies /share/* to the local API (see web/vite.config.ts) — a combo built
+// against the local API only exists in the local DB, so a share link must
+// point at the local web app too, not production.
+const String kWebOrigin = kReleaseMode ? 'https://www.fscombo.com' : 'http://localhost:5173';
+
 class ApiClient {
   static ApiClient? _instance;
   static ApiClient get instance => _instance ??= ApiClient._();
@@ -184,6 +192,7 @@ class ApiClient {
     int page = 1,
     int pageSize = 10,
     int? maxDifficulty,
+    String? search,
   }) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(
@@ -192,6 +201,7 @@ class ApiClient {
           'page': page,
           'pageSize': pageSize,
           if (maxDifficulty != null) 'maxDifficulty': maxDifficulty,
+          if (search != null && search.isNotEmpty) 'search': search,
         },
       );
       final d = res.data!;
@@ -212,6 +222,7 @@ class ApiClient {
     int page = 1,
     int pageSize = 10,
     bool? isPublic,
+    String? search,
   }) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(
@@ -220,6 +231,7 @@ class ApiClient {
           'page': page,
           'pageSize': pageSize,
           if (isPublic != null) 'isPublic': isPublic,
+          if (search != null && search.isNotEmpty) 'search': search,
         },
       );
       final d = res.data!;

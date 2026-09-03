@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { combosApi, extractError, type ComboDto } from '@/lib/api'
 import { getUserId, isAuthenticated, isAdmin as getIsAdmin } from '@/lib/auth'
+import { getShowDifficulty } from '@/lib/displayPrefs'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -306,7 +307,7 @@ export function ComboCard({ combo, showActions = false }: Props) {
                 <HalfStarIcon />
               </button>
             )}
-            {combo.visibility === 'Public' && (
+            {(isOwner || combo.visibility === 'Public') && (
               <button
                 type="button"
                 onClick={() => void handleShare()}
@@ -343,9 +344,11 @@ export function ComboCard({ combo, showActions = false }: Props) {
               )}
             </div>
             <div className="flex shrink-0 flex-wrap gap-1 items-start">
-              <Badge variant="secondary">
-                {combo.totalDifficulty ?? '—'}
-              </Badge>
+              {getShowDifficulty() && (
+                <Badge variant="secondary">
+                  {combo.totalDifficulty ?? '—'}
+                </Badge>
+              )}
             </div>
           </div>
         </CardHeader>
