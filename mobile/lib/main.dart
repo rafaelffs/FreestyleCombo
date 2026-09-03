@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'core/auth/auth_service.dart';
+import 'core/prefs/foot_orientation.dart';
 import 'router/app_router.dart';
 import 'theme/app_colors.dart';
 
@@ -18,6 +19,7 @@ const _googleIosClientId =
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AuthService.instance.init();
+  await FootOrientation.init();
   await GoogleSignIn.instance.initialize(
     clientId: Platform.isIOS ? _googleIosClientId : null,
   );

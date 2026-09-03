@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:material_symbols_icons/symbols.dart';
+import '../core/prefs/foot_orientation.dart';
 import '../theme/app_colors.dart';
 
 /// WF/switch/SF strong-foot indicator — mirrors web's `FootToggle`
@@ -10,7 +11,8 @@ import '../theme/app_colors.dart';
 /// (build/edit slots); omit it for a read-only display (sequence lists).
 /// [scale] multiplies every dimension — use a larger value (e.g. 2.2) where
 /// this is the sole focus of a screen (the add-trick sheet); the default 1.0
-/// is sized for sitting inline in a dense row.
+/// is sized for sitting inline in a dense row. Which side shows WF vs SF is
+/// controlled by [FootOrientation] (Profile → "My strong foot"), not fixed.
 class FootToggle extends StatelessWidget {
   final bool value; // true = SF (strong foot), false = WF (weak foot)
   final VoidCallback? onTap;
@@ -28,19 +30,29 @@ class FootToggle extends StatelessWidget {
     final gap = 4.0 * scale;
     final radius = 7.0 * scale;
 
+    final leftIsStrong = !FootOrientation.strongFootIsRight;
+    // The knob sits on the "strong" side when value is true (SF), the "weak"
+    // side otherwise — which physical side that is depends on orientation.
+    final knobOnLeft = value ? leftIsStrong : !leftIsStrong;
+
+    Widget label(String text, bool isStrong) {
+      final active = isStrong == value;
+      return Text(
+        text,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: fontSize,
+          fontWeight: FontWeight.w700,
+          color: active ? AppColors.indigo : AppColors.faint,
+        ),
+      );
+    }
+
     return GestureDetector(
       onTap: onTap,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'WF',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: fontSize,
-              fontWeight: FontWeight.w700,
-              color: value ? AppColors.faint : AppColors.indigo,
-            ),
-          ),
+          label(leftIsStrong ? 'SF' : 'WF', leftIsStrong),
           SizedBox(width: gap),
           AnimatedContainer(
             duration: const Duration(milliseconds: 150),
@@ -55,7 +67,7 @@ class FootToggle extends StatelessWidget {
             child: AnimatedAlign(
               duration: const Duration(milliseconds: 150),
               curve: Curves.easeOut,
-              alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+              alignment: knobOnLeft ? Alignment.centerLeft : Alignment.centerRight,
               child: Container(
                 width: knob,
                 height: knob,
@@ -64,19 +76,12 @@ class FootToggle extends StatelessWidget {
                   color: value ? AppColors.indigo : AppColors.muted,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(LucideIcons.footprints, size: footSize, color: Colors.white),
+                child: Icon(Symbols.footprint, size: footSize, color: Colors.white),
               ),
             ),
           ),
           SizedBox(width: gap),
-          Text(
-            'SF',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: fontSize,
-              fontWeight: FontWeight.w700,
-              color: value ? AppColors.indigo : AppColors.faint,
-            ),
-          ),
+          label(leftIsStrong ? 'WF' : 'SF', !leftIsStrong),
         ],
       ),
     );

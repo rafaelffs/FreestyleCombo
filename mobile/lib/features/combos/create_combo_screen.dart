@@ -511,7 +511,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                 child: FootToggle(
                   value: strongFoot,
                   onTap: () => setSt(() => strongFoot = !strongFoot),
-                  scale: 2.4,
+                  scale: 1.9,
                 ),
               ),
               if (allowNoTouch) ...[

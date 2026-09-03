@@ -4,7 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/models/user.dart';
+import '../../core/prefs/foot_orientation.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/display_options.dart' show SegmentButton;
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -131,6 +133,13 @@ class _AccountScreenState extends State<AccountScreen> {
                       padding: const EdgeInsets.fromLTRB(22, 20, 22, 24),
                       sliver: SliverList(
                         delegate: SliverChildListDelegate([
+                          Text(
+                            'PREFERENCES',
+                            style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.8, color: AppColors.faint),
+                          ),
+                          const SizedBox(height: 12),
+                          _StrongFootRow(onChanged: () => setState(() {})),
+                          const SizedBox(height: 24),
                           Text(
                             'ACCOUNT',
                             style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.8, color: AppColors.faint),
@@ -361,6 +370,59 @@ class _RowLink extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _StrongFootRow extends StatelessWidget {
+  final VoidCallback onChanged;
+
+  const _StrongFootRow({required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final isRight = FootOrientation.strongFootIsRight;
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(color: AppColors.chipBg, borderRadius: BorderRadius.circular(11)),
+            child: const Icon(Icons.accessibility_new, size: 18, color: AppColors.indigo),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Text(
+              'My strong foot',
+              style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink),
+            ),
+          ),
+          SegmentButton(
+            label: 'Left',
+            active: !isRight,
+            onTap: () async {
+              await FootOrientation.setStrongFootIsRight(false);
+              onChanged();
+            },
+          ),
+          const SizedBox(width: 6),
+          SegmentButton(
+            label: 'Right',
+            active: isRight,
+            onTap: () async {
+              await FootOrientation.setStrongFootIsRight(true);
+              onChanged();
+            },
+          ),
+        ],
       ),
     );
   }
