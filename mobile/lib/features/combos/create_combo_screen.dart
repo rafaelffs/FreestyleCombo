@@ -506,20 +506,11 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
               const SizedBox(height: 22),
               _FieldLabel('Foot'),
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                      child: _PresetChip(
-                          label: 'Weak foot',
-                          selected: !strongFoot,
-                          onTap: () => setSt(() => strongFoot = false))),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: _PresetChip(
-                          label: 'Strong foot',
-                          selected: strongFoot,
-                          onTap: () => setSt(() => strongFoot = true))),
-                ],
+              Center(
+                child: FootToggle(
+                  value: strongFoot,
+                  onTap: () => setSt(() => strongFoot = !strongFoot),
+                ),
               ),
               if (allowNoTouch) ...[
                 const SizedBox(height: 18),
