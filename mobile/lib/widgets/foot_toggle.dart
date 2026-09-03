@@ -30,10 +30,10 @@ class FootToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final trackW = 34.0 * scale;
+    final trackW = 28.0 * scale;
     final trackH = 14.0 * scale;
-    final knob = 32.0 * scale;
-    final footSize = 21.0 * scale;
+    final knob = 20.0 * scale;
+    final footSize = 13.0 * scale;
     final fontSize = 10.0 * scale;
     final gap = 4.0 * scale;
     final radius = 7.0 * scale;
