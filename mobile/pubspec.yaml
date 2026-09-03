@@ -1,7 +1,7 @@
 name: freestyle_combo
 description: Freestyle football combo generator — mobile client.
 publish_to: none
-version: 1.0.0+7
+version: 1.0.0+8
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
