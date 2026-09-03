@@ -261,10 +261,20 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
         };
       }),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: active ? AppColors.indigo : AppColors.chipBg,
+          color: active ? AppColors.indigo : AppColors.surface,
           borderRadius: BorderRadius.circular(9),
+          border: active ? null : Border.all(color: AppColors.line2),
+          boxShadow: active
+              ? null
+              : [
+                  BoxShadow(
+                    color: AppColors.ink.withValues(alpha: 0.05),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
