@@ -15,7 +15,6 @@ class SettingIconButton extends StatelessWidget {
   final Color activeColor;
   final String title;
   final String description;
-  final String confirmLabel;
   final ValueChanged<bool> onChanged;
 
   const SettingIconButton({
@@ -26,16 +25,18 @@ class SettingIconButton extends StatelessWidget {
     required this.activeColor,
     required this.title,
     required this.description,
-    required this.confirmLabel,
     required this.onChanged,
   });
 
   Future<void> _handleTap(BuildContext context) async {
+    // The sheet is purely explanatory — "OK" just confirms the user read it,
+    // not a distinct action label, so it stays the same whichever direction
+    // the toggle is going.
     final confirmed = await showConfirmSheet(
       context,
       title: title,
       description: description,
-      confirmLabel: confirmLabel,
+      confirmLabel: 'OK',
     );
     if (confirmed) onChanged(!active);
   }

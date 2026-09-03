@@ -1563,7 +1563,6 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                       description: _isPublic
                           ? "This combo will be saved as private instead — it won't be sent for admin review or shown to other users."
                           : 'An admin will review this combo before it becomes visible to everyone. Until approved, only you can see it.',
-                      confirmLabel: _isPublic ? 'Keep it private' : 'Submit for review',
                       onChanged: (v) => setState(() => _isPublic = v),
                     ),
                     const SizedBox(width: 12),
@@ -1576,7 +1575,6 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                       description: _isPersonalReusable
                           ? "This combo will no longer show up when you're building other combos."
                           : "This combo will show up as a selectable item — alongside tricks — when you're building other combos. Only you will see it there.",
-                      confirmLabel: _isPersonalReusable ? 'Remove' : 'List it',
                       onChanged: (v) => setState(() => _isPersonalReusable = v),
                     ),
                   ],
