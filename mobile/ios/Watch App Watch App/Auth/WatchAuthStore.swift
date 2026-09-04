@@ -40,23 +40,25 @@ final class WatchAuthStore: NSObject, ObservableObject, WCSessionDelegate {
     }
 
     func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
-        DispatchQueue.main.async {
-            self.apply(context: applicationContext)
-        }
+        apply(context: applicationContext)
     }
 
     private func apply(context: [String: Any]) {
-        guard let jwt = context["jwt"] as? String else { return }
-        KeychainStore.set(jwt, forKey: jwtKey)
-        token = jwt
-        needsReconnect = false
-        if let name = context["userName"] as? String {
-            KeychainStore.set(name, forKey: userNameKey)
-            userName = name
+        DispatchQueue.main.async {
+            guard let jwt = context["jwt"] as? String, !jwt.isEmpty else { return }
+            KeychainStore.set(jwt, forKey: jwtKey)
+            self.token = jwt
+            self.needsReconnect = false
+            if let name = context["userName"] as? String {
+                KeychainStore.set(name, forKey: userNameKey)
+                self.userName = name
+            }
         }
     }
 
     func markReconnectNeeded() {
-        needsReconnect = true
+        DispatchQueue.main.async {
+            self.needsReconnect = true
+        }
     }
 }
