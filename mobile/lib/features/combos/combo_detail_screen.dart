@@ -29,6 +29,21 @@ class _SlotItem {
   final List<ComboTrickDto>? subComboTricks;
   bool expanded;
 
+  // Matches the server's actual rule (BuildComboHandler/GenerateComboHandler):
+  // a trick can be marked no-touch only if the trick immediately before it
+  // is a CrossOver move — not based on the no-touch trick's own CrossOver
+  // flag. A transition trick (e.g. "Combo") never enables it for the next
+  // slot; a sub-combo slot enables it only if its own last trick is CrossOver.
+  bool get allowsNoTouchOnNext {
+    if (isTransition) return false;
+    if (isSubCombo) {
+      final tricks = subComboTricks;
+      if (tricks == null || tricks.isEmpty) return false;
+      return tricks.last.crossOver;
+    }
+    return crossOver;
+  }
+
   _SlotItem({
     this.trickId,
     required this.trickName,
@@ -1030,7 +1045,7 @@ class _EditComboScreenState extends State<_EditComboScreen> {
   void _removeSlot(int index) {
     setState(() {
       _slots.removeAt(index);
-      for (var i = 0; i < _slots.length; i++) _slots[i].position = i + 1;
+      _renumberSlots();
     });
   }
 
@@ -1039,8 +1054,20 @@ class _EditComboScreenState extends State<_EditComboScreen> {
       if (newIndex > oldIndex) newIndex -= 1;
       final item = _slots.removeAt(oldIndex);
       _slots.insert(newIndex, item);
-      for (var i = 0; i < _slots.length; i++) _slots[i].position = i + 1;
+      _renumberSlots();
     });
+  }
+
+  void _renumberSlots() {
+    for (var i = 0; i < _slots.length; i++) {
+      _slots[i].position = i + 1;
+      // No-touch is only valid right after a CrossOver trick — clear it if
+      // reordering/removal put something else before this one now.
+      final allowed = i > 0 && _slots[i - 1].allowsNoTouchOnNext;
+      if (!_slots[i].isSubCombo && !allowed && _slots[i].noTouch) {
+        _slots[i].noTouch = false;
+      }
+    }
   }
 
   Future<void> _save() async {
@@ -1267,11 +1294,13 @@ class _EditComboScreenState extends State<_EditComboScreen> {
             onToggleExpand: () => setState(() => s.expanded = !s.expanded),
           );
         }
+        final noTouchAllowed = i > 0 && _slots[i - 1].allowsNoTouchOnNext;
         return _EditSlot(
           key: ObjectKey(s),
           index: i,
           slot: s,
           showAbbrev: !TrickNameDisplay.showFullName,
+          noTouchAllowed: noTouchAllowed,
           onRemove: () => _removeSlot(i),
           onToggleStrongFoot: (v) => setState(() => s.strongFoot = v),
           onToggleNoTouch: (v) => setState(() => s.noTouch = v),
@@ -1411,6 +1440,7 @@ class _EditSlot extends StatelessWidget {
   final int index;
   final _SlotItem slot;
   final bool showAbbrev;
+  final bool noTouchAllowed;
   final VoidCallback onRemove;
   final ValueChanged<bool> onToggleStrongFoot;
   final ValueChanged<bool> onToggleNoTouch;
@@ -1420,6 +1450,7 @@ class _EditSlot extends StatelessWidget {
     required this.index,
     required this.slot,
     required this.showAbbrev,
+    required this.noTouchAllowed,
     required this.onRemove,
     required this.onToggleStrongFoot,
     required this.onToggleNoTouch,
@@ -1463,15 +1494,15 @@ class _EditSlot extends StatelessWidget {
           ),
           if (!slot.isTransition) ...[
             _EditFlagToggle(
-              label: 'SF',
-              active: slot.strongFoot,
+              label: 'WF',
+              active: !slot.strongFoot,
               onTap: () => onToggleStrongFoot(!slot.strongFoot),
             ),
             _EditFlagToggle(
               label: 'NT',
               active: slot.noTouch,
-              enabled: slot.crossOver,
-              onTap: slot.crossOver ? () => onToggleNoTouch(!slot.noTouch) : null,
+              enabled: noTouchAllowed,
+              onTap: noTouchAllowed ? () => onToggleNoTouch(!slot.noTouch) : null,
             ),
           ],
           IconButton(
