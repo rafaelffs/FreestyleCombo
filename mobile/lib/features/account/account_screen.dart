@@ -127,7 +127,16 @@ class _AccountScreenState extends State<AccountScreen> {
                         comboCount: _comboCount,
                         doneCount: _doneCount,
                         avgRating: _avgRating,
-                        onDoneTap: () => context.push('/combos', extra: true),
+                        onCombosTap: () => context.go('/combos'),
+                        // Pushed (not go()'d), so returning via the back
+                        // button reveals this same AccountScreen instance
+                        // rather than rebuilding it — without refetching
+                        // here, the Landed stat can show a stale value from
+                        // before whatever happened on that screen (e.g.
+                        // landing a combo).
+                        onDoneTap: () => context.push('/combos', extra: true).then((_) {
+                          if (mounted) _load();
+                        }),
                       ),
                     ),
                     SliverPadding(
@@ -196,6 +205,7 @@ class _ProfileHeader extends StatelessWidget {
   final int comboCount;
   final int doneCount;
   final double? avgRating;
+  final VoidCallback onCombosTap;
   final VoidCallback onDoneTap;
 
   const _ProfileHeader({
@@ -203,6 +213,7 @@ class _ProfileHeader extends StatelessWidget {
     required this.comboCount,
     required this.doneCount,
     required this.avgRating,
+    required this.onCombosTap,
     required this.onDoneTap,
   });
 
@@ -270,7 +281,7 @@ class _ProfileHeader extends StatelessWidget {
                     const SizedBox(height: 20),
                     Row(
                       children: [
-                        Expanded(child: _StatTile(value: '$comboCount', label: 'Combos')),
+                        Expanded(child: _StatTile(value: '$comboCount', label: 'My combos', onTap: onCombosTap)),
                         const SizedBox(width: 10),
                         Expanded(child: _StatTile(value: '$doneCount', label: 'Landed', onTap: onDoneTap)),
                         const SizedBox(width: 10),

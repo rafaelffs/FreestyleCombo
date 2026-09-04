@@ -830,7 +830,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                 const SizedBox(height: 20),
                 _ModeCard(
                   icon: Icons.auto_awesome,
-                  title: 'Auto-generate',
+                  title: 'Auto-generate (Beta)',
                   description:
                       'Let the app build a combo based on your settings.',
                   onTap: () {
