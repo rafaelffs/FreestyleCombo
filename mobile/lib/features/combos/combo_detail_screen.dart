@@ -339,7 +339,7 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
                         ),
                         icon: Icon(_completed ? Icons.check_circle : Icons.check_circle_outline),
                         label: Text(
-                          _completed ? 'Marked as done' : 'Mark as done',
+                          _completed ? 'Marked as landed' : 'Mark as landed',
                           style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                       ),

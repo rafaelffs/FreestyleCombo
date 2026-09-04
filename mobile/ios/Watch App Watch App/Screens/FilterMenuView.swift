@@ -6,7 +6,7 @@ enum ComboFilter: String, CaseIterable, Identifiable {
     case pub = "Public"
     case mine = "Mine"
     case favourites = "Favourites"
-    case done = "Done"
+    case done = "Landed"
 
     var id: String { rawValue }
 
@@ -27,7 +27,7 @@ enum ComboFilter: String, CaseIterable, Identifiable {
         case .mine: return try await APIClient.shared.getMyCombos()
         case .favourites: return try await APIClient.shared.getFavourites()
         case .done:
-            // No dedicated "done" endpoint — filter the merged All list
+            // No dedicated "landed" endpoint — filter the merged All list
             // client-side, matching combos_screen.dart's _matchesDoneFilter.
             return try await APIClient.shared.getAllCombos().filter(\.isCompleted)
         }

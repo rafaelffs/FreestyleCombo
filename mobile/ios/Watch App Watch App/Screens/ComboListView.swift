@@ -49,7 +49,7 @@ struct ComboListView: View {
                         Button {
                             Task { await toggleDone(combo) }
                         } label: {
-                            Label("Done", systemImage: combo.isCompleted ? "xmark.circle" : "checkmark.circle")
+                            Label("Landed", systemImage: combo.isCompleted ? "xmark.circle" : "checkmark.circle")
                         }
                         .tint(.green)
                     }
@@ -66,7 +66,7 @@ struct ComboListView: View {
     private var emptyTitle: String {
         switch filter {
         case .favourites: return "No favourites yet"
-        case .done: return "Nothing marked done yet"
+        case .done: return "Nothing landed yet"
         case .mine: return "You haven't built any combos yet"
         default: return "No combos"
         }

@@ -236,9 +236,9 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
       case _DoneFilter.all:
         return null;
       case _DoneFilter.done:
-        return _emptyState(Icons.check_circle_outline, "You haven't marked any of these as done yet.");
+        return _emptyState(Icons.check_circle_outline, "You haven't landed any of these yet.");
       case _DoneFilter.undone:
-        return _emptyState(Icons.check_circle, "You've marked all of these as done.");
+        return _emptyState(Icons.check_circle, "You've landed all of these.");
     }
   }
 
@@ -248,8 +248,8 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
   Widget _doneFilterChip() {
     final (label, icon) = switch (_doneFilter) {
       _DoneFilter.all => ('All', Icons.list_alt),
-      _DoneFilter.done => ('Done', Icons.check_circle),
-      _DoneFilter.undone => ('Not done', Icons.radio_button_unchecked),
+      _DoneFilter.done => ('Landed', Icons.check_circle),
+      _DoneFilter.undone => ('Not landed', Icons.radio_button_unchecked),
     };
     final active = _doneFilter != _DoneFilter.all;
     return GestureDetector(

@@ -89,7 +89,7 @@ class _ComboCardState extends State<ComboCard> {
     // own local optimistic-toggle state (favourite/done/personal-reusable
     // icons) — without resyncing here, a card keeps showing whatever it last
     // locally toggled even after a fresh fetch reports otherwise (e.g. a
-    // combo shown as "done" while sitting in a "Not done" filtered list,
+    // combo shown as "landed" while sitting in a "Not landed" filtered list,
     // because its old toggle from a previous state never got flushed).
     // Only resync fields that actually changed, so an in-flight optimistic
     // toggle on THIS combo isn't clobbered by an unrelated ancestor rebuild
@@ -315,7 +315,7 @@ class _ComboCardState extends State<ComboCard> {
                         icon: _completed ? Icons.check_circle : Icons.check_circle_outline,
                         color: _completed ? AppColors.green : AppColors.faint,
                         loading: _completedLoading,
-                        tooltip: _completed ? 'Mark as not done' : 'Mark as done',
+                        tooltip: _completed ? 'Mark as not landed' : 'Mark as landed',
                         onTap: _toggleCompleted,
                         label: _completionCount > 0 ? '$_completionCount' : null,
                       ),

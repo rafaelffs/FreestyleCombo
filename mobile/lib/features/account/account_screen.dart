@@ -271,7 +271,7 @@ class _ProfileHeader extends StatelessWidget {
                       children: [
                         Expanded(child: _StatTile(value: '$comboCount', label: 'Combos')),
                         const SizedBox(width: 10),
-                        Expanded(child: _StatTile(value: '$doneCount', label: 'Done', onTap: onDoneTap)),
+                        Expanded(child: _StatTile(value: '$doneCount', label: 'Landed', onTap: onDoneTap)),
                         const SizedBox(width: 10),
                         Expanded(child: _StatTile(value: avgRating != null ? avgRating!.toStringAsFixed(1) : '—', label: 'Avg ★')),
                       ],
