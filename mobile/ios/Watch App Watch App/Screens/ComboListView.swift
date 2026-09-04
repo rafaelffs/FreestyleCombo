@@ -4,20 +4,29 @@ import SwiftUI
 struct ComboListView: View {
     let filter: ComboFilter
 
+    @StateObject private var authStore = WatchAuthStore.shared
     @State private var combos: [Combo] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
 
     var body: some View {
         Group {
-            if isLoading {
+            if authStore.needsReconnect {
+                ContentUnavailableView(
+                    "Reconnect needed",
+                    systemImage: "iphone.and.arrow.forward",
+                    description: Text("Open FreestyleCombo on your iPhone to reconnect.")
+                )
+            } else if isLoading {
                 ProgressView()
             } else if let errorMessage {
-                ContentUnavailableView(
-                    "Couldn't load combos",
-                    systemImage: "wifi.slash",
-                    description: Text(errorMessage)
-                )
+                ContentUnavailableView {
+                    Label("Couldn't load combos", systemImage: "wifi.slash")
+                } description: {
+                    Text(errorMessage)
+                } actions: {
+                    Button("Retry") { Task { await load() } }
+                }
             } else if combos.isEmpty {
                 ContentUnavailableView(
                     emptyTitle,
