@@ -46,12 +46,16 @@ struct ComboListView: View {
                         .tint(.pink)
                     }
                     .swipeActions(edge: .trailing) {
+                        // Same checkmark glyph either way — only the tint reflects
+                        // current state (green landed, grey not), matching
+                        // combo_card.dart's check_circle/check_circle_outline +
+                        // green/faint pattern rather than swapping to an X.
                         Button {
                             Task { await toggleDone(combo) }
                         } label: {
-                            Label("Landed", systemImage: combo.isCompleted ? "xmark.circle" : "checkmark.circle")
+                            Label("Landed", systemImage: combo.isCompleted ? "checkmark.circle.fill" : "checkmark.circle")
                         }
-                        .tint(.green)
+                        .tint(combo.isCompleted ? .green : .gray)
                     }
                 }
             }
