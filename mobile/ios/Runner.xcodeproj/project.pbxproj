@@ -29,27 +29,6 @@
 			remoteGlobalIDString = 97C146ED1CF9000F007C117D;
 			remoteInfo = Runner;
 		};
-		535D2A78304A299700E87F89 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 535D2A5B304A294700E87F89;
-			remoteInfo = "Watch App";
-		};
-		535D2A7C304A29DF00E87F89 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 535D2A5B304A294700E87F89;
-			remoteInfo = "Watch App";
-		};
-		535D2A7E304A2A0500E87F89 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 535D2A5B304A294700E87F89;
-			remoteInfo = "Watch App";
-		};
 		535D2A8C304A2AD900E87F89 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
@@ -275,9 +254,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				535D2A79304A299700E87F89 /* PBXTargetDependency */,
-				535D2A7D304A29DF00E87F89 /* PBXTargetDependency */,
-				535D2A7F304A2A0500E87F89 /* PBXTargetDependency */,
 				535D2A8D304A2AD900E87F89 /* PBXTargetDependency */,
 			);
 			name = Runner;
@@ -511,18 +487,6 @@
 			isa = PBXTargetDependency;
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
-		};
-		535D2A79304A299700E87F89 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			targetProxy = 535D2A78304A299700E87F89 /* PBXContainerItemProxy */;
-		};
-		535D2A7D304A29DF00E87F89 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			targetProxy = 535D2A7C304A29DF00E87F89 /* PBXContainerItemProxy */;
-		};
-		535D2A7F304A2A0500E87F89 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			targetProxy = 535D2A7E304A2A0500E87F89 /* PBXContainerItemProxy */;
 		};
 		535D2A8D304A2AD900E87F89 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
