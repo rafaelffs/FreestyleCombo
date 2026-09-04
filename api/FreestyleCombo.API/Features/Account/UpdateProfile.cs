@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FluentValidation;
 using FreestyleCombo.Core.Entities;
+using FreestyleCombo.Core.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 
@@ -23,11 +24,13 @@ public class UpdateProfileHandler : IRequestHandler<UpdateProfileCommand, Profil
 {
     private readonly UserManager<AppUser> _userManager;
     private readonly IHttpContextAccessor _http;
+    private readonly IUserComboCompletionRepository _completions;
 
-    public UpdateProfileHandler(UserManager<AppUser> userManager, IHttpContextAccessor http)
+    public UpdateProfileHandler(UserManager<AppUser> userManager, IHttpContextAccessor http, IUserComboCompletionRepository completions)
     {
         _userManager = userManager;
         _http = http;
+        _completions = completions;
     }
 
     public async Task<ProfileDto> Handle(UpdateProfileCommand request, CancellationToken cancellationToken)
@@ -52,6 +55,7 @@ public class UpdateProfileHandler : IRequestHandler<UpdateProfileCommand, Profil
         }
 
         var roles = await _userManager.GetRolesAsync(user);
-        return new ProfileDto(user.Id, user.UserName!, user.Email!, roles.Contains("Admin"));
+        var landedIds = await _completions.GetCompletedComboIdsAsync(user.Id, cancellationToken);
+        return new ProfileDto(user.Id, user.UserName!, user.Email!, roles.Contains("Admin"), landedIds.Count);
     }
 }

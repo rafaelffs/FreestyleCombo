@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FluentAssertions;
 using FreestyleCombo.API.Features.Account;
 using FreestyleCombo.Core.Entities;
+using FreestyleCombo.Core.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Moq;
@@ -34,20 +35,24 @@ public class AccountHandlerTests
     }
 
     [Fact]
-    public async Task GetProfile_ReturnsProfileWithAdminRole()
+    public async Task GetProfile_ReturnsProfileWithAdminRoleAndLandedCount()
     {
         var userManager = CreateUserManagerMock();
         var user = new AppUser { Id = _userId, UserName = "rafael", Email = "r@example.com" };
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(user);
         userManager.Setup(m => m.GetRolesAsync(user)).ReturnsAsync(["Admin"]);
+        var completions = new Mock<IUserComboCompletionRepository>();
+        completions.Setup(c => c.GetCompletedComboIdsAsync(_userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()]);
 
-        var result = await new GetProfileHandler(userManager.Object, CreateHttp())
+        var result = await new GetProfileHandler(userManager.Object, CreateHttp(), completions.Object)
             .Handle(new GetProfileQuery(), CancellationToken.None);
 
         result.Id.Should().Be(_userId);
         result.UserName.Should().Be("rafael");
         result.Email.Should().Be("r@example.com");
         result.IsAdmin.Should().BeTrue();
+        result.LandedCount.Should().Be(3);
     }
 
     [Fact]
@@ -55,8 +60,9 @@ public class AccountHandlerTests
     {
         var userManager = CreateUserManagerMock();
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync((AppUser?)null);
+        var completions = new Mock<IUserComboCompletionRepository>();
 
-        Func<Task> act = () => new GetProfileHandler(userManager.Object, CreateHttp())
+        Func<Task> act = () => new GetProfileHandler(userManager.Object, CreateHttp(), completions.Object)
             .Handle(new GetProfileQuery(), CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -77,8 +83,11 @@ public class AccountHandlerTests
             .Callback<AppUser, string, string>((target, email, _) => target.Email = email)
             .ReturnsAsync(IdentityResult.Success);
         userManager.Setup(m => m.GetRolesAsync(user)).ReturnsAsync([]);
+        var completions = new Mock<IUserComboCompletionRepository>();
+        completions.Setup(c => c.GetCompletedComboIdsAsync(_userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
 
-        var result = await new UpdateProfileHandler(userManager.Object, CreateHttp())
+        var result = await new UpdateProfileHandler(userManager.Object, CreateHttp(), completions.Object)
             .Handle(new UpdateProfileCommand("newname", "new@example.com"), CancellationToken.None);
 
         result.UserName.Should().Be("newname");
@@ -90,8 +99,9 @@ public class AccountHandlerTests
     {
         var userManager = CreateUserManagerMock();
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync((AppUser?)null);
+        var completions = new Mock<IUserComboCompletionRepository>();
 
-        Func<Task> act = () => new UpdateProfileHandler(userManager.Object, CreateHttp())
+        Func<Task> act = () => new UpdateProfileHandler(userManager.Object, CreateHttp(), completions.Object)
             .Handle(new UpdateProfileCommand("newname", null), CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -106,8 +116,9 @@ public class AccountHandlerTests
         userManager.Setup(m => m.FindByIdAsync(_userId.ToString())).ReturnsAsync(user);
         userManager.Setup(m => m.SetUserNameAsync(user, "newname"))
             .ReturnsAsync(IdentityResult.Failed(new IdentityError { Description = "Duplicate username" }));
+        var completions = new Mock<IUserComboCompletionRepository>();
 
-        Func<Task> act = () => new UpdateProfileHandler(userManager.Object, CreateHttp())
+        Func<Task> act = () => new UpdateProfileHandler(userManager.Object, CreateHttp(), completions.Object)
             .Handle(new UpdateProfileCommand("newname", null), CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
