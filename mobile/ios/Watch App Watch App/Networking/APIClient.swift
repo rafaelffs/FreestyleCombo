@@ -7,6 +7,16 @@ enum APIError: Error {
     case decoding
 }
 
+extension APIError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .unauthorized: return "Reconnect needed."
+        case .server(let message): return message
+        case .decoding: return "Couldn't read the server's response."
+        }
+    }
+}
+
 final class APIClient {
     static let shared = APIClient()
 
@@ -18,6 +28,15 @@ final class APIClient {
     #endif
 
     private let decoder = JSONDecoder()
+
+    private struct ErrorPayload: Decodable { let error: String }
+
+    private func errorMessage(from data: Data, statusCode: Int) -> String {
+        if let payload = try? JSONDecoder().decode(ErrorPayload.self, from: data) {
+            return payload.error
+        }
+        return "HTTP \(statusCode)"
+    }
 
     private func request(_ path: String, query: [String: String] = [:]) throws -> URLRequest {
         var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
@@ -39,7 +58,7 @@ final class APIClient {
             throw APIError.unauthorized
         }
         guard (200...299).contains(http.statusCode) else {
-            throw APIError.server("HTTP \(http.statusCode)")
+            throw APIError.server(errorMessage(from: data, statusCode: http.statusCode))
         }
         do {
             return try decoder.decode(T.self, from: data)
@@ -49,14 +68,14 @@ final class APIClient {
     }
 
     private func sendNoBody(_ request: URLRequest) async throws {
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw APIError.server("No response") }
         if http.statusCode == 401 {
             await MainActor.run { WatchAuthStore.shared.markReconnectNeeded() }
             throw APIError.unauthorized
         }
         guard (200...299).contains(http.statusCode) else {
-            throw APIError.server("HTTP \(http.statusCode)")
+            throw APIError.server(errorMessage(from: data, statusCode: http.statusCode))
         }
     }
 
