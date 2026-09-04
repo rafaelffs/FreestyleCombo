@@ -36,11 +36,9 @@ class _AccountScreenState extends State<AccountScreen> {
     try {
       final profile = await ApiClient.instance.getProfile();
       final combos = await ApiClient.instance.getMyCombos();
-      var done = 0;
       var ratingSum = 0.0;
       var ratingWeight = 0;
       for (final c in combos.items) {
-        if (c.isCompleted) done++;
         if (c.totalRatings > 0) {
           ratingSum += c.averageRating * c.totalRatings;
           ratingWeight += c.totalRatings;
@@ -50,7 +48,10 @@ class _AccountScreenState extends State<AccountScreen> {
       setState(() {
         _profile = profile;
         _comboCount = combos.totalCount;
-        _doneCount = done;
+        // From the profile endpoint, not derived from getMyCombos() — this
+        // counts every combo the user has landed, public or not, including
+        // ones they don't own, which getMyCombos() alone can't see.
+        _doneCount = profile.landedCount;
         _avgRating = ratingWeight > 0 ? ratingSum / ratingWeight : null;
         _loading = false;
       });
