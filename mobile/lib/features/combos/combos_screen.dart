@@ -61,6 +61,15 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) setState(() {});
     });
+    _refreshAll();
+  }
+
+  // Reloads every tab's data. Used for the manual refresh button, initial
+  // load, and passed as each combo card's onRefresh — a favourite/landed
+  // toggle can happen from any tab (All/Public/Mine), and Favourites (or
+  // All, which merges Public+Mine) has no other way to learn about it since
+  // each tab's future is only re-created when explicitly reloaded.
+  void _refreshAll() {
     _loadPublic();
     if (_authed) {
       _loadMine();
@@ -468,14 +477,7 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
             padding: const EdgeInsets.only(right: 8),
             child: _AppBarIconButton(
               icon: Icons.refresh,
-              onTap: () {
-                _loadPublic();
-                if (_authed) {
-                  _loadMine();
-                  _loadFavourites();
-                  _loadAll();
-                }
-              },
+              onTap: _refreshAll,
             ),
           ),
           Padding(
@@ -484,13 +486,7 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
               icon: Icons.add,
               gradient: true,
               onTap: () => context.push('/combos/create').then((_) {
-                if (mounted) {
-                  _loadPublic();
-                  if (_authed) {
-                    _loadMine();
-                    _loadAll();
-                  }
-                }
+                if (mounted) _refreshAll();
               }),
             ),
           ),
@@ -566,29 +562,26 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
                     _buildSimpleList(
                       _allFuture,
                       true,
-                      _loadAll,
+                      _refreshAll,
                       _emptyState(Icons.layers_outlined, 'No combos yet.'),
                     ),
                   _buildPagedList(
                     _publicFuture,
                     _authed,
-                    _loadPublic,
+                    _refreshAll,
                     _emptyState(Icons.public_off, 'No public combos yet.'),
                   ),
                   if (_authed)
                     _buildPagedList(
                       _mineFuture,
                       true,
-                      _loadMine,
+                      _refreshAll,
                       _emptyState(
                         Icons.bookmark_border,
                         "You haven't created any combos yet.",
                         ctaLabel: 'Create your first combo',
                         onCta: () => context.push('/combos/create').then((_) {
-                          if (mounted) {
-                            _loadMine();
-                            _loadAll();
-                          }
+                          if (mounted) _refreshAll();
                         }),
                       ),
                       filterPublic: true,
@@ -597,7 +590,7 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
                     _buildSimpleList(
                       _favouritesFuture,
                       true,
-                      _loadFavourites,
+                      _refreshAll,
                       _emptyState(Icons.favorite_border, "You haven't favourited any combos yet."),
                     ),
                 ],
