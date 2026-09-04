@@ -76,6 +76,10 @@ struct ComboListView: View {
         isLoading = false
     }
 
+    private func refresh() async {
+        combos = (try? await filter.fetch()) ?? combos
+    }
+
     private func toggleFavourite(_ combo: Combo) async {
         do {
             if combo.isFavourited {
@@ -83,7 +87,7 @@ struct ComboListView: View {
             } else {
                 try await APIClient.shared.addFavourite(id: combo.id)
             }
-            await load() // refetch rather than mutate local state — see design doc
+            await refresh() // refetch rather than mutate local state — see design doc
         } catch {
             // Best-effort action from a list row — a failed toggle just leaves
             // the row as it was; the user can retry the swipe.
@@ -97,7 +101,7 @@ struct ComboListView: View {
             } else {
                 try await APIClient.shared.markCompleted(id: combo.id)
             }
-            await load()
+            await refresh()
         } catch {
             // Same rationale as toggleFavourite.
         }

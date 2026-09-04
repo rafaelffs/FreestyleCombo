@@ -73,11 +73,26 @@ struct FilterMenuView: View {
     }
 
     private func loadCounts() async {
-        for filter in ComboFilter.allCases {
-            if let combos = try? await filter.fetch() {
-                counts[filter] = combos.count
-            }
-        }
+        async let publicCombos = APIClient.shared.getPublicCombos()
+        async let mineCombos = APIClient.shared.getMyCombos()
+        async let favouriteCombos = APIClient.shared.getFavourites()
+
+        guard
+            let pub = try? await publicCombos,
+            let mine = try? await mineCombos,
+            let favs = try? await favouriteCombos
+        else { return }
+
+        var merged: [String: Combo] = [:]
+        for c in mine { merged[c.id] = c }
+        for c in pub where merged[c.id] == nil { merged[c.id] = c }
+        let all = Array(merged.values)
+
+        counts[.all] = all.count
+        counts[.pub] = pub.count
+        counts[.mine] = mine.count
+        counts[.favourites] = favs.count
+        counts[.done] = all.filter(\.isCompleted).count
     }
 }
 

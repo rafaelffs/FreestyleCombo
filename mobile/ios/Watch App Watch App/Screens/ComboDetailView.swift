@@ -6,7 +6,7 @@ struct ComboDetailView: View {
 
     var body: some View {
         List {
-            ForEach(combo.tricks ?? [], id: \.position) { trick in
+            ForEach(Array((combo.tricks ?? []).enumerated()), id: \.offset) { _, trick in
                 HStack(alignment: .top, spacing: 6) {
                     Text("\(trick.position).")
                         .font(.system(.footnote, design: .monospaced))
@@ -30,7 +30,8 @@ struct ComboDetailView: View {
         let abbreviation = trick.abbreviation ?? ""
         if trick.isTransition { return abbreviation }
         var suffix = ""
-        if trick.noTouch { suffix = "·nt" } else if !trick.strongFoot { suffix = "·wf" }
+        if !trick.strongFoot { suffix += "·wf" }
+        if trick.noTouch { suffix += "·nt" }
         return abbreviation + suffix
     }
 }
