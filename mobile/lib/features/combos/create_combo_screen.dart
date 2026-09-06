@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
+import '../../core/models/revolution_range.dart';
 import '../../core/models/user_preference.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/combo_card.dart' show TrickNameDisplay;
@@ -117,6 +118,8 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   bool _includeCrossOver = true;
   bool _includeKnee = true;
   int _maxHighRevTricks = 1;
+  double _revMin = kRevolutionRangeMin;
+  double _revMax = kRevolutionRangeMax;
   List<String> _allowedTrickIds = [];
   List<TrickItem>? _allTricksForPicker;
   bool _genLoading = false;
@@ -350,6 +353,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
               includeKnee: _includeKnee,
               maxHighRevolutionTricks: _maxHighRevTricks,
               allowedTrickIds: _allowedTrickIds,
+              allowedRevolutions: encodeRevolutionRange(_revMin, _revMax),
             );
       final result =
           await ApiClient.instance.previewCombo(_selectedPrefId, overrides);
@@ -981,6 +985,8 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                             _includeCrossOver = true;
                             _includeKnee = true;
                             _maxHighRevTricks = 1;
+                            _revMin = kRevolutionRangeMin;
+                            _revMax = kRevolutionRangeMax;
                             _allowedTrickIds = [];
                           }),
                         ),
@@ -999,6 +1005,9 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                               _includeCrossOver = p.includeCrossOver;
                               _includeKnee = p.includeKnee;
                               _maxHighRevTricks = p.maxHighRevolutionTricks ?? 1;
+                              final range = decodeRevolutionRange(p.allowedRevolutions);
+                              _revMin = range.min;
+                              _revMax = range.max;
                               _allowedTrickIds = List.from(p.allowedTrickIds);
                             }),
                           ),
@@ -1069,6 +1078,21 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                   onChanged: locked
                       ? null
                       : (v) => setState(() => _maxHighRevTricks = v.round()),
+                ),
+                const SizedBox(height: 20),
+                _AppRangeSlider(
+                  label: 'Revolutions',
+                  minValue: _revMin,
+                  maxValue: _revMax,
+                  min: kRevolutionRangeMin,
+                  max: kRevolutionRangeMax,
+                  step: kRevolutionRangeStep,
+                  onChanged: locked
+                      ? null
+                      : (mn, mx) => setState(() {
+                            _revMin = mn;
+                            _revMax = mx;
+                          }),
                 ),
                 const SizedBox(height: 20),
                 _ToggleRow(
@@ -2284,6 +2308,162 @@ class _PresetChip extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AppRangeSlider extends StatelessWidget {
+  final String label;
+  final double minValue;
+  final double maxValue;
+  final double min;
+  final double max;
+  final double step;
+  final void Function(double min, double max)? onChanged;
+
+  const _AppRangeSlider({
+    required this.label,
+    required this.minValue,
+    required this.maxValue,
+    required this.min,
+    required this.max,
+    required this.step,
+    this.onChanged,
+  });
+
+  double _snap(double raw) => (raw / step).round() * step;
+
+  void _handle(Offset local, double width) {
+    if (onChanged == null || width <= 0) return;
+    final pct = (local.dx / width).clamp(0.0, 1.0);
+    final snapped = _snap(min + pct * (max - min)).clamp(min, max);
+    final distToMin = (snapped - minValue).abs();
+    final distToMax = (snapped - maxValue).abs();
+    if (distToMin <= distToMax) {
+      onChanged!(snapped.clamp(min, maxValue), maxValue);
+    } else {
+      onChanged!(minValue, snapped.clamp(minValue, max));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onChanged != null;
+    final minPct = ((minValue - min) / (max - min)).clamp(0.0, 1.0);
+    final maxPct = ((maxValue - min) / (max - min)).clamp(0.0, 1.0);
+    final isFullRange = minValue <= min && maxValue >= max;
+    final valueLabel = isFullRange
+        ? 'All'
+        : '${minValue.toStringAsFixed(1)}–${maxValue.toStringAsFixed(1)}';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label,
+                style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink)),
+            Text(
+              valueLabel,
+              style: GoogleFonts.jetBrainsMono(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: enabled ? AppColors.indigo : AppColors.faint),
+            ),
+          ],
+        ),
+        const SizedBox(height: 11),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            return GestureDetector(
+              onTapDown: enabled ? (d) => _handle(d.localPosition, width) : null,
+              onHorizontalDragUpdate:
+                  enabled ? (d) => _handle(d.localPosition, width) : null,
+              child: SizedBox(
+                height: 24,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      top: 8,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        height: 8,
+                        decoration: BoxDecoration(
+                            color: const Color(0xFFE4E3EF),
+                            borderRadius: BorderRadius.circular(5)),
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      left: (minPct * width).clamp(0.0, width),
+                      child: Container(
+                        width: ((maxPct - minPct) * width).clamp(0.0, width),
+                        height: 8,
+                        decoration: BoxDecoration(
+                          gradient: enabled ? AppColors.grad : null,
+                          color: enabled ? null : AppColors.line2,
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: (minPct * width - 12)
+                          .clamp(0.0, width - 24 < 0 ? 0.0 : width - 24),
+                      top: 0,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          border: Border.all(
+                              color: enabled ? AppColors.indigo : AppColors.faint,
+                              width: 4),
+                          boxShadow: const [
+                            BoxShadow(
+                                color: Color(0x40141221),
+                                blurRadius: 8,
+                                offset: Offset(0, 3))
+                          ],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: (maxPct * width - 12)
+                          .clamp(0.0, width - 24 < 0 ? 0.0 : width - 24),
+                      top: 0,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          border: Border.all(
+                              color: enabled ? AppColors.indigo : AppColors.faint,
+                              width: 4),
+                          boxShadow: const [
+                            BoxShadow(
+                                color: Color(0x40141221),
+                                blurRadius: 8,
+                                offset: Offset(0, 3))
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }
