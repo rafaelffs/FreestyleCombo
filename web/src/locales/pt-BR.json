@@ -12,7 +12,11 @@
     "back": "← Voltar",
     "yes": "Sim",
     "no": "Não",
-    "confirm": "Confirmar"
+    "confirm": "Confirmar",
+    "revRangeAll": "Todos os giros",
+    "revRangeValue": "Giros: {{min}} – {{max}}",
+    "revRangeMinAria": "Giros mínimos",
+    "revRangeMaxAria": "Giros máximos"
   },
   "nav": {
     "combos": "Combos",
@@ -151,6 +155,7 @@
     "noTouchPct": "% No Touch",
     "maxConsecutiveNT": "NT Consecutivos Máx",
     "maxHighRevTricks": "Máx tricks 3+ giros",
+    "revRange": "Giros",
     "includeCrossover": "Incluir Crossover",
     "includeKnee": "Incluir Joelho",
     "lockedPref": "Campos bloqueados pela preferência \"{{name}}\". Selecione \"Personalizado\" para editar.",
@@ -354,6 +359,8 @@
     "maxConsecLabel": "NT consec máx",
     "maxHighRevTricks": "Máx tricks 3+ giros",
     "maxHighRevLabel": "Máx 3+ giros",
+    "revRange": "Giros",
+    "revRangeLabel": "Giros",
     "allowedTricks": "Tricks Permitidas",
     "allowedTricksHint": "Deixe tudo desmarcado para permitir toda a biblioteca de tricks. Marque tricks específicas para restringir a geração a apenas elas.",
     "allowedTricksCount": "{{count}} selecionada(s)",

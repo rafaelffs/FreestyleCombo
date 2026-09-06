@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
+import '../../core/models/revolution_range.dart';
 import '../../core/models/user_preference.dart';
 import '../../theme/app_colors.dart';
 
@@ -171,10 +172,14 @@ class _PrefCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final revRange = pref.allowedRevolutions.isNotEmpty
+        ? decodeRevolutionRange(pref.allowedRevolutions)
+        : null;
     final flags = '${pref.includeCrossOver ? "Cross-overs" : "No cross-overs"} · '
         '${pref.includeKnee ? "Knee tricks" : "No knee tricks"} · '
         'Max consec. NT ${pref.maxConsecutiveNoTouch}'
         '${pref.maxHighRevolutionTricks != null ? " · Max 3+ rev ${pref.maxHighRevolutionTricks}" : ""}'
+        '${revRange != null ? " · Revs ${revRange.min.toStringAsFixed(1)}–${revRange.max.toStringAsFixed(1)}" : ""}'
         '${pref.allowedTrickIds.isNotEmpty ? " · ${pref.allowedTrickIds.length} allowed tricks" : ""}';
 
     return Container(
@@ -296,6 +301,8 @@ class _PreferenceFormState extends State<_PreferenceForm> {
   bool _includeCrossOver = true;
   bool _includeKnee = true;
   int _maxHighRevTricks = 1;
+  double _revMin = kRevolutionRangeMin;
+  double _revMax = kRevolutionRangeMax;
   List<String> _allowedTrickIds = [];
   List<TrickItem>? _allTricks;
   bool _saving = false;
@@ -315,6 +322,9 @@ class _PreferenceFormState extends State<_PreferenceForm> {
       _includeCrossOver = p.includeCrossOver;
       _includeKnee = p.includeKnee;
       _maxHighRevTricks = p.maxHighRevolutionTricks ?? 1;
+      final range = decodeRevolutionRange(p.allowedRevolutions);
+      _revMin = range.min;
+      _revMax = range.max;
       _allowedTrickIds = List.from(p.allowedTrickIds);
     }
   }
@@ -476,7 +486,7 @@ class _PreferenceFormState extends State<_PreferenceForm> {
         maxConsecutiveNoTouch: _maxConsecNoTouch,
         includeCrossOver: _includeCrossOver,
         includeKnee: _includeKnee,
-        allowedRevolutions: widget.initial?.allowedRevolutions ?? [],
+        allowedRevolutions: encodeRevolutionRange(_revMin, _revMax),
         maxHighRevolutionTricks: _maxHighRevTricks,
         allowedTrickIds: _allowedTrickIds,
       );
@@ -546,6 +556,16 @@ class _PreferenceFormState extends State<_PreferenceForm> {
             _PrefSlider(label: 'Max consecutive no-touch', value: _maxConsecNoTouch.toDouble(), min: 0, max: 30, onChanged: (v) => setState(() => _maxConsecNoTouch = v.round())),
             const SizedBox(height: 18),
             _PrefSlider(label: 'Max 3+ rev tricks', value: _maxHighRevTricks.toDouble(), min: 1, max: 15, onChanged: (v) => setState(() => _maxHighRevTricks = v.round())),
+            const SizedBox(height: 18),
+            _PrefRangeSlider(
+              label: 'Revolutions',
+              minValue: _revMin,
+              maxValue: _revMax,
+              min: kRevolutionRangeMin,
+              max: kRevolutionRangeMax,
+              step: kRevolutionRangeStep,
+              onChanged: (mn, mx) => setState(() { _revMin = mn; _revMax = mx; }),
+            ),
             const SizedBox(height: 18),
             _PrefToggle(label: 'Include cross-overs', value: _includeCrossOver, onChanged: (v) => setState(() => _includeCrossOver = v)),
             const SizedBox(height: 11),
@@ -669,6 +689,121 @@ class _PrefSlider extends StatelessWidget {
                     ),
                     Positioned(
                       left: (pct * width - 12).clamp(0.0, width - 24 < 0 ? 0.0 : width - 24),
+                      top: 0,
+                      child: Container(
+                        width: 24, height: 24,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          border: Border.all(color: AppColors.indigo, width: 4),
+                          boxShadow: const [BoxShadow(color: Color(0x40141221), blurRadius: 8, offset: Offset(0, 3))],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _PrefRangeSlider extends StatelessWidget {
+  final String label;
+  final double minValue;
+  final double maxValue;
+  final double min;
+  final double max;
+  final double step;
+  final void Function(double min, double max) onChanged;
+
+  const _PrefRangeSlider({
+    required this.label,
+    required this.minValue,
+    required this.maxValue,
+    required this.min,
+    required this.max,
+    required this.step,
+    required this.onChanged,
+  });
+
+  double _snap(double raw) => (raw / step).round() * step;
+
+  void _handle(Offset local, double width) {
+    if (width <= 0) return;
+    final pct = (local.dx / width).clamp(0.0, 1.0);
+    final snapped = _snap(min + pct * (max - min)).clamp(min, max);
+    final distToMin = (snapped - minValue).abs();
+    final distToMax = (snapped - maxValue).abs();
+    if (distToMin <= distToMax) {
+      onChanged(snapped.clamp(min, maxValue), maxValue);
+    } else {
+      onChanged(minValue, snapped.clamp(minValue, max));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final minPct = ((minValue - min) / (max - min)).clamp(0.0, 1.0);
+    final maxPct = ((maxValue - min) / (max - min)).clamp(0.0, 1.0);
+    final isFullRange = minValue <= min && maxValue >= max;
+    final valueLabel = isFullRange
+        ? 'All'
+        : '${minValue.toStringAsFixed(1)}–${maxValue.toStringAsFixed(1)}';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink)),
+            Text(valueLabel, style: GoogleFonts.jetBrainsMono(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.indigo)),
+          ],
+        ),
+        const SizedBox(height: 11),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            return GestureDetector(
+              onTapDown: (d) => _handle(d.localPosition, width),
+              onHorizontalDragUpdate: (d) => _handle(d.localPosition, width),
+              child: SizedBox(
+                height: 24,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      top: 8, left: 0, right: 0,
+                      child: Container(height: 8, decoration: BoxDecoration(color: const Color(0xFFE4E3EF), borderRadius: BorderRadius.circular(5))),
+                    ),
+                    Positioned(
+                      top: 8,
+                      left: (minPct * width).clamp(0.0, width),
+                      child: Container(
+                        width: ((maxPct - minPct) * width).clamp(0.0, width),
+                        height: 8,
+                        decoration: BoxDecoration(gradient: AppColors.grad, borderRadius: BorderRadius.circular(5)),
+                      ),
+                    ),
+                    Positioned(
+                      left: (minPct * width - 12).clamp(0.0, width - 24 < 0 ? 0.0 : width - 24),
+                      top: 0,
+                      child: Container(
+                        width: 24, height: 24,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          border: Border.all(color: AppColors.indigo, width: 4),
+                          boxShadow: const [BoxShadow(color: Color(0x40141221), blurRadius: 8, offset: Offset(0, 3))],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: (maxPct * width - 12).clamp(0.0, width - 24 < 0 ? 0.0 : width - 24),
                       top: 0,
                       child: Container(
                         width: 24, height: 24,

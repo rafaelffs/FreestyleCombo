@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { RevRangeSlider } from '@/components/ui/rev-range-slider'
+import { decodeRevolutionRange, encodeRevolutionRange } from '@/lib/revolutionRange'
 
 const DEFAULTS: PreferencePayload = {
   name: '',
@@ -126,6 +128,8 @@ function PreferenceForm({
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
+  const revRange = decodeRevolutionRange(form.allowedRevolutions)
+
   return (
     <form
       onSubmit={(e) => {
@@ -174,6 +178,18 @@ function PreferenceForm({
             max={15}
             value={form.maxHighRevolutionTricks ?? 1}
             onChange={(e) => update('maxHighRevolutionTricks', Math.min(15, Math.max(1, Number(e.target.value))))}
+          />
+        </div>
+        <div className="space-y-1 sm:col-span-2 md:col-span-3">
+          <Label>{t('preferences.revRange')}</Label>
+          <RevRangeSlider
+            min={revRange.min}
+            max={revRange.max}
+            onChange={(min, max) => update('allowedRevolutions', encodeRevolutionRange(min, max))}
+            allLabel={t('common.revRangeAll')}
+            formatRangeLabel={(min, max) => t('common.revRangeValue', { min: min.toFixed(1), max: max.toFixed(1) })}
+            minAriaLabel={t('common.revRangeMinAria')}
+            maxAriaLabel={t('common.revRangeMaxAria')}
           />
         </div>
       </div>
@@ -233,6 +249,7 @@ function PreferenceCard({
     sf: pref.strongFootPercentage,
     nt: pref.noTouchPercentage,
   })
+  const revRange = pref.allowedRevolutions.length > 0 ? decodeRevolutionRange(pref.allowedRevolutions) : null
 
   if (editing) {
     return (
@@ -262,6 +279,7 @@ function PreferenceCard({
           <p className="mt-0.5 text-xs text-gray-400">
             {pref.includeCrossOver ? 'CO ✓' : 'CO ✗'} · {pref.includeKnee ? `${t('preferences.kneeLabel')} ✓` : `${t('preferences.kneeLabel')} ✗`} · {t('preferences.maxConsecLabel')} {pref.maxConsecutiveNoTouch}
             {pref.maxHighRevolutionTricks != null && <> · {t('preferences.maxHighRevLabel')} {pref.maxHighRevolutionTricks}</>}
+            {revRange && <> · {t('preferences.revRangeLabel')} {revRange.min.toFixed(1)}–{revRange.max.toFixed(1)}</>}
             {pref.allowedTrickIds.length > 0 && (
               <> · {t('preferences.allowedTricksCount', { count: pref.allowedTrickIds.length })}</>
             )}

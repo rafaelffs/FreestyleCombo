@@ -7,11 +7,13 @@ import { FootToggle } from '@/components/ui/foot-toggle'
 import { combosApi, tricksApi, preferencesApi, extractError, comboDisplayName, type GenerateComboOverrides, type TrickItem, type ComboItem, type BuildComboTrickItem, type ComboTrickDto } from '@/lib/api'
 import { isAuthenticated, setPendingCombo } from '@/lib/auth'
 import { getShowDifficulty } from '@/lib/displayPrefs'
+import { decodeRevolutionRange, encodeRevolutionRange } from '@/lib/revolutionRange'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { RevRangeSlider } from '@/components/ui/rev-range-slider'
 
 function diffColor(d: number): string {
   if (d <= 4) return 'bg-green-100 text-green-800'
@@ -176,6 +178,7 @@ export function CreateComboPage() {
   })
 
   const selectedPref = selectedPrefId ? savedPrefs.find((p) => p.id === selectedPrefId) ?? null : null
+  const revRange = decodeRevolutionRange(selectedPref ? selectedPref.allowedRevolutions : (overrides.allowedRevolutions ?? []))
 
   const previewMutation = useMutation({
     mutationFn: () => combosApi.preview(selectedPrefId, selectedPrefId ? undefined : overrides),
@@ -488,6 +491,19 @@ export function CreateComboPage() {
                   disabled={!!selectedPref}
                   onChange={(e) => updateOverride('maxHighRevolutionTricks', Math.min(15, Math.max(1, Number(e.target.value))))}
                   className={selectedPref ? 'bg-gray-50 text-gray-500' : ''}
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-2 md:col-span-3">
+                <Label>{t('create.revRange')}</Label>
+                <RevRangeSlider
+                  min={revRange.min}
+                  max={revRange.max}
+                  disabled={!!selectedPref}
+                  onChange={(min, max) => updateOverride('allowedRevolutions', encodeRevolutionRange(min, max))}
+                  allLabel={t('common.revRangeAll')}
+                  formatRangeLabel={(min, max) => t('common.revRangeValue', { min: min.toFixed(1), max: max.toFixed(1) })}
+                  minAriaLabel={t('common.revRangeMinAria')}
+                  maxAriaLabel={t('common.revRangeMaxAria')}
                 />
               </div>
               <div className="flex flex-col gap-2 pt-1">

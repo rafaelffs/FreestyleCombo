@@ -12,7 +12,11 @@
     "back": "← Back",
     "yes": "Yes",
     "no": "No",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "revRangeAll": "All revolutions",
+    "revRangeValue": "Revs: {{min}} – {{max}}",
+    "revRangeMinAria": "Minimum revolutions",
+    "revRangeMaxAria": "Maximum revolutions"
   },
   "nav": {
     "combos": "Combos",
@@ -151,6 +155,7 @@
     "noTouchPct": "No-Touch %",
     "maxConsecutiveNT": "Max Consecutive NT",
     "maxHighRevTricks": "Max 3+ Rev Tricks",
+    "revRange": "Revolutions",
     "includeCrossover": "Include Crossover",
     "includeKnee": "Include Knee",
     "lockedPref": "Fields are locked to the \"{{name}}\" preference. Select \"Custom\" to edit.",
@@ -354,6 +359,8 @@
     "maxConsecLabel": "Max consec NT",
     "maxHighRevTricks": "Max 3+ Rev Tricks",
     "maxHighRevLabel": "Max 3+ rev",
+    "revRange": "Revolutions",
+    "revRangeLabel": "Revs",
     "allowedTricks": "Allowed Tricks",
     "allowedTricksHint": "Leave everything unchecked to allow the full trick library. Check specific tricks to restrict generation to only those.",
     "allowedTricksCount": "{{count}} selected",
