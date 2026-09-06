@@ -12,7 +12,11 @@
     "back": "← Voltar",
     "yes": "Sim",
     "no": "Não",
-    "confirm": "Confirmar"
+    "confirm": "Confirmar",
+    "revRangeAll": "Todos os giros",
+    "revRangeValue": "Giros: {{min}} – {{max}}",
+    "revRangeMinAria": "Giros mínimos",
+    "revRangeMaxAria": "Giros máximos"
   },
   "nav": {
     "combos": "Combos",

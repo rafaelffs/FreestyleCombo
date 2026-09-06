@@ -5,6 +5,10 @@ interface RevRangeSliderProps {
   max: number
   onChange: (min: number, max: number) => void
   disabled?: boolean
+  allLabel: string
+  formatRangeLabel: (min: number, max: number) => string
+  minAriaLabel: string
+  maxAriaLabel: string
 }
 
 const THUMB_CLASS =
@@ -23,9 +27,18 @@ const THUMB_CLASS =
  * min and max are very close, the two thumbs can be fiddly to grab
  * independently—a known limitation of this pattern.
  */
-export function RevRangeSlider({ min, max, onChange, disabled = false }: RevRangeSliderProps) {
+export function RevRangeSlider({
+  min,
+  max,
+  onChange,
+  disabled = false,
+  allLabel,
+  formatRangeLabel,
+  minAriaLabel,
+  maxAriaLabel,
+}: RevRangeSliderProps) {
   const isFullRange = min <= REV_MIN && max >= REV_MAX
-  const label = isFullRange ? 'All revolutions' : `Revs: ${min.toFixed(1)} – ${max.toFixed(1)}`
+  const label = isFullRange ? allLabel : formatRangeLabel(min, max)
   const thumbBorder = disabled
     ? '[&::-webkit-slider-thumb]:border-gray-300 [&::-moz-range-thumb]:border-gray-300'
     : '[&::-webkit-slider-thumb]:border-indigo-600 [&::-moz-range-thumb]:border-indigo-600'
@@ -58,7 +71,7 @@ export function RevRangeSlider({ min, max, onChange, disabled = false }: RevRang
           value={min}
           disabled={disabled}
           onChange={(e) => handleMinChange(Number(e.target.value))}
-          aria-label="Minimum revolutions"
+          aria-label={minAriaLabel}
           className={`pointer-events-none absolute inset-x-0 top-0 h-6 w-full appearance-none bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${THUMB_CLASS} ${thumbBorder}`}
         />
         <input
@@ -69,7 +82,7 @@ export function RevRangeSlider({ min, max, onChange, disabled = false }: RevRang
           value={max}
           disabled={disabled}
           onChange={(e) => handleMaxChange(Number(e.target.value))}
-          aria-label="Maximum revolutions"
+          aria-label={maxAriaLabel}
           className={`pointer-events-none absolute inset-x-0 top-0 h-6 w-full appearance-none bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${THUMB_CLASS} ${thumbBorder}`}
         />
       </div>

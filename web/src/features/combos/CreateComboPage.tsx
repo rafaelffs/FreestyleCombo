@@ -500,6 +500,10 @@ export function CreateComboPage() {
                   max={revRange.max}
                   disabled={!!selectedPref}
                   onChange={(min, max) => updateOverride('allowedRevolutions', encodeRevolutionRange(min, max))}
+                  allLabel={t('common.revRangeAll')}
+                  formatRangeLabel={(min, max) => t('common.revRangeValue', { min: min.toFixed(1), max: max.toFixed(1) })}
+                  minAriaLabel={t('common.revRangeMinAria')}
+                  maxAriaLabel={t('common.revRangeMaxAria')}
                 />
               </div>
               <div className="flex flex-col gap-2 pt-1">

@@ -12,7 +12,11 @@
     "back": "← Back",
     "yes": "Yes",
     "no": "No",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "revRangeAll": "All revolutions",
+    "revRangeValue": "Revs: {{min}} – {{max}}",
+    "revRangeMinAria": "Minimum revolutions",
+    "revRangeMaxAria": "Maximum revolutions"
   },
   "nav": {
     "combos": "Combos",

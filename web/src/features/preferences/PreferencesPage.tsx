@@ -186,6 +186,10 @@ function PreferenceForm({
             min={revRange.min}
             max={revRange.max}
             onChange={(min, max) => update('allowedRevolutions', encodeRevolutionRange(min, max))}
+            allLabel={t('common.revRangeAll')}
+            formatRangeLabel={(min, max) => t('common.revRangeValue', { min: min.toFixed(1), max: max.toFixed(1) })}
+            minAriaLabel={t('common.revRangeMinAria')}
+            maxAriaLabel={t('common.revRangeMaxAria')}
           />
         </div>
       </div>
