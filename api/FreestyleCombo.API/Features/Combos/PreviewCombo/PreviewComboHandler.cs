@@ -45,7 +45,7 @@ public class PreviewComboHandler : IRequestHandler<PreviewComboCommand, PreviewC
         var noTouchPct = request.Overrides?.NoTouchPercentage ?? savedPref?.NoTouchPercentage ?? 30;
         var maxConsecutiveNoTouch = request.Overrides?.MaxConsecutiveNoTouch ?? savedPref?.MaxConsecutiveNoTouch ?? 2;
         var includeCrossOver = request.Overrides?.IncludeCrossOver ?? savedPref?.IncludeCrossOver ?? true;
-        var includeKnee = request.Overrides?.IncludeKnee ?? savedPref?.IncludeKnee ?? true;
+        var includeKnee = request.Overrides?.IncludeKnee ?? savedPref?.IncludeKnee ?? false;
         var allowedRevolutions = request.Overrides?.AllowedRevolutions ?? savedPref?.AllowedRevolutions ?? [];
         var maxHighRevolutionTricks = request.Overrides?.MaxHighRevolutionTricks ?? savedPref?.MaxHighRevolutionTricks;
         var allowedTrickIds = request.Overrides?.AllowedTrickIds ?? savedPref?.AllowedTrickIds ?? [];
