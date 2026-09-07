@@ -286,7 +286,7 @@ function PreferenceCard({
         </CardHeader>
         <CardContent>
           <PreferenceForm
-            initial={{ name: pref.name, comboLength: pref.comboLength, maxDifficulty: pref.maxDifficulty, strongFootPercentage: pref.strongFootPercentage, noTouchPercentage: pref.noTouchPercentage, maxConsecutiveNoTouch: pref.maxConsecutiveNoTouch, includeCrossOver: pref.includeCrossOver, includeKnee: pref.includeKnee, allowedRevolutions: pref.allowedRevolutions, maxHighRevolutionTricks: pref.maxHighRevolutionTricks ?? 1, allowedTrickIds: pref.allowedTrickIds }}
+            initial={{ name: pref.name, comboLength: pref.comboLength, maxDifficulty: pref.maxDifficulty, strongFootPercentage: pref.strongFootPercentage, noTouchPercentage: pref.noTouchPercentage, maxConsecutiveNoTouch: pref.maxConsecutiveNoTouch, includeCrossOver: pref.includeCrossOver, includeKnee: pref.includeKnee, allowedRevolutions: pref.allowedRevolutions, maxHighRevolutionTricks: pref.maxHighRevolutionTricks, allowedTrickIds: pref.allowedTrickIds }}
             onSave={(p) => updateMutation.mutate(p)}
             onCancel={() => setEditing(false)}
             isPending={updateMutation.isPending}
