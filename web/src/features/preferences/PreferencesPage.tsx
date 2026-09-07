@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { RevRangeSlider } from '@/components/ui/rev-range-slider'
+import { OptionalField } from '@/components/ui/optional-field'
 import { decodeRevolutionRange, encodeRevolutionRange } from '@/lib/revolutionRange'
 
 const DEFAULTS: PreferencePayload = {
@@ -18,7 +19,7 @@ const DEFAULTS: PreferencePayload = {
   noTouchPercentage: 30,
   maxConsecutiveNoTouch: 2,
   includeCrossOver: true,
-  includeKnee: true,
+  includeKnee: false,
   allowedRevolutions: [],
   maxHighRevolutionTricks: 1,
   allowedTrickIds: [],
@@ -122,6 +123,7 @@ function PreferenceForm({
   error: string | null
 }) {
   const [form, setForm] = useState<PreferencePayload>(initial)
+  const [revEnabled, setRevEnabled] = useState(initial.allowedRevolutions.length > 0)
   const { t } = useTranslation()
 
   function update<K extends keyof PreferencePayload>(key: K, value: PreferencePayload[K]) {
@@ -134,7 +136,7 @@ function PreferenceForm({
     <form
       onSubmit={(e) => {
         e.preventDefault()
-        onSave(form)
+        onSave({ ...form, allowedRevolutions: revEnabled ? form.allowedRevolutions : [] })
       }}
       className="space-y-4"
     >
@@ -149,39 +151,23 @@ function PreferenceForm({
         />
       </div>
 
+      <TrickPicker selectedIds={form.allowedTrickIds} onChange={(ids) => update('allowedTrickIds', ids)} />
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-        <div className="space-y-1">
-          <Label>{t('preferences.comboLength')}</Label>
-          <Input type="number" min={1} max={100} value={form.comboLength} onChange={(e) => update('comboLength', Number(e.target.value))} />
-        </div>
-        <div className="space-y-1">
-          <Label>{t('preferences.maxDifficulty')}</Label>
-          <Input type="number" min={1} max={10} value={form.maxDifficulty} onChange={(e) => update('maxDifficulty', Number(e.target.value))} />
-        </div>
-        <div className="space-y-1">
-          <Label>{t('preferences.strongFootPct')}</Label>
-          <Input type="number" min={0} max={100} value={form.strongFootPercentage} onChange={(e) => update('strongFootPercentage', Number(e.target.value))} />
-        </div>
-        <div className="space-y-1">
-          <Label>{t('preferences.noTouchPct')}</Label>
-          <Input type="number" min={0} max={100} value={form.noTouchPercentage} onChange={(e) => update('noTouchPercentage', Number(e.target.value))} />
-        </div>
-        <div className="space-y-1">
-          <Label>{t('preferences.maxConsecutiveNT')}</Label>
-          <Input type="number" min={0} max={30} value={form.maxConsecutiveNoTouch} onChange={(e) => update('maxConsecutiveNoTouch', Number(e.target.value))} />
-        </div>
-        <div className="space-y-1">
-          <Label>{t('preferences.maxHighRevTricks')}</Label>
-          <Input
-            type="number"
-            min={1}
-            max={15}
-            value={form.maxHighRevolutionTricks ?? 1}
-            onChange={(e) => update('maxHighRevolutionTricks', Math.min(15, Math.max(1, Number(e.target.value))))}
-          />
-        </div>
-        <div className="space-y-1 sm:col-span-2 md:col-span-3">
-          <Label>{t('preferences.revRange')}</Label>
+        <OptionalField
+          label={t('preferences.comboLength')}
+          enabled={form.comboLength !== null}
+          onToggle={(enabled) => update('comboLength', enabled ? 6 : null)}
+        >
+          <Input type="number" min={1} max={100} value={form.comboLength ?? 6} onChange={(e) => update('comboLength', Number(e.target.value))} />
+        </OptionalField>
+
+        <OptionalField
+          label={t('preferences.revRange')}
+          enabled={revEnabled}
+          onToggle={setRevEnabled}
+          className="space-y-1 sm:col-span-2 md:col-span-3"
+        >
           <RevRangeSlider
             min={revRange.min}
             max={revRange.max}
@@ -191,7 +177,50 @@ function PreferenceForm({
             minAriaLabel={t('common.revRangeMinAria')}
             maxAriaLabel={t('common.revRangeMaxAria')}
           />
+        </OptionalField>
+
+        <div className="space-y-1">
+          <Label>{t('preferences.strongFootPct')}</Label>
+          <Input type="number" min={0} max={100} value={form.strongFootPercentage} onChange={(e) => update('strongFootPercentage', Number(e.target.value))} />
         </div>
+
+        <OptionalField
+          label={t('preferences.noTouchPct')}
+          enabled={form.noTouchPercentage !== null}
+          onToggle={(enabled) => update('noTouchPercentage', enabled ? 30 : null)}
+        >
+          <Input type="number" min={0} max={100} value={form.noTouchPercentage ?? 30} onChange={(e) => update('noTouchPercentage', Number(e.target.value))} />
+        </OptionalField>
+
+        <OptionalField
+          label={t('preferences.maxConsecutiveNT')}
+          enabled={form.maxConsecutiveNoTouch !== null}
+          onToggle={(enabled) => update('maxConsecutiveNoTouch', enabled ? 2 : null)}
+        >
+          <Input type="number" min={0} max={30} value={form.maxConsecutiveNoTouch ?? 2} onChange={(e) => update('maxConsecutiveNoTouch', Number(e.target.value))} />
+        </OptionalField>
+
+        <OptionalField
+          label={t('preferences.maxHighRevTricks')}
+          enabled={form.maxHighRevolutionTricks !== null}
+          onToggle={(enabled) => update('maxHighRevolutionTricks', enabled ? 1 : null)}
+        >
+          <Input
+            type="number"
+            min={1}
+            max={15}
+            value={form.maxHighRevolutionTricks ?? 1}
+            onChange={(e) => update('maxHighRevolutionTricks', Math.min(15, Math.max(1, Number(e.target.value))))}
+          />
+        </OptionalField>
+
+        <OptionalField
+          label={t('preferences.maxDifficulty')}
+          enabled={form.maxDifficulty !== null}
+          onToggle={(enabled) => update('maxDifficulty', enabled ? 10 : null)}
+        >
+          <Input type="number" min={1} max={10} value={form.maxDifficulty ?? 10} onChange={(e) => update('maxDifficulty', Number(e.target.value))} />
+        </OptionalField>
       </div>
 
       <div className="flex flex-wrap gap-4">
@@ -204,8 +233,6 @@ function PreferenceForm({
           <Label htmlFor="pf-knee">{t('preferences.includeKnee')}</Label>
         </div>
       </div>
-
-      <TrickPicker selectedIds={form.allowedTrickIds} onChange={(ids) => update('allowedTrickIds', ids)} />
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -244,10 +271,10 @@ function PreferenceCard({
   const updateError = updateMutation.error ? extractError(updateMutation.error, t('preferences.saveFailed')) : null
 
   const stats = t('preferences.stats', {
-    length: pref.comboLength,
-    maxDiff: pref.maxDifficulty,
+    length: pref.comboLength ?? '—',
+    maxDiff: pref.maxDifficulty ?? '—',
     sf: pref.strongFootPercentage,
-    nt: pref.noTouchPercentage,
+    nt: pref.noTouchPercentage ?? '—',
   })
   const revRange = pref.allowedRevolutions.length > 0 ? decodeRevolutionRange(pref.allowedRevolutions) : null
 
@@ -277,7 +304,8 @@ function PreferenceCard({
           <p className="font-semibold text-gray-900">{pref.name}</p>
           <p className="mt-0.5 text-xs text-gray-500">{stats}</p>
           <p className="mt-0.5 text-xs text-gray-400">
-            {pref.includeCrossOver ? 'CO ✓' : 'CO ✗'} · {pref.includeKnee ? `${t('preferences.kneeLabel')} ✓` : `${t('preferences.kneeLabel')} ✗`} · {t('preferences.maxConsecLabel')} {pref.maxConsecutiveNoTouch}
+            {pref.includeCrossOver ? 'CO ✓' : 'CO ✗'} · {pref.includeKnee ? `${t('preferences.kneeLabel')} ✓` : `${t('preferences.kneeLabel')} ✗`}
+            {pref.maxConsecutiveNoTouch != null && <> · {t('preferences.maxConsecLabel')} {pref.maxConsecutiveNoTouch}</>}
             {pref.maxHighRevolutionTricks != null && <> · {t('preferences.maxHighRevLabel')} {pref.maxHighRevolutionTricks}</>}
             {revRange && <> · {t('preferences.revRangeLabel')} {revRange.min.toFixed(1)}–{revRange.max.toFixed(1)}</>}
             {pref.allowedTrickIds.length > 0 && (
