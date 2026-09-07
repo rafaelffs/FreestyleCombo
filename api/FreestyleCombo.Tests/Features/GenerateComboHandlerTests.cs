@@ -148,4 +148,32 @@ public class GenerateComboHandlerTests
 
         result.TrickCount.Should().Be(4);
     }
+
+    [Fact]
+    public async Task Handle_UsesHardcodedDefault_WhenSavedPreferenceFieldIsNull()
+    {
+        var tricks = TrickFaker.DefaultPool();
+        _trickRepo.Setup(r => r.GetAllAsync(It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(tricks);
+
+        var prefId = Guid.NewGuid();
+        var savedPref = new UserPreference
+        {
+            Id = prefId,
+            UserId = _userId,
+            Name = "No Limits",
+            ComboLength = null,
+            MaxDifficulty = null
+        };
+        _prefRepo.Setup(r => r.GetByIdAsync(prefId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(savedPref);
+
+        var handler = CreateHandler();
+        var command = new GenerateComboCommand(prefId, null);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // ComboLength null -> falls back to the hardcoded default of 6.
+        result.TrickCount.Should().Be(6);
+    }
 }
