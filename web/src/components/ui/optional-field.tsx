@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { Label } from '@/components/ui/label'
 
 interface OptionalFieldProps {
@@ -16,11 +17,13 @@ interface OptionalFieldProps {
  * its own field, this component only controls visibility.
  */
 export function OptionalField({ label, enabled, onToggle, disabled = false, className, children }: OptionalFieldProps) {
+  const id = useId()
   return (
     <div className={className ?? 'space-y-1'}>
       <div className="flex items-center justify-between">
-        <Label className={disabled ? 'text-gray-400' : ''}>{label}</Label>
+        <Label htmlFor={id} className={disabled ? 'text-gray-400' : ''}>{label}</Label>
         <input
+          id={id}
           type="checkbox"
           checked={enabled}
           disabled={disabled}
