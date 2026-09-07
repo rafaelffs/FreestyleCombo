@@ -2,11 +2,11 @@ class UserPreference {
   final String id;
   final String userId;
   final String name;
-  final int comboLength;
-  final int maxDifficulty;
+  final int? comboLength;
+  final int? maxDifficulty;
   final int strongFootPercentage;
-  final int noTouchPercentage;
-  final int maxConsecutiveNoTouch;
+  final int? noTouchPercentage;
+  final int? maxConsecutiveNoTouch;
   final bool includeCrossOver;
   final bool includeKnee;
   final List<double> allowedRevolutions;
@@ -17,11 +17,11 @@ class UserPreference {
     required this.id,
     required this.userId,
     required this.name,
-    required this.comboLength,
-    required this.maxDifficulty,
+    this.comboLength,
+    this.maxDifficulty,
     required this.strongFootPercentage,
-    required this.noTouchPercentage,
-    required this.maxConsecutiveNoTouch,
+    this.noTouchPercentage,
+    this.maxConsecutiveNoTouch,
     required this.includeCrossOver,
     required this.includeKnee,
     required this.allowedRevolutions,
@@ -33,11 +33,11 @@ class UserPreference {
         id: (j['id'] as String?) ?? '',
         userId: (j['userId'] as String?) ?? '',
         name: (j['name'] as String?) ?? '',
-        comboLength: j['comboLength'] as int,
-        maxDifficulty: j['maxDifficulty'] as int,
+        comboLength: j['comboLength'] as int?,
+        maxDifficulty: j['maxDifficulty'] as int?,
         strongFootPercentage: j['strongFootPercentage'] as int,
-        noTouchPercentage: j['noTouchPercentage'] as int,
-        maxConsecutiveNoTouch: j['maxConsecutiveNoTouch'] as int,
+        noTouchPercentage: j['noTouchPercentage'] as int?,
+        maxConsecutiveNoTouch: j['maxConsecutiveNoTouch'] as int?,
         includeCrossOver: j['includeCrossOver'] as bool,
         includeKnee: j['includeKnee'] as bool,
         allowedRevolutions:
