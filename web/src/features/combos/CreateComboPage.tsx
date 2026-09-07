@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { RevRangeSlider } from '@/components/ui/rev-range-slider'
+import { OptionalField } from '@/components/ui/optional-field'
 
 function diffColor(d: number): string {
   if (d <= 4) return 'bg-green-100 text-green-800'
@@ -28,7 +29,7 @@ const GENERATE_DEFAULTS: GenerateComboOverrides = {
   noTouchPercentage: 30,
   maxConsecutiveNoTouch: 2,
   includeCrossOver: true,
-  includeKnee: true,
+  includeKnee: false,
   maxHighRevolutionTricks: 1,
 }
 
@@ -425,30 +426,43 @@ export function CreateComboPage() {
               </div>
             )}
 
-            {/* Fields — editable when Custom, read-only when preference selected */}
+            {/* Fields — editable when Custom, read-only/locked when preference selected */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-              <div className="space-y-1">
-                <Label>{t('create.comboLength')}</Label>
+              <OptionalField
+                label={t('create.comboLength')}
+                enabled={selectedPref ? selectedPref.comboLength !== null : overrides.comboLength !== undefined}
+                onToggle={(enabled) => updateOverride('comboLength', enabled ? 5 : undefined)}
+                disabled={!!selectedPref}
+              >
                 <Input
                   type="number" min={1} max={100}
-                  value={selectedPref ? selectedPref.comboLength : overrides.comboLength}
+                  value={(selectedPref ? selectedPref.comboLength : overrides.comboLength) ?? 5}
                   readOnly={!!selectedPref}
                   disabled={!!selectedPref}
                   onChange={(e) => updateOverride('comboLength', Number(e.target.value))}
                   className={selectedPref ? 'bg-gray-50 text-gray-500' : ''}
                 />
-              </div>
-              <div className="space-y-1">
-                <Label>{t('create.maxDifficulty')}</Label>
-                <Input
-                  type="number" min={1} max={10}
-                  value={selectedPref ? selectedPref.maxDifficulty : overrides.maxDifficulty}
-                  readOnly={!!selectedPref}
+              </OptionalField>
+
+              <OptionalField
+                label={t('create.revRange')}
+                enabled={selectedPref ? selectedPref.allowedRevolutions.length > 0 : overrides.allowedRevolutions !== undefined}
+                onToggle={(enabled) => updateOverride('allowedRevolutions', enabled ? [] : undefined)}
+                disabled={!!selectedPref}
+                className="space-y-1 sm:col-span-2 md:col-span-3"
+              >
+                <RevRangeSlider
+                  min={revRange.min}
+                  max={revRange.max}
                   disabled={!!selectedPref}
-                  onChange={(e) => updateOverride('maxDifficulty', Number(e.target.value))}
-                  className={selectedPref ? 'bg-gray-50 text-gray-500' : ''}
+                  onChange={(min, max) => updateOverride('allowedRevolutions', encodeRevolutionRange(min, max))}
+                  allLabel={t('common.revRangeAll')}
+                  formatRangeLabel={(min, max) => t('common.revRangeValue', { min: min.toFixed(1), max: max.toFixed(1) })}
+                  minAriaLabel={t('common.revRangeMinAria')}
+                  maxAriaLabel={t('common.revRangeMaxAria')}
                 />
-              </div>
+              </OptionalField>
+
               <div className="space-y-1">
                 <Label>{t('create.strongFootPct')}</Label>
                 <Input
@@ -460,30 +474,45 @@ export function CreateComboPage() {
                   className={selectedPref ? 'bg-gray-50 text-gray-500' : ''}
                 />
               </div>
-              <div className="space-y-1">
-                <Label>{t('create.noTouchPct')}</Label>
+
+              <OptionalField
+                label={t('create.noTouchPct')}
+                enabled={selectedPref ? selectedPref.noTouchPercentage !== null : overrides.noTouchPercentage !== undefined}
+                onToggle={(enabled) => updateOverride('noTouchPercentage', enabled ? 30 : undefined)}
+                disabled={!!selectedPref}
+              >
                 <Input
                   type="number" min={0} max={100}
-                  value={selectedPref ? selectedPref.noTouchPercentage : overrides.noTouchPercentage}
+                  value={(selectedPref ? selectedPref.noTouchPercentage : overrides.noTouchPercentage) ?? 30}
                   readOnly={!!selectedPref}
                   disabled={!!selectedPref}
                   onChange={(e) => updateOverride('noTouchPercentage', Number(e.target.value))}
                   className={selectedPref ? 'bg-gray-50 text-gray-500' : ''}
                 />
-              </div>
-              <div className="space-y-1">
-                <Label>{t('create.maxConsecutiveNT')}</Label>
+              </OptionalField>
+
+              <OptionalField
+                label={t('create.maxConsecutiveNT')}
+                enabled={selectedPref ? selectedPref.maxConsecutiveNoTouch !== null : overrides.maxConsecutiveNoTouch !== undefined}
+                onToggle={(enabled) => updateOverride('maxConsecutiveNoTouch', enabled ? 2 : undefined)}
+                disabled={!!selectedPref}
+              >
                 <Input
                   type="number" min={0} max={30}
-                  value={selectedPref ? selectedPref.maxConsecutiveNoTouch : overrides.maxConsecutiveNoTouch}
+                  value={(selectedPref ? selectedPref.maxConsecutiveNoTouch : overrides.maxConsecutiveNoTouch) ?? 2}
                   readOnly={!!selectedPref}
                   disabled={!!selectedPref}
                   onChange={(e) => updateOverride('maxConsecutiveNoTouch', Number(e.target.value))}
                   className={selectedPref ? 'bg-gray-50 text-gray-500' : ''}
                 />
-              </div>
-              <div className="space-y-1">
-                <Label>{t('create.maxHighRevTricks')}</Label>
+              </OptionalField>
+
+              <OptionalField
+                label={t('create.maxHighRevTricks')}
+                enabled={selectedPref ? selectedPref.maxHighRevolutionTricks !== null : overrides.maxHighRevolutionTricks !== undefined}
+                onToggle={(enabled) => updateOverride('maxHighRevolutionTricks', enabled ? 1 : undefined)}
+                disabled={!!selectedPref}
+              >
                 <Input
                   type="number" min={1} max={15}
                   value={(selectedPref ? selectedPref.maxHighRevolutionTricks : overrides.maxHighRevolutionTricks) ?? 1}
@@ -492,20 +521,24 @@ export function CreateComboPage() {
                   onChange={(e) => updateOverride('maxHighRevolutionTricks', Math.min(15, Math.max(1, Number(e.target.value))))}
                   className={selectedPref ? 'bg-gray-50 text-gray-500' : ''}
                 />
-              </div>
-              <div className="space-y-1 sm:col-span-2 md:col-span-3">
-                <Label>{t('create.revRange')}</Label>
-                <RevRangeSlider
-                  min={revRange.min}
-                  max={revRange.max}
+              </OptionalField>
+
+              <OptionalField
+                label={t('create.maxDifficulty')}
+                enabled={selectedPref ? selectedPref.maxDifficulty !== null : overrides.maxDifficulty !== undefined}
+                onToggle={(enabled) => updateOverride('maxDifficulty', enabled ? 10 : undefined)}
+                disabled={!!selectedPref}
+              >
+                <Input
+                  type="number" min={1} max={10}
+                  value={(selectedPref ? selectedPref.maxDifficulty : overrides.maxDifficulty) ?? 10}
+                  readOnly={!!selectedPref}
                   disabled={!!selectedPref}
-                  onChange={(min, max) => updateOverride('allowedRevolutions', encodeRevolutionRange(min, max))}
-                  allLabel={t('common.revRangeAll')}
-                  formatRangeLabel={(min, max) => t('common.revRangeValue', { min: min.toFixed(1), max: max.toFixed(1) })}
-                  minAriaLabel={t('common.revRangeMinAria')}
-                  maxAriaLabel={t('common.revRangeMaxAria')}
+                  onChange={(e) => updateOverride('maxDifficulty', Number(e.target.value))}
+                  className={selectedPref ? 'bg-gray-50 text-gray-500' : ''}
                 />
-              </div>
+              </OptionalField>
+
               <div className="flex flex-col gap-2 pt-1">
                 <div className="flex items-center gap-2">
                   <input
@@ -520,7 +553,7 @@ export function CreateComboPage() {
                 <div className="flex items-center gap-2">
                   <input
                     id="gen-knee" type="checkbox"
-                    checked={selectedPref ? selectedPref.includeKnee : (overrides.includeKnee ?? true)}
+                    checked={selectedPref ? selectedPref.includeKnee : (overrides.includeKnee ?? false)}
                     disabled={!!selectedPref}
                     onChange={(e) => updateOverride('includeKnee', e.target.checked)}
                     className="h-4 w-4 rounded border-gray-300 text-indigo-600 disabled:opacity-50"
