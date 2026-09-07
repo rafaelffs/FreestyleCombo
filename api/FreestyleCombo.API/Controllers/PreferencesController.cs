@@ -85,13 +85,13 @@ public class PreferencesController : ControllerBase
 public class PreferenceRequest
 {
     public string? Name { get; set; }
-    public int MaxDifficulty { get; set; } = 10;
-    public int ComboLength { get; set; } = 6;
+    public int? MaxDifficulty { get; set; }
+    public int? ComboLength { get; set; }
     public int StrongFootPercentage { get; set; } = 60;
-    public int NoTouchPercentage { get; set; } = 30;
-    public int MaxConsecutiveNoTouch { get; set; } = 2;
+    public int? NoTouchPercentage { get; set; }
+    public int? MaxConsecutiveNoTouch { get; set; }
     public bool IncludeCrossOver { get; set; } = true;
-    public bool IncludeKnee { get; set; } = true;
+    public bool IncludeKnee { get; set; } = false;
     public List<decimal> AllowedRevolutions { get; set; } = [];
     public int? MaxHighRevolutionTricks { get; set; }
     public List<Guid> AllowedTrickIds { get; set; } = [];
