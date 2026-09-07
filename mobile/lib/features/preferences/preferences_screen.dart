@@ -176,8 +176,8 @@ class _PrefCard extends StatelessWidget {
         ? decodeRevolutionRange(pref.allowedRevolutions)
         : null;
     final flags = '${pref.includeCrossOver ? "Cross-overs" : "No cross-overs"} · '
-        '${pref.includeKnee ? "Knee tricks" : "No knee tricks"} · '
-        'Max consec. NT ${pref.maxConsecutiveNoTouch}'
+        '${pref.includeKnee ? "Knee tricks" : "No knee tricks"}'
+        '${pref.maxConsecutiveNoTouch != null ? " · Max consec. NT ${pref.maxConsecutiveNoTouch}" : ""}'
         '${pref.maxHighRevolutionTricks != null ? " · Max 3+ rev ${pref.maxHighRevolutionTricks}" : ""}'
         '${revRange != null ? " · Revs ${revRange.min.toStringAsFixed(1)}–${revRange.max.toStringAsFixed(1)}" : ""}'
         '${pref.allowedTrickIds.isNotEmpty ? " · ${pref.allowedTrickIds.length} allowed tricks" : ""}';
@@ -232,11 +232,11 @@ class _PrefCard extends StatelessWidget {
           const SizedBox(height: 14),
           Row(
             children: [
-              Expanded(child: _PStat(value: '${pref.comboLength}', label: 'Length')),
+              Expanded(child: _PStat(value: pref.comboLength != null ? '${pref.comboLength}' : '—', label: 'Length')),
               const SizedBox(width: 8),
-              Expanded(child: _PStat(value: '${pref.maxDifficulty}', label: 'Max diff')),
+              Expanded(child: _PStat(value: pref.maxDifficulty != null ? '${pref.maxDifficulty}' : '—', label: 'Max diff')),
               const SizedBox(width: 8),
-              Expanded(child: _PStat(value: '${pref.noTouchPercentage}%', label: 'No-touch')),
+              Expanded(child: _PStat(value: pref.noTouchPercentage != null ? '${pref.noTouchPercentage}%' : '—', label: 'No-touch')),
             ],
           ),
           const SizedBox(height: 10),
@@ -299,10 +299,16 @@ class _PreferenceFormState extends State<_PreferenceForm> {
   int _noTouchPct = 30;
   int _maxConsecNoTouch = 2;
   bool _includeCrossOver = true;
-  bool _includeKnee = true;
+  bool _includeKnee = false;
   int _maxHighRevTricks = 1;
   double _revMin = kRevolutionRangeMin;
   double _revMax = kRevolutionRangeMax;
+  bool _comboLengthEnabled = true;
+  bool _maxDifficultyEnabled = true;
+  bool _noTouchEnabled = true;
+  bool _maxConsecEnabled = true;
+  bool _maxHighRevEnabled = true;
+  bool _revEnabled = false;
   List<String> _allowedTrickIds = [];
   List<TrickItem>? _allTricks;
   bool _saving = false;
@@ -314,14 +320,20 @@ class _PreferenceFormState extends State<_PreferenceForm> {
     final p = widget.initial;
     if (p != null) {
       _nameCtrl.text = p.name;
-      _comboLength = p.comboLength;
-      _maxDifficulty = p.maxDifficulty;
+      _comboLengthEnabled = p.comboLength != null;
+      _comboLength = p.comboLength ?? 6;
+      _maxDifficultyEnabled = p.maxDifficulty != null;
+      _maxDifficulty = p.maxDifficulty ?? 10;
       _strongFootPct = p.strongFootPercentage;
-      _noTouchPct = p.noTouchPercentage;
-      _maxConsecNoTouch = p.maxConsecutiveNoTouch;
+      _noTouchEnabled = p.noTouchPercentage != null;
+      _noTouchPct = p.noTouchPercentage ?? 30;
+      _maxConsecEnabled = p.maxConsecutiveNoTouch != null;
+      _maxConsecNoTouch = p.maxConsecutiveNoTouch ?? 2;
       _includeCrossOver = p.includeCrossOver;
       _includeKnee = p.includeKnee;
+      _maxHighRevEnabled = p.maxHighRevolutionTricks != null;
       _maxHighRevTricks = p.maxHighRevolutionTricks ?? 1;
+      _revEnabled = p.allowedRevolutions.isNotEmpty;
       final range = decodeRevolutionRange(p.allowedRevolutions);
       _revMin = range.min;
       _revMax = range.max;
@@ -479,15 +491,15 @@ class _PreferenceFormState extends State<_PreferenceForm> {
         id: widget.initial?.id ?? '',
         userId: widget.initial?.userId ?? AuthService.instance.userId ?? '',
         name: name,
-        comboLength: _comboLength,
-        maxDifficulty: _maxDifficulty,
+        comboLength: _comboLengthEnabled ? _comboLength : null,
+        maxDifficulty: _maxDifficultyEnabled ? _maxDifficulty : null,
         strongFootPercentage: _strongFootPct,
-        noTouchPercentage: _noTouchPct,
-        maxConsecutiveNoTouch: _maxConsecNoTouch,
+        noTouchPercentage: _noTouchEnabled ? _noTouchPct : null,
+        maxConsecutiveNoTouch: _maxConsecEnabled ? _maxConsecNoTouch : null,
         includeCrossOver: _includeCrossOver,
         includeKnee: _includeKnee,
-        allowedRevolutions: encodeRevolutionRange(_revMin, _revMax),
-        maxHighRevolutionTricks: _maxHighRevTricks,
+        allowedRevolutions: _revEnabled ? encodeRevolutionRange(_revMin, _revMax) : [],
+        maxHighRevolutionTricks: _maxHighRevEnabled ? _maxHighRevTricks : null,
         allowedTrickIds: _allowedTrickIds,
       );
 
@@ -544,32 +556,6 @@ class _PreferenceFormState extends State<_PreferenceForm> {
                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.indigo, width: 1.5)),
               ),
             ),
-            const SizedBox(height: 6),
-            _PrefSlider(label: 'Combo length', value: _comboLength.toDouble(), min: 1, max: 100, onChanged: (v) => setState(() => _comboLength = v.round())),
-            const SizedBox(height: 18),
-            _PrefSlider(label: 'Max difficulty', value: _maxDifficulty.toDouble(), min: 1, max: 10, formatValue: (v) => '${v.round()} / 10', onChanged: (v) => setState(() => _maxDifficulty = v.round())),
-            const SizedBox(height: 18),
-            _PrefSlider(label: 'Strong foot', value: _strongFootPct.toDouble(), min: 0, max: 100, formatValue: (v) => '${v.round()}%', onChanged: (v) => setState(() => _strongFootPct = v.round())),
-            const SizedBox(height: 18),
-            _PrefSlider(label: 'No-touch', value: _noTouchPct.toDouble(), min: 0, max: 100, formatValue: (v) => '${v.round()}%', onChanged: (v) => setState(() => _noTouchPct = v.round())),
-            const SizedBox(height: 18),
-            _PrefSlider(label: 'Max consecutive no-touch', value: _maxConsecNoTouch.toDouble(), min: 0, max: 30, onChanged: (v) => setState(() => _maxConsecNoTouch = v.round())),
-            const SizedBox(height: 18),
-            _PrefSlider(label: 'Max 3+ rev tricks', value: _maxHighRevTricks.toDouble(), min: 1, max: 15, onChanged: (v) => setState(() => _maxHighRevTricks = v.round())),
-            const SizedBox(height: 18),
-            _PrefRangeSlider(
-              label: 'Revolutions',
-              minValue: _revMin,
-              maxValue: _revMax,
-              min: kRevolutionRangeMin,
-              max: kRevolutionRangeMax,
-              step: kRevolutionRangeStep,
-              onChanged: (mn, mx) => setState(() { _revMin = mn; _revMax = mx; }),
-            ),
-            const SizedBox(height: 18),
-            _PrefToggle(label: 'Include cross-overs', value: _includeCrossOver, onChanged: (v) => setState(() => _includeCrossOver = v)),
-            const SizedBox(height: 11),
-            _PrefToggle(label: 'Include knee tricks', value: _includeKnee, onChanged: (v) => setState(() => _includeKnee = v)),
             const SizedBox(height: 18),
             Material(
               color: AppColors.chipBg,
@@ -595,6 +581,95 @@ class _PreferenceFormState extends State<_PreferenceForm> {
                 ),
               ),
             ),
+            const SizedBox(height: 18),
+            _OptionalField(
+              label: 'Combo length',
+              enabled: _comboLengthEnabled,
+              onChanged: (v) => setState(() => _comboLengthEnabled = v),
+              child: _PrefSlider(
+                label: 'Combo length',
+                value: _comboLength.toDouble(),
+                min: 1, max: 100,
+                showLabel: false,
+                onChanged: (v) => setState(() => _comboLength = v.round()),
+              ),
+            ),
+            const SizedBox(height: 18),
+            _OptionalField(
+              label: 'Revolutions',
+              enabled: _revEnabled,
+              onChanged: (v) => setState(() => _revEnabled = v),
+              child: _PrefRangeSlider(
+                label: 'Revolutions',
+                minValue: _revMin,
+                maxValue: _revMax,
+                min: kRevolutionRangeMin,
+                max: kRevolutionRangeMax,
+                step: kRevolutionRangeStep,
+                showLabel: false,
+                onChanged: (mn, mx) => setState(() { _revMin = mn; _revMax = mx; }),
+              ),
+            ),
+            const SizedBox(height: 18),
+            _PrefSlider(label: 'Strong foot', value: _strongFootPct.toDouble(), min: 0, max: 100, formatValue: (v) => '${v.round()}%', onChanged: (v) => setState(() => _strongFootPct = v.round())),
+            const SizedBox(height: 18),
+            _OptionalField(
+              label: 'No-touch',
+              enabled: _noTouchEnabled,
+              onChanged: (v) => setState(() => _noTouchEnabled = v),
+              child: _PrefSlider(
+                label: 'No-touch',
+                value: _noTouchPct.toDouble(),
+                min: 0, max: 100,
+                formatValue: (v) => '${v.round()}%',
+                showLabel: false,
+                onChanged: (v) => setState(() => _noTouchPct = v.round()),
+              ),
+            ),
+            const SizedBox(height: 18),
+            _OptionalField(
+              label: 'Max consecutive no-touch',
+              enabled: _maxConsecEnabled,
+              onChanged: (v) => setState(() => _maxConsecEnabled = v),
+              child: _PrefSlider(
+                label: 'Max consecutive no-touch',
+                value: _maxConsecNoTouch.toDouble(),
+                min: 0, max: 30,
+                showLabel: false,
+                onChanged: (v) => setState(() => _maxConsecNoTouch = v.round()),
+              ),
+            ),
+            const SizedBox(height: 18),
+            _OptionalField(
+              label: 'Max 3+ rev tricks',
+              enabled: _maxHighRevEnabled,
+              onChanged: (v) => setState(() => _maxHighRevEnabled = v),
+              child: _PrefSlider(
+                label: 'Max 3+ rev tricks',
+                value: _maxHighRevTricks.toDouble(),
+                min: 1, max: 15,
+                showLabel: false,
+                onChanged: (v) => setState(() => _maxHighRevTricks = v.round()),
+              ),
+            ),
+            const SizedBox(height: 18),
+            _OptionalField(
+              label: 'Max difficulty',
+              enabled: _maxDifficultyEnabled,
+              onChanged: (v) => setState(() => _maxDifficultyEnabled = v),
+              child: _PrefSlider(
+                label: 'Max difficulty',
+                value: _maxDifficulty.toDouble(),
+                min: 1, max: 10,
+                formatValue: (v) => '${v.round()} / 10',
+                showLabel: false,
+                onChanged: (v) => setState(() => _maxDifficulty = v.round()),
+              ),
+            ),
+            const SizedBox(height: 18),
+            _PrefToggle(label: 'Include cross-overs', value: _includeCrossOver, onChanged: (v) => setState(() => _includeCrossOver = v)),
+            const SizedBox(height: 11),
+            _PrefToggle(label: 'Include knee tricks', value: _includeKnee, onChanged: (v) => setState(() => _includeKnee = v)),
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(_error!, style: const TextStyle(color: AppColors.red, fontSize: 13)),
@@ -632,6 +707,7 @@ class _PrefSlider extends StatelessWidget {
   final double max;
   final ValueChanged<double> onChanged;
   final String Function(double)? formatValue;
+  final bool showLabel;
 
   const _PrefSlider({
     required this.label,
@@ -640,6 +716,7 @@ class _PrefSlider extends StatelessWidget {
     required this.max,
     required this.onChanged,
     this.formatValue,
+    this.showLabel = true,
   });
 
   void _handle(Offset local, double width) {
@@ -659,7 +736,9 @@ class _PrefSlider extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink)),
+            showLabel
+                ? Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink))
+                : const SizedBox.shrink(),
             Text(valueLabel, style: GoogleFonts.jetBrainsMono(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.indigo)),
           ],
         ),
@@ -719,6 +798,7 @@ class _PrefRangeSlider extends StatelessWidget {
   final double max;
   final double step;
   final void Function(double min, double max) onChanged;
+  final bool showLabel;
 
   const _PrefRangeSlider({
     required this.label,
@@ -728,6 +808,7 @@ class _PrefRangeSlider extends StatelessWidget {
     required this.max,
     required this.step,
     required this.onChanged,
+    this.showLabel = true,
   });
 
   double _snap(double raw) => (raw / step).round() * step;
@@ -760,7 +841,9 @@ class _PrefRangeSlider extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink)),
+            showLabel
+                ? Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink))
+                : const SizedBox.shrink(),
             Text(valueLabel, style: GoogleFonts.jetBrainsMono(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.indigo)),
           ],
         ),
@@ -821,6 +904,49 @@ class _PrefRangeSlider extends StatelessWidget {
             );
           },
         ),
+      ],
+    );
+  }
+}
+
+class _OptionalField extends StatelessWidget {
+  final String label;
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+  final Widget child;
+
+  const _OptionalField({
+    required this.label,
+    required this.enabled,
+    required this.onChanged,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => onChanged(!enabled),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink)),
+                IgnorePointer(
+                  child: CupertinoSwitch(value: enabled, activeTrackColor: AppColors.indigo, onChanged: onChanged),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (enabled) ...[
+          const SizedBox(height: 11),
+          child,
+        ],
       ],
     );
   }
