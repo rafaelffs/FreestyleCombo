@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:share_plus/share_plus.dart';
 import '../core/api/api_client.dart';
 import '../core/auth/auth_service.dart';
 import '../core/models/combo.dart';
+import '../features/combos/instagram_share/share_options_sheet.dart';
 import '../theme/app_colors.dart';
 import 'confirm_sheet.dart';
 import 'difficulty_chip.dart';
@@ -72,6 +74,7 @@ class _ComboCardState extends State<ComboCard> {
   bool _personalReusableLoading = false;
   late bool _isPersonalReusable;
   bool _expanded = false;
+  final _shareButtonKey = GlobalKey();
 
   @override
   void initState() {
@@ -114,6 +117,26 @@ class _ComboCardState extends State<ComboCard> {
   void _showToast(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _openShareOptions() {
+    return showShareOptionsSheet(
+      context,
+      combo: widget.combo,
+      onShareLink: _shareLinkCombo,
+    );
+  }
+
+  Future<void> _shareLinkCombo() async {
+    final url = '$kWebOrigin/share/combos/${widget.combo.id}';
+    // iOS requires a non-zero sharePositionOrigin (the share sheet's popover
+    // anchor) — without it the native call throws PlatformException instead
+    // of presenting anything, even on iPhone.
+    final box = _shareButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    final origin = box != null && box.hasSize
+        ? (box.localToGlobal(Offset.zero) & box.size)
+        : const Rect.fromLTWH(0, 0, 1, 1); // just needs to be non-zero; only affects iPad popover arrow position
+    await Share.share(url, subject: widget.combo.name ?? widget.combo.displayText, sharePositionOrigin: origin);
   }
 
   Future<void> _toggleFavourite() async {
@@ -384,9 +407,15 @@ class _ComboCardState extends State<ComboCard> {
                         ],
                       ),
                     ),
-                    if (DifficultyDisplay.show) ...[
+                    if (isOwner || visibilityState == 'public') ...[
                       const SizedBox(width: 12),
-                      _DiffBadge(value: combo.totalDifficulty.toInt()),
+                      _IconToggle(
+                        key: _shareButtonKey,
+                        icon: Icons.ios_share,
+                        color: AppColors.indigo,
+                        tooltip: 'Share',
+                        onTap: _openShareOptions,
+                      ),
                     ],
                   ],
                 ),
@@ -432,6 +461,17 @@ class _ComboCardState extends State<ComboCard> {
                         label: '$_completionCount',
                       ),
                       const Spacer(),
+                      if (DifficultyDisplay.show) ...[
+                        Text(
+                          'Diff ${combo.totalDifficulty.toInt()}',
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
                       _VisibilityTag(
                         state: visibilityState,
                         loading: _visibilityLoading,
@@ -482,54 +522,6 @@ class _OwnerLine extends StatelessWidget {
   }
 }
 
-class _DiffBadge extends StatelessWidget {
-  final int value;
-  const _DiffBadge({required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 52,
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-      decoration: BoxDecoration(
-        gradient: AppColors.grad,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.violet.withValues(alpha: 0.5),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-            spreadRadius: -6,
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$value',
-            style: GoogleFonts.jetBrainsMono(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-              height: 1,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'DIFF',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 8.5,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.6,
-              color: Colors.white.withValues(alpha: 0.85),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _TrickChips extends StatelessWidget {
   final List<ComboTrickDto> tricks;
@@ -709,6 +701,7 @@ class _IconToggle extends StatelessWidget {
   final String? label;
 
   const _IconToggle({
+    super.key,
     required this.icon,
     required this.color,
     required this.tooltip,
