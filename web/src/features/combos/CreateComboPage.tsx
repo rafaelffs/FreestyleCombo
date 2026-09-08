@@ -23,14 +23,8 @@ function diffColor(d: number): string {
 }
 
 const GENERATE_DEFAULTS: GenerateComboOverrides = {
-  comboLength: 5,
-  maxDifficulty: 10,
-  strongFootPercentage: 50,
-  noTouchPercentage: 30,
-  maxConsecutiveNoTouch: 2,
   includeCrossOver: true,
   includeKnee: false,
-  maxHighRevolutionTricks: 1,
 }
 
 interface TrickSlotItem extends BuildComboTrickItem {
@@ -463,17 +457,21 @@ export function CreateComboPage() {
                 />
               </OptionalField>
 
-              <div className="space-y-1">
-                <Label>{t('create.strongFootPct')}</Label>
+              <OptionalField
+                label={t('create.strongFootPct')}
+                enabled={selectedPref ? selectedPref.strongFootPercentage !== null : overrides.strongFootPercentage !== undefined}
+                onToggle={(enabled) => updateOverride('strongFootPercentage', enabled ? 50 : undefined)}
+                disabled={!!selectedPref}
+              >
                 <Input
                   type="number" min={0} max={100}
-                  value={selectedPref ? selectedPref.strongFootPercentage : overrides.strongFootPercentage}
+                  value={(selectedPref ? selectedPref.strongFootPercentage : overrides.strongFootPercentage) ?? 50}
                   readOnly={!!selectedPref}
                   disabled={!!selectedPref}
                   onChange={(e) => updateOverride('strongFootPercentage', Number(e.target.value))}
                   className={selectedPref ? 'bg-gray-50 text-gray-500' : ''}
                 />
-              </div>
+              </OptionalField>
 
               <OptionalField
                 label={t('create.noTouchPct')}

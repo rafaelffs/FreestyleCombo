@@ -13,15 +13,15 @@ import { decodeRevolutionRange, encodeRevolutionRange } from '@/lib/revolutionRa
 
 const DEFAULTS: PreferencePayload = {
   name: '',
-  comboLength: 6,
-  maxDifficulty: 10,
-  strongFootPercentage: 60,
-  noTouchPercentage: 30,
-  maxConsecutiveNoTouch: 2,
+  comboLength: null,
+  maxDifficulty: null,
+  strongFootPercentage: null,
+  noTouchPercentage: null,
+  maxConsecutiveNoTouch: null,
   includeCrossOver: true,
   includeKnee: false,
   allowedRevolutions: [],
-  maxHighRevolutionTricks: 1,
+  maxHighRevolutionTricks: null,
   allowedTrickIds: [],
 }
 
@@ -179,10 +179,13 @@ function PreferenceForm({
           />
         </OptionalField>
 
-        <div className="space-y-1">
-          <Label>{t('preferences.strongFootPct')}</Label>
-          <Input type="number" min={0} max={100} value={form.strongFootPercentage} onChange={(e) => update('strongFootPercentage', Number(e.target.value))} />
-        </div>
+        <OptionalField
+          label={t('preferences.strongFootPct')}
+          enabled={form.strongFootPercentage !== null}
+          onToggle={(enabled) => update('strongFootPercentage', enabled ? 60 : null)}
+        >
+          <Input type="number" min={0} max={100} value={form.strongFootPercentage ?? 60} onChange={(e) => update('strongFootPercentage', Number(e.target.value))} />
+        </OptionalField>
 
         <OptionalField
           label={t('preferences.noTouchPct')}
@@ -273,7 +276,7 @@ function PreferenceCard({
   const stats = t('preferences.stats', {
     length: pref.comboLength ?? '—',
     maxDiff: pref.maxDifficulty ?? '—',
-    sf: pref.strongFootPercentage,
+    sf: pref.strongFootPercentage ?? '—',
     nt: pref.noTouchPercentage ?? '—',
   })
   const revRange = pref.allowedRevolutions.length > 0 ? decodeRevolutionRange(pref.allowedRevolutions) : null

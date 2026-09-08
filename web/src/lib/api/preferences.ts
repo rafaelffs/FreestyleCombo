@@ -6,7 +6,7 @@ export interface UserPreference {
   name: string
   comboLength: number | null
   maxDifficulty: number | null
-  strongFootPercentage: number
+  strongFootPercentage: number | null
   noTouchPercentage: number | null
   maxConsecutiveNoTouch: number | null
   includeCrossOver: boolean
