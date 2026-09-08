@@ -9,6 +9,7 @@ import '../../core/models/revolution_range.dart';
 import '../../core/models/user_preference.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/combo_card.dart' show TrickNameDisplay;
+import '../../widgets/combo_slot_tile.dart';
 import '../../widgets/difficulty_chip.dart';
 import '../../widgets/foot_toggle.dart';
 import '../../widgets/setting_icon_button.dart';
@@ -26,78 +27,6 @@ class CreateComboScreen extends StatefulWidget {
 
   @override
   State<CreateComboScreen> createState() => _CreateComboScreenState();
-}
-
-// ── Slot item for build mode ────────────────────────────────────────────────
-
-class _SlotItem {
-  // For a trick slot
-  final String? trickId;
-  final String? trickName;
-  final String? abbreviation;
-  final bool crossOver;
-  final bool isTransition;
-
-  // For a sub-combo slot
-  final String? subComboId;
-  final String? subComboName;
-  final List<ComboTrickDto>? subComboTricks;
-
-  bool get isSubCombo => subComboId != null;
-
-  // Matches the server's actual rule (BuildComboHandler/GenerateComboHandler):
-  // a trick can be marked no-touch only if the trick immediately before it
-  // is a CrossOver move — not based on the no-touch trick's own CrossOver
-  // flag. A transition trick (e.g. "Combo") never enables it for the next
-  // slot; a sub-combo slot enables it only if its own last trick is CrossOver.
-  bool get allowsNoTouchOnNext {
-    if (isTransition) return false;
-    if (isSubCombo) {
-      final tricks = subComboTricks;
-      if (tricks == null || tricks.isEmpty) return false;
-      return tricks.last.crossOver;
-    }
-    return crossOver;
-  }
-
-  int position;
-  bool strongFoot;
-  bool noTouch;
-  bool expanded; // for sub-combo expand in slot list
-
-  _SlotItem.trick({
-    required String trickId,
-    required String trickName,
-    required String abbreviation,
-    required this.crossOver,
-    required this.position,
-    this.strongFoot = true,
-    this.noTouch = false,
-    this.isTransition = false,
-  })  : trickId = trickId,
-        trickName = trickName,
-        abbreviation = abbreviation,
-        subComboId = null,
-        subComboName = null,
-        subComboTricks = null,
-        expanded = false;
-
-  _SlotItem.combo({
-    required String subComboId,
-    required String subComboName,
-    required List<ComboTrickDto> subComboTricks,
-    required this.position,
-  })  : trickId = null,
-        trickName = null,
-        abbreviation = null,
-        crossOver = false,
-        isTransition = false,
-        subComboId = subComboId,
-        subComboName = subComboName,
-        subComboTricks = subComboTricks,
-        strongFoot = true,
-        noTouch = false,
-        expanded = false;
 }
 
 class _CreateComboScreenState extends State<CreateComboScreen> {
@@ -139,7 +68,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   final _searchCtrl = TextEditingController();
   String _search = '';
   _TypeFilter _typeFilter = _TypeFilter.all;
-  final List<_SlotItem> _slots = [];
+  final List<SlotItem> _slots = [];
   bool _isPublic = false;
   bool _isPersonalReusable = false;
   bool _saving = false;
@@ -164,14 +93,14 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     _slots.clear();
     for (final t in tricks) {
       if (t.type == 'combo') {
-        _slots.add(_SlotItem.combo(
+        _slots.add(SlotItem.combo(
           subComboId: t.subComboId!,
           subComboName: t.subComboName ?? '',
           subComboTricks: t.subComboTricks ?? [],
           position: t.position,
         ));
       } else {
-        _slots.add(_SlotItem.trick(
+        _slots.add(SlotItem.trick(
           trickId: t.trickId!,
           trickName: t.name ?? '',
           abbreviation: t.abbreviation ?? '',
@@ -371,7 +300,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
           await ApiClient.instance.previewCombo(_selectedPrefId, overrides);
       _slots.clear();
       for (final t in result.tricks) {
-        _slots.add(_SlotItem.trick(
+        _slots.add(SlotItem.trick(
           trickId: t.trickId,
           trickName: t.trickName,
           abbreviation: t.abbreviation,
@@ -418,7 +347,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     // tricks, not a move with its own foot/no-touch — add it straight away.
     if (trick.isTransition) {
       setState(() {
-        _slots.add(_SlotItem.trick(
+        _slots.add(SlotItem.trick(
           trickId: trick.id,
           trickName: trick.name,
           abbreviation: trick.abbreviation,
@@ -445,7 +374,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     );
     if (choice == null) return;
     setState(() {
-      _slots.add(_SlotItem.trick(
+      _slots.add(SlotItem.trick(
         trickId: trick.id,
         trickName: trick.name,
         abbreviation: trick.abbreviation,
@@ -464,7 +393,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     );
     if (choice == null) return;
     setState(() {
-      _slots.add(_SlotItem.combo(
+      _slots.add(SlotItem.combo(
         subComboId: combo.id,
         subComboName: combo.displayName,
         subComboTricks: combo.tricks,
@@ -571,7 +500,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   void _removeSlot(int index) {
     setState(() {
       _slots.removeAt(index);
-      _renumberSlots();
+      renumberSlots(_slots);
     });
   }
 
@@ -580,20 +509,8 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
       if (newIndex > oldIndex) newIndex -= 1;
       final item = _slots.removeAt(oldIndex);
       _slots.insert(newIndex, item);
-      _renumberSlots();
+      renumberSlots(_slots);
     });
-  }
-
-  void _renumberSlots() {
-    for (var i = 0; i < _slots.length; i++) {
-      _slots[i].position = i + 1;
-      // No-touch is only valid right after a CrossOver trick — clear it if
-      // reordering/removal put something else before this one now.
-      final allowed = i > 0 && _slots[i - 1].allowsNoTouchOnNext;
-      if (!_slots[i].isSubCombo && !allowed && _slots[i].noTouch) {
-        _slots[i].noTouch = false;
-      }
-    }
   }
 
   Future<bool> _confirmSaveWithoutName() async {
@@ -929,7 +846,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                 const SizedBox(height: 20),
                 _ModeCard(
                   icon: Icons.auto_awesome,
-                  title: 'Auto-generate',
+                  title: 'Auto-generate (Beta)',
                   description:
                       'Let the app build a combo based on your settings.',
                   onTap: () {
@@ -1605,7 +1522,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                 final s = _slots[i];
                 final noTouchAllowed = i > 0 && _slots[i - 1].allowsNoTouchOnNext;
                 if (s.isSubCombo) {
-                  return _SubComboSlotTile(
+                  return SubComboSlotTile(
                     key: ObjectKey(s),
                     index: i,
                     slot: s,
@@ -1614,7 +1531,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                         setState(() => s.expanded = !s.expanded),
                   );
                 }
-                return _SlotTile(
+                return SlotTile(
                   key: ObjectKey(s),
                   index: i,
                   slot: s,
@@ -1712,269 +1629,6 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   }
 }
 
-// ── Sub-combo slot tile ────────────────────────────────────────────────────────
-
-class _SubComboSlotTile extends StatelessWidget {
-  final int index;
-  final _SlotItem slot;
-  final VoidCallback onRemove;
-  final VoidCallback onToggleExpand;
-
-  const _SubComboSlotTile({
-    super.key,
-    required this.index,
-    required this.slot,
-    required this.onRemove,
-    required this.onToggleExpand,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: AppColors.noTouchBg,
-        border: Border.all(color: const Color(0xFFE5E0FB)),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-            child: Row(
-              children: [
-                ReorderableDragStartListener(
-                  index: index,
-                  child: const Padding(
-                    padding: EdgeInsets.only(right: 8),
-                    child: Icon(Icons.drag_indicator, size: 18, color: AppColors.noTouchText),
-                  ),
-                ),
-                Container(
-                  width: 30,
-                  height: 30,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEDE9FE),
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                  child: Text(
-                    '${slot.position}',
-                    style: GoogleFonts.jetBrainsMono(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.noTouchText),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEDE9FE),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    'COMBO',
-                    style: GoogleFonts.plusJakartaSans(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.noTouchText,
-                        letterSpacing: 0.4),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    slot.subComboName ?? '',
-                    style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w700, fontSize: 14),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(
-                      slot.expanded ? Icons.expand_less : Icons.expand_more,
-                      size: 20,
-                      color: AppColors.noTouchText),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  onPressed: onToggleExpand,
-                ),
-                const SizedBox(width: 4),
-                IconButton(
-                  icon:
-                      const Icon(Icons.close, size: 18, color: AppColors.muted),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  onPressed: onRemove,
-                ),
-              ],
-            ),
-          ),
-          if (slot.expanded && slot.subComboTricks != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(13, 0, 13, 12),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: slot.subComboTricks!.map((t) {
-                  final suffix =
-                      t.noTouch ? '·nt' : (!t.strongFoot ? '·wf' : '');
-                  return Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                    decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(9)),
-                    child: Text(
-                      '${t.position}. ${t.abbreviation ?? ''}$suffix',
-                      style: GoogleFonts.jetBrainsMono(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.ink2),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Regular slot tile (Build screen "slot" row) ─────────────────────────────────
-
-class _SlotTile extends StatelessWidget {
-  final int index;
-  final _SlotItem slot;
-  final bool showAbbrev;
-  final bool noTouchAllowed;
-  final VoidCallback onRemove;
-  final ValueChanged<bool> onToggleStrongFoot;
-  final ValueChanged<bool> onToggleNoTouch;
-
-  const _SlotTile({
-    super.key,
-    required this.index,
-    required this.slot,
-    required this.showAbbrev,
-    required this.noTouchAllowed,
-    required this.onRemove,
-    required this.onToggleStrongFoot,
-    required this.onToggleNoTouch,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.line),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          ReorderableDragStartListener(
-            index: index,
-            child: const Icon(Icons.drag_indicator, size: 18, color: AppColors.faint),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            width: 30,
-            height: 30,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-                color: AppColors.indigoTint,
-                borderRadius: BorderRadius.circular(9)),
-            child: Text(
-              '${slot.position}',
-              style: GoogleFonts.jetBrainsMono(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.indigo),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              slot.isTransition
-                  ? (slot.abbreviation ?? '')
-                  : ((showAbbrev ? slot.abbreviation : slot.trickName) ?? ''),
-              style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.ink),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          // A transition trick (e.g. "Combo") is a connector, not a move —
-          // strong/weak foot and no-touch don't apply to it.
-          if (!slot.isTransition) ...[
-            _SlotFlagToggle(
-              label: 'WF',
-              active: !slot.strongFoot,
-              onTap: () => onToggleStrongFoot(!slot.strongFoot),
-            ),
-            _SlotFlagToggle(
-              label: 'NT',
-              active: slot.noTouch,
-              enabled: noTouchAllowed,
-              onTap: noTouchAllowed ? () => onToggleNoTouch(!slot.noTouch) : null,
-            ),
-          ],
-          IconButton(
-            icon: const Icon(Icons.close, size: 18, color: AppColors.muted),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: onRemove,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SlotFlagToggle extends StatelessWidget {
-  final String label;
-  final bool active;
-  final bool enabled;
-  final VoidCallback? onTap;
-
-  const _SlotFlagToggle(
-      {required this.label,
-      required this.active,
-      this.enabled = true,
-      this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = active ? AppColors.indigoTint : Colors.transparent;
-    final fg = !enabled
-        ? AppColors.faint
-        : (active ? AppColors.indigo : AppColors.muted);
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
-        decoration:
-            BoxDecoration(color: bg, borderRadius: BorderRadius.circular(7)),
-        child: Text(
-          label,
-          style: GoogleFonts.plusJakartaSans(
-              fontSize: 10.5, fontWeight: FontWeight.w800, color: fg),
-        ),
-      ),
-    );
-  }
-}
 
 // ── Picker rows ──────────────────────────────────────────────────────────────────
 

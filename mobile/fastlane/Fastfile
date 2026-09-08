@@ -232,6 +232,18 @@ platform :ios do
       )
       UI.success("Created App Store Connect app record: #{app.id}")
     end
+
+    # A watchOS companion app's bundle ID is still registered under the
+    # "IOS" platform in App Store Connect, since it ships inside the iOS
+    # app's binary — platform: "IOS" here is correct, not a typo.
+    identifier_watch = "com.rafaelffs.freestyleCombo.watchkitapp"
+    existing_watch = Spaceship::ConnectAPI::BundleId.find(identifier_watch)
+    if existing_watch.nil?
+      Spaceship::ConnectAPI::BundleId.create(name: "FreestyleCombo Watch App", platform: "IOS", identifier: identifier_watch)
+      UI.success("Registered Bundle ID #{identifier_watch}")
+    else
+      UI.important("Bundle ID #{identifier_watch} already registered — skipping")
+    end
   end
 
   CI_KEYCHAIN_NAME = "freestylecombo-ci.keychain-db"
@@ -274,21 +286,26 @@ platform :ios do
     signing_dir = File.expand_path("~/.appstoreconnect/freestylecombo-signing")
     FileUtils.mkdir_p(signing_dir)
     cert(output_path: signing_dir, keychain_path: keychain_path, keychain_password: password)
-    # force: true — otherwise sigh just re-downloads whatever profile
-    # already exists by that name, even if the App ID's capabilities
-    # (e.g. Sign In with Apple) changed since it was last generated.
-    sigh(app_identifier: "com.rafaelffs.freestyleCombo", output_path: signing_dir, force: true)
 
-    # sigh's output_path is NOT the same place xcodebuild reads profiles
-    # from — that's ~/Library/MobileDevice/Provisioning Profiles/, keyed
-    # by <UUID>.mobileprovision. Without this, `fastlane ios build` keeps
-    # using whatever was last manually installed there (discovered the
-    # hard way: a regenerated profile with a new entitlement silently had
-    # no effect on the next build until this copy happened). Also removes
-    # any other locally-installed profile with the same Name, so a stale
-    # duplicate can't win a name-based lookup over the fresh one.
-    profile_name = "com.rafaelffs.freestyleCombo AppStore"
-    profile_path = File.join(signing_dir, "AppStore_com.rafaelffs.freestyleCombo.mobileprovision")
+    install_profile(app_identifier: "com.rafaelffs.freestyleCombo", signing_dir: signing_dir)
+    install_profile(app_identifier: "com.rafaelffs.freestyleCombo.watchkitapp", signing_dir: signing_dir)
+  end
+
+  # force: true — otherwise sigh just re-downloads whatever profile already
+  # exists by that name, even if the App ID's capabilities changed since it
+  # was last generated. Then copies the profile to
+  # ~/Library/MobileDevice/Provisioning Profiles/ — that's where xcodebuild
+  # actually reads profiles from, NOT sigh's own output_path (discovered the
+  # hard way: a regenerated profile with a new entitlement silently had no
+  # effect on the next build until this copy happened) — and removes any
+  # other locally-installed profile with the same Name, so a stale duplicate
+  # can't win a name-based lookup over the fresh one.
+  def install_profile(app_identifier:, signing_dir:)
+    sigh(app_identifier: app_identifier, output_path: signing_dir, force: true)
+
+    profile_name = "#{app_identifier} AppStore"
+    profile_filename = "AppStore_#{app_identifier}.mobileprovision"
+    profile_path = File.join(signing_dir, profile_filename)
     uuid = sh("security cms -D -i #{profile_path.shellescape} 2>/dev/null | plutil -extract UUID raw -o - -", log: false).strip
 
     installed_dir = File.expand_path("~/Library/MobileDevice/Provisioning Profiles")

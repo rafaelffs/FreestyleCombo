@@ -31,6 +31,16 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
 
   int? _publicCount;
   int? _mineCount;
+
+  // Raw (pre-done-filter) item lists per tab, tracked as each future
+  // resolves, so the done-filter chip can show live All/Landed/Not landed
+  // counts for whichever tab is active without re-deriving from a
+  // FutureBuilder snapshot it doesn't have access to.
+  List<ComboDto>? _allItems;
+  List<ComboDto>? _publicItems;
+  List<ComboDto>? _mineItems;
+  List<ComboDto>? _favouritesItems;
+
   _DoneFilter _doneFilter = _DoneFilter.all;
   final _searchCtrl = TextEditingController();
   String _search = '';
@@ -41,12 +51,25 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
     super.initState();
     _doneFilter = widget.initialDoneOnly ? _DoneFilter.done : _DoneFilter.all;
     // Segments (when authed): All, Public, Mine, Favourites — default lands
-    // on "Mine" (index 2) same as before "All" was added.
+    // on "Mine" (index 2) same as before "All" was added. A landed-only deep
+    // link (from the account screen's "Landed" stat, which now counts every
+    // combo the user has landed, not just their own) instead lands on "All"
+    // (index 0), since "Mine" alone would under-represent that total.
     final tabCount = _authed ? 4 : 1;
-    _tabController = TabController(length: tabCount, vsync: this, initialIndex: _authed ? 2 : 0);
+    final initialIndex = !_authed ? 0 : (widget.initialDoneOnly ? 0 : 2);
+    _tabController = TabController(length: tabCount, vsync: this, initialIndex: initialIndex);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) setState(() {});
     });
+    _refreshAll();
+  }
+
+  // Reloads every tab's data. Used for the manual refresh button, initial
+  // load, and passed as each combo card's onRefresh — a favourite/landed
+  // toggle can happen from any tab (All/Public/Mine), and Favourites (or
+  // All, which merges Public+Mine) has no other way to learn about it since
+  // each tab's future is only re-created when explicitly reloaded.
+  void _refreshAll() {
     _loadPublic();
     if (_authed) {
       _loadMine();
@@ -96,15 +119,19 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
     return list;
   }
 
-  void _loadAll() => setState(() {
-        _allFuture = _fetchAllCombined();
-      });
+  void _loadAll() {
+    final future = _fetchAllCombined();
+    setState(() { _allFuture = future; });
+    future.then((items) {
+      if (mounted) setState(() => _allItems = items);
+    });
+  }
 
   void _loadPublic() {
     final future = ApiClient.instance.getPublicCombos(search: _search.isEmpty ? null : _search);
     setState(() { _publicFuture = future; });
     future.then((r) {
-      if (mounted) setState(() => _publicCount = r.totalCount);
+      if (mounted) setState(() { _publicCount = r.totalCount; _publicItems = r.items; });
     });
   }
 
@@ -112,13 +139,17 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
     final future = ApiClient.instance.getMyCombos(search: _search.isEmpty ? null : _search);
     setState(() { _mineFuture = future; });
     future.then((r) {
-      if (mounted) setState(() => _mineCount = r.totalCount);
+      if (mounted) setState(() { _mineCount = r.totalCount; _mineItems = r.items; });
     });
   }
 
-  void _loadFavourites() => setState(() {
-        _favouritesFuture = ApiClient.instance.getFavourites();
-      });
+  void _loadFavourites() {
+    final future = ApiClient.instance.getFavourites();
+    setState(() { _favouritesFuture = future; });
+    future.then((items) {
+      if (mounted) setState(() => _favouritesItems = items);
+    });
+  }
 
   Widget _buildPagedList(
     Future<PagedResult<ComboDto>> future,
@@ -236,21 +267,69 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
       case _DoneFilter.all:
         return null;
       case _DoneFilter.done:
-        return _emptyState(Icons.check_circle_outline, "You haven't marked any of these as done yet.");
+        return _emptyState(Icons.check_circle_outline, "You haven't landed any of these yet.");
       case _DoneFilter.undone:
-        return _emptyState(Icons.check_circle, "You've marked all of these as done.");
+        return _emptyState(Icons.check_circle, "You've landed all of these.");
     }
+  }
+
+  // Total/landed counts for whichever tab is currently active, mirroring
+  // the same filtering each tab's own list applies (filterPublic on Mine,
+  // client-side search matching on All/Favourites — Public/Mine already
+  // scope search server-side) so the numbers here always match what's
+  // actually visible in that tab. Returns null until that tab's data has
+  // loaded at least once.
+  (int total, int landed)? _currentTabCounts() {
+    List<ComboDto>? raw;
+    var filterPublic = false;
+    var applyClientSearch = false;
+    switch (_tabController.index) {
+      case 0:
+        raw = _allItems;
+        break;
+      case 1:
+        raw = _publicItems;
+        break;
+      case 2:
+        raw = _mineItems;
+        filterPublic = true;
+        break;
+      case 3:
+        raw = _favouritesItems;
+        applyClientSearch = true;
+        break;
+    }
+    if (raw == null) return null;
+    var items = raw;
+    if (filterPublic) items = items.where((c) => c.visibility != 'Public').toList();
+    if (applyClientSearch && _search.isNotEmpty) {
+      final q = _search.toLowerCase();
+      items = items
+          .where((c) =>
+              (c.name ?? c.displayText).toLowerCase().contains(q) ||
+              (c.ownerUserName ?? '').toLowerCase().contains(q))
+          .toList();
+    }
+    final landed = items.where((c) => c.isCompleted).length;
+    return (items.length, landed);
   }
 
   // Cycles All -> Done -> Undone -> All on tap, one click per state (not a
   // 2-click round trip back to "off") — label and icon change together so
   // the current state is always legible at a glance, not just implied by color.
   Widget _doneFilterChip() {
-    final (label, icon) = switch (_doneFilter) {
+    final counts = _currentTabCounts();
+    final (baseLabel, icon) = switch (_doneFilter) {
       _DoneFilter.all => ('All', Icons.list_alt),
-      _DoneFilter.done => ('Done', Icons.check_circle),
-      _DoneFilter.undone => ('Not done', Icons.radio_button_unchecked),
+      _DoneFilter.done => ('Landed', Icons.check_circle),
+      _DoneFilter.undone => ('Not landed', Icons.radio_button_unchecked),
     };
+    final count = switch (_doneFilter) {
+      _DoneFilter.all => counts?.$1,
+      _DoneFilter.done => counts?.$2,
+      _DoneFilter.undone => counts == null ? null : counts.$1 - counts.$2,
+    };
+    final label = count == null ? baseLabel : '$baseLabel ($count)';
     final active = _doneFilter != _DoneFilter.all;
     return GestureDetector(
       onTap: () => setState(() {
@@ -398,14 +477,7 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
             padding: const EdgeInsets.only(right: 8),
             child: _AppBarIconButton(
               icon: Icons.refresh,
-              onTap: () {
-                _loadPublic();
-                if (_authed) {
-                  _loadMine();
-                  _loadFavourites();
-                  _loadAll();
-                }
-              },
+              onTap: _refreshAll,
             ),
           ),
           Padding(
@@ -414,13 +486,7 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
               icon: Icons.add,
               gradient: true,
               onTap: () => context.push('/combos/create').then((_) {
-                if (mounted) {
-                  _loadPublic();
-                  if (_authed) {
-                    _loadMine();
-                    _loadAll();
-                  }
-                }
+                if (mounted) _refreshAll();
               }),
             ),
           ),
@@ -496,29 +562,26 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
                     _buildSimpleList(
                       _allFuture,
                       true,
-                      _loadAll,
+                      _refreshAll,
                       _emptyState(Icons.layers_outlined, 'No combos yet.'),
                     ),
                   _buildPagedList(
                     _publicFuture,
                     _authed,
-                    _loadPublic,
+                    _refreshAll,
                     _emptyState(Icons.public_off, 'No public combos yet.'),
                   ),
                   if (_authed)
                     _buildPagedList(
                       _mineFuture,
                       true,
-                      _loadMine,
+                      _refreshAll,
                       _emptyState(
                         Icons.bookmark_border,
                         "You haven't created any combos yet.",
                         ctaLabel: 'Create your first combo',
                         onCta: () => context.push('/combos/create').then((_) {
-                          if (mounted) {
-                            _loadMine();
-                            _loadAll();
-                          }
+                          if (mounted) _refreshAll();
                         }),
                       ),
                       filterPublic: true,
@@ -527,7 +590,7 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
                     _buildSimpleList(
                       _favouritesFuture,
                       true,
-                      _loadFavourites,
+                      _refreshAll,
                       _emptyState(Icons.favorite_border, "You haven't favourited any combos yet."),
                     ),
                 ],

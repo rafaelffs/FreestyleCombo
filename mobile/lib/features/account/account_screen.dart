@@ -36,11 +36,9 @@ class _AccountScreenState extends State<AccountScreen> {
     try {
       final profile = await ApiClient.instance.getProfile();
       final combos = await ApiClient.instance.getMyCombos();
-      var done = 0;
       var ratingSum = 0.0;
       var ratingWeight = 0;
       for (final c in combos.items) {
-        if (c.isCompleted) done++;
         if (c.totalRatings > 0) {
           ratingSum += c.averageRating * c.totalRatings;
           ratingWeight += c.totalRatings;
@@ -50,7 +48,10 @@ class _AccountScreenState extends State<AccountScreen> {
       setState(() {
         _profile = profile;
         _comboCount = combos.totalCount;
-        _doneCount = done;
+        // From the profile endpoint, not derived from getMyCombos() — this
+        // counts every combo the user has landed, public or not, including
+        // ones they don't own, which getMyCombos() alone can't see.
+        _doneCount = profile.landedCount;
         _avgRating = ratingWeight > 0 ? ratingSum / ratingWeight : null;
         _loading = false;
       });
@@ -126,7 +127,16 @@ class _AccountScreenState extends State<AccountScreen> {
                         comboCount: _comboCount,
                         doneCount: _doneCount,
                         avgRating: _avgRating,
-                        onDoneTap: () => context.push('/combos', extra: true),
+                        onCombosTap: () => context.go('/combos'),
+                        // Pushed (not go()'d), so returning via the back
+                        // button reveals this same AccountScreen instance
+                        // rather than rebuilding it — without refetching
+                        // here, the Landed stat can show a stale value from
+                        // before whatever happened on that screen (e.g.
+                        // landing a combo).
+                        onDoneTap: () => context.push('/combos', extra: true).then((_) {
+                          if (mounted) _load();
+                        }),
                       ),
                     ),
                     SliverPadding(
@@ -195,6 +205,7 @@ class _ProfileHeader extends StatelessWidget {
   final int comboCount;
   final int doneCount;
   final double? avgRating;
+  final VoidCallback onCombosTap;
   final VoidCallback onDoneTap;
 
   const _ProfileHeader({
@@ -202,6 +213,7 @@ class _ProfileHeader extends StatelessWidget {
     required this.comboCount,
     required this.doneCount,
     required this.avgRating,
+    required this.onCombosTap,
     required this.onDoneTap,
   });
 
@@ -269,9 +281,9 @@ class _ProfileHeader extends StatelessWidget {
                     const SizedBox(height: 20),
                     Row(
                       children: [
-                        Expanded(child: _StatTile(value: '$comboCount', label: 'Combos')),
+                        Expanded(child: _StatTile(value: '$comboCount', label: 'My combos', onTap: onCombosTap)),
                         const SizedBox(width: 10),
-                        Expanded(child: _StatTile(value: '$doneCount', label: 'Done', onTap: onDoneTap)),
+                        Expanded(child: _StatTile(value: '$doneCount', label: 'Landed', onTap: onDoneTap)),
                         const SizedBox(width: 10),
                         Expanded(child: _StatTile(value: avgRating != null ? avgRating!.toStringAsFixed(1) : '—', label: 'Avg ★')),
                       ],

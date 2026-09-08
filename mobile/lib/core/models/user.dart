@@ -3,12 +3,16 @@ class ProfileDto {
   final String userName;
   final String email;
   final bool isAdmin;
+  // Every combo this user has personally landed, regardless of who owns it
+  // or its current visibility — not just landed combos among their own.
+  final int landedCount;
 
   const ProfileDto({
     required this.id,
     required this.userName,
     required this.email,
     required this.isAdmin,
+    required this.landedCount,
   });
 
   factory ProfileDto.fromJson(Map<String, dynamic> json) => ProfileDto(
@@ -16,6 +20,7 @@ class ProfileDto {
         userName: json['userName'] as String,
         email: json['email'] as String,
         isAdmin: json['isAdmin'] as bool? ?? false,
+        landedCount: json['landedCount'] as int? ?? 0,
       );
 }
 

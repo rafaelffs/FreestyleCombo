@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const _tokenKey = 'fc_token';
@@ -6,6 +7,7 @@ const _userIdKey = 'fc_user_id';
 const _isAdminKey = 'fc_is_admin';
 const _userNameKey = 'fc_user_name';
 const _pendingComboKey = 'fc_pending_combo';
+const _watchChannel = MethodChannel('com.rafaelffs.freestyleCombo/watch');
 
 class AuthService {
   static AuthService? _instance;
@@ -16,6 +18,7 @@ class AuthService {
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
+    if (isAuthenticated) _notifyWatch();
   }
 
   String? get token => _prefs?.getString(_tokenKey);
@@ -32,6 +35,7 @@ class AuthService {
     final name = _extractUserName(token);
     if (name != null) await prefs.setString(_userNameKey, name);
     _prefs = prefs;
+    _notifyWatch();
   }
 
   Future<void> setUserName(String name) async {
@@ -68,6 +72,19 @@ class AuthService {
     final prefs = _prefs ?? await SharedPreferences.getInstance();
     await prefs.remove(_pendingComboKey);
     _prefs = prefs;
+  }
+
+  /// Pushes the current JWT to a paired Apple Watch via WatchConnectivity
+  /// (native bridge in ios/Runner/WatchBridge.swift). Best-effort: if no
+  /// Watch is paired, or the platform channel isn't available (Android),
+  /// this silently no-ops.
+  void _notifyWatch() {
+    final t = token;
+    if (t == null) return;
+    _watchChannel.invokeMethod('pushCredentials', {
+      'jwt': t,
+      if (userName != null) 'userName': userName,
+    }).catchError((_) {});
   }
 
   String? _extractUserName(String token) {

@@ -14,6 +14,8 @@
     <dict>
         <key>com.rafaelffs.freestyleCombo</key>
         <string>com.rafaelffs.freestyleCombo AppStore</string>
+        <key>com.rafaelffs.freestyleCombo.watchkitapp</key>
+        <string>com.rafaelffs.freestyleCombo.watchkitapp AppStore</string>
     </dict>
 </dict>
 </plist>
