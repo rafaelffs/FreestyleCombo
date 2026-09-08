@@ -15,6 +15,30 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 ## iOS
 
+### ios upload_watch_screenshot
+
+```sh
+[bundle exec] fastlane ios upload_watch_screenshot
+```
+
+Upload an Apple Watch screenshot to every localization on the current editable version. Usage: fastlane ios upload_watch_screenshot path:/tmp/watch.png
+
+### ios check_version_locales
+
+```sh
+[bundle exec] fastlane ios check_version_locales
+```
+
+List every localization on the current editable App Store version, with What's New text
+
+### ios sync_release_notes_all_locales
+
+```sh
+[bundle exec] fastlane ios sync_release_notes_all_locales
+```
+
+Set What's New (release notes) on every localization of the current editable version, not just en-US
+
 ### ios check_metadata
 
 ```sh

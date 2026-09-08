@@ -24,6 +24,51 @@ platform :ios do
     )
   end
 
+  desc "Upload an Apple Watch screenshot to every localization on the current editable version. Usage: fastlane ios upload_watch_screenshot path:/tmp/watch.png"
+  lane :upload_watch_screenshot do |options|
+    auth
+    path = options[:path] || UI.user_error!("Pass path:, e.g. path:/tmp/watch.png")
+    UI.user_error!("File not found: #{path}") unless File.exist?(path)
+
+    app = Spaceship::ConnectAPI::App.find("com.rafaelffs.freestyleCombo")
+    version = app.get_app_store_versions(filter: { appStoreState: "PREPARE_FOR_SUBMISSION" }).first
+    UI.user_error!("No editable App Store version found") unless version
+
+    version.get_app_store_version_localizations.each do |loc|
+      watch_set = loc.get_app_screenshot_sets.find { |s| s.screenshot_display_type.to_s.include?("WATCH") }
+      watch_set ||= loc.create_app_screenshot_set(attributes: { screenshotDisplayType: "APP_WATCH_ULTRA" })
+      watch_set.upload_screenshot(path: path)
+      UI.success("Uploaded Watch screenshot for [#{loc.locale}]")
+    end
+  end
+
+  desc "List every localization on the current editable App Store version, with What's New text"
+  lane :check_version_locales do
+    auth
+    app = Spaceship::ConnectAPI::App.find("com.rafaelffs.freestyleCombo")
+    version = app.get_app_store_versions(filter: { appStoreState: "PREPARE_FOR_SUBMISSION" }).first
+    UI.user_error!("No editable App Store version found") unless version
+    UI.message("Version #{version.version_string}")
+    version.get_app_store_version_localizations.each do |loc|
+      UI.message("  [#{loc.locale}] whatsNew=#{loc.whats_new.inspect}")
+    end
+  end
+
+  desc "Set What's New (release notes) on every localization of the current editable version, not just en-US"
+  lane :sync_release_notes_all_locales do
+    auth
+    release_notes = File.read(File.expand_path("../fastlane/metadata/en-US/release_notes.txt", __dir__)).strip
+
+    app = Spaceship::ConnectAPI::App.find("com.rafaelffs.freestyleCombo")
+    version = app.get_app_store_versions(filter: { appStoreState: "PREPARE_FOR_SUBMISSION" }).first
+    UI.user_error!("No editable App Store version found") unless version
+
+    version.get_app_store_version_localizations.each do |loc|
+      loc.update(attributes: { whatsNew: release_notes })
+      UI.success("Set What's New for [#{loc.locale}]")
+    end
+  end
+
   desc "Print current App Store Connect listing metadata for verification"
   lane :check_metadata do
     auth
@@ -528,7 +573,7 @@ platform :ios do
     else
       UI.message("Version #{version.version_string}")
       version.get_app_store_version_localizations.each do |loc|
-        next unless loc.locale == "en-US"
+        UI.message(" [#{loc.locale}]")
         sets = loc.get_app_screenshot_sets
         sets.each do |set|
           shots = set.app_screenshots
