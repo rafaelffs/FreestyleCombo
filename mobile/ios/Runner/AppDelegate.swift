@@ -15,5 +15,8 @@ import UIKit
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "WatchBridge") {
       WatchBridge.shared.register(with: registrar)
     }
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "InstagramShareBridge") {
+      InstagramShareBridge.shared.register(with: registrar)
+    }
   }
 }
