@@ -26,8 +26,8 @@ struct Combo: Codable, Identifiable {
     let visibility: String?
     let displayText: String
     let tricks: [ComboTrick]?
-    let isFavourited: Bool
-    let isCompleted: Bool
+    var isFavourited: Bool
+    var isCompleted: Bool
 
     /// Matches `comboDisplayName()` (web) / `ComboItem.displayName` (phone) —
     /// combo names are optional, fall back to the abbreviation sequence.
