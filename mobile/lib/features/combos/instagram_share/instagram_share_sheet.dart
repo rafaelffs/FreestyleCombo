@@ -1,0 +1,236 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../../core/models/combo.dart';
+import '../../../core/models/instagram_overlay_content.dart';
+import '../../../theme/app_colors.dart';
+import 'instagram_overlay.dart';
+import 'instagram_share_service.dart';
+
+Future<void> showInstagramShareSheet(BuildContext context, ComboDto combo) {
+  return showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _InstagramShareSheet(combo: combo),
+  );
+}
+
+class _InstagramShareSheet extends StatefulWidget {
+  final ComboDto combo;
+  const _InstagramShareSheet({required this.combo});
+
+  @override
+  State<_InstagramShareSheet> createState() => _InstagramShareSheetState();
+}
+
+class _InstagramShareSheetState extends State<_InstagramShareSheet> {
+  final _boundaryKey = GlobalKey();
+  InstagramOverlayStyle _style = InstagramOverlayStyle.sequence;
+  InstagramTextSize _textSize = InstagramTextSize.medium;
+  InstagramOverlayToggles _toggles = const InstagramOverlayToggles();
+  bool _sending = false;
+  String? _error;
+
+  bool get _nameDisabled => overlayNameToggleDisabled(widget.combo);
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.9,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollController) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: AppColors.line2, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Share to Instagram',
+              style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink),
+            ),
+            const SizedBox(height: 20),
+            Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF5B3A7A), Color(0xFF2C2350)],
+                    ),
+                  ),
+                  // The gradient above is preview-only decoration standing in
+                  // for the person's real photo/video — it sits OUTSIDE the
+                  // RepaintBoundary, so the actual captured/exported image
+                  // (Task 4) stays fully transparent there.
+                  child: RepaintBoundary(
+                    key: _boundaryKey,
+                    child: InstagramOverlay(
+                      combo: widget.combo,
+                      style: _style,
+                      toggles: _toggles,
+                      textSize: _textSize,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text('LAYOUT', style: _sectionLabelStyle),
+            const SizedBox(height: 10),
+            _styleRow(),
+            const SizedBox(height: 22),
+            Text('SHOW ON OVERLAY', style: _sectionLabelStyle),
+            const SizedBox(height: 10),
+            _toggleRow('Combo name', _toggles.name, _nameDisabled, (v) => setState(() => _toggles = _toggles.copyWith(name: v))),
+            _toggleRow('Difficulty', _toggles.difficulty, false, (v) => setState(() => _toggles = _toggles.copyWith(difficulty: v))),
+            _toggleRow('Trick count', _toggles.quantity, false, (v) => setState(() => _toggles = _toggles.copyWith(quantity: v))),
+            _toggleRow('Rating', _toggles.rating, false, (v) => setState(() => _toggles = _toggles.copyWith(rating: v))),
+            _toggleRow('Trick sequence', _toggles.sequence, false, (v) => setState(() => _toggles = _toggles.copyWith(sequence: v))),
+            const SizedBox(height: 22),
+            Text('TEXT SIZE', style: _sectionLabelStyle),
+            const SizedBox(height: 10),
+            _sizeRow(),
+            const SizedBox(height: 24),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(_error!, style: const TextStyle(color: AppColors.red, fontSize: 13)),
+              ),
+            SizedBox(
+              height: 52,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.indigo,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                onPressed: _sending ? null : _addToStory,
+                child: _sending
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : Text(
+                        'Add to Story',
+                        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  TextStyle get _sectionLabelStyle => GoogleFonts.plusJakartaSans(
+        fontSize: 11,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0.6,
+        color: AppColors.faint,
+      );
+
+  Widget _chipRow<T>(List<(T, String)> options, T selected, ValueChanged<T> onSelected) {
+    return Wrap(
+      spacing: 8,
+      children: [
+        for (final (value, label) in options)
+          ChoiceChip(
+            label: Text(label),
+            selected: selected == value,
+            onSelected: (_) => onSelected(value),
+            selectedColor: AppColors.indigoTint,
+            backgroundColor: AppColors.surface,
+            labelStyle: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: selected == value ? AppColors.indigo : AppColors.ink2,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(999),
+              side: BorderSide(color: selected == value ? AppColors.indigo : AppColors.line2),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _styleRow() {
+    return _chipRow<InstagramOverlayStyle>(
+      const [
+        (InstagramOverlayStyle.minimal, 'Minimal'),
+        (InstagramOverlayStyle.sequence, 'Sequence'),
+        (InstagramOverlayStyle.stat, 'Stat'),
+      ],
+      _style,
+      (v) => setState(() => _style = v),
+    );
+  }
+
+  Widget _sizeRow() {
+    return _chipRow<InstagramTextSize>(
+      const [
+        (InstagramTextSize.small, 'Small'),
+        (InstagramTextSize.medium, 'Medium'),
+        (InstagramTextSize.large, 'Large'),
+      ],
+      _textSize,
+      (v) => setState(() => _textSize = v),
+    );
+  }
+
+  Widget _toggleRow(String label, bool value, bool disabled, ValueChanged<bool> onChanged) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
+                color: disabled ? AppColors.faint : AppColors.ink2,
+              ),
+            ),
+          ),
+          CupertinoSwitch(
+            value: disabled ? false : value,
+            activeTrackColor: AppColors.indigo,
+            onChanged: disabled ? null : onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _addToStory() async {
+    setState(() {
+      _sending = true;
+      _error = null;
+    });
+    try {
+      await InstagramShareService.shareToStory(_boundaryKey, pixelRatio: kInstagramOverlayExportPixelRatio);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+}
