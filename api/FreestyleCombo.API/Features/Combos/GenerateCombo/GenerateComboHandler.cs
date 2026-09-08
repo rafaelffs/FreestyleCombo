@@ -49,15 +49,21 @@ public class GenerateComboHandler : IRequestHandler<GenerateComboCommand, Genera
                 throw new KeyNotFoundException("Preference not found.");
         }
 
-        var maxDifficulty = request.Overrides?.MaxDifficulty ?? savedPref?.MaxDifficulty ?? 10;
-        var comboLength = request.Overrides?.ComboLength ?? savedPref?.ComboLength ?? 6;
-        var strongFootPct = request.Overrides?.StrongFootPercentage ?? savedPref?.StrongFootPercentage ?? 60;
-        var noTouchPct = request.Overrides?.NoTouchPercentage ?? savedPref?.NoTouchPercentage ?? 30;
-        var maxConsecutiveNoTouch = request.Overrides?.MaxConsecutiveNoTouch ?? savedPref?.MaxConsecutiveNoTouch ?? 2;
+        // When a field has no override and no saved-preference value, pick a random
+        // value within a sensible range for THIS generation only — nothing here is
+        // persisted, it's a fresh roll every call so an "everything off" combo comes
+        // out varied instead of always hitting the same fixed numbers. Revolutions
+        // and AllowedTrickIds keep their existing "empty = no restriction" meaning —
+        // there's no sensible random range for those two.
+        var maxDifficulty = request.Overrides?.MaxDifficulty ?? savedPref?.MaxDifficulty ?? Random.Shared.Next(4, 9);
+        var comboLength = request.Overrides?.ComboLength ?? savedPref?.ComboLength ?? Random.Shared.Next(5, 21);
+        var strongFootPct = request.Overrides?.StrongFootPercentage ?? savedPref?.StrongFootPercentage ?? Random.Shared.Next(40, 91);
+        var noTouchPct = request.Overrides?.NoTouchPercentage ?? savedPref?.NoTouchPercentage ?? Random.Shared.Next(5, 51);
+        var maxConsecutiveNoTouch = request.Overrides?.MaxConsecutiveNoTouch ?? savedPref?.MaxConsecutiveNoTouch ?? Random.Shared.Next(4, 11);
         var includeCrossOver = request.Overrides?.IncludeCrossOver ?? savedPref?.IncludeCrossOver ?? true;
         var includeKnee = request.Overrides?.IncludeKnee ?? savedPref?.IncludeKnee ?? false;
         var allowedRevolutions = request.Overrides?.AllowedRevolutions ?? savedPref?.AllowedRevolutions ?? [];
-        var maxHighRevolutionTricks = request.Overrides?.MaxHighRevolutionTricks ?? savedPref?.MaxHighRevolutionTricks;
+        var maxHighRevolutionTricks = request.Overrides?.MaxHighRevolutionTricks ?? savedPref?.MaxHighRevolutionTricks ?? (int?)Random.Shared.Next(1, 4);
         var allowedTrickIds = request.Overrides?.AllowedTrickIds ?? savedPref?.AllowedTrickIds ?? [];
 
         // Step 1 — Filter trick pool (exclude transition tricks from random selection)

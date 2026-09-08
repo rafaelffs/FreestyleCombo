@@ -150,7 +150,7 @@ public class GenerateComboHandlerTests
     }
 
     [Fact]
-    public async Task Handle_UsesHardcodedDefault_WhenSavedPreferenceFieldIsNull()
+    public async Task Handle_UsesRandomRange_WhenSavedPreferenceFieldIsNull()
     {
         var tricks = TrickFaker.DefaultPool();
         _trickRepo.Setup(r => r.GetAllAsync(It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
@@ -173,7 +173,7 @@ public class GenerateComboHandlerTests
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        // ComboLength null -> falls back to the hardcoded default of 6.
-        result.TrickCount.Should().Be(6);
+        // ComboLength null -> rolled fresh from the 5-20 range for this generation.
+        result.TrickCount.Should().BeInRange(5, 20);
     }
 }
