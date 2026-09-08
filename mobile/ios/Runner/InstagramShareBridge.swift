@@ -34,7 +34,8 @@ final class InstagramShareBridge: NSObject {
     private func share(pngData: Data, result: @escaping FlutterResult) {
         guard
             let bundleId = Bundle.main.bundleIdentifier,
-            let urlScheme = URL(string: "instagram-stories://share?source_application=\(bundleId)"),
+            let encodedBundleId = bundleId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+            let urlScheme = URL(string: "instagram-stories://share?source_application=\(encodedBundleId)"),
             UIApplication.shared.canOpenURL(urlScheme)
         else {
             result(FlutterError(code: "not_installed", message: "Instagram is not installed", details: nil))
@@ -45,7 +46,8 @@ final class InstagramShareBridge: NSObject {
             "com.instagram.sharedSticker.stickerImage": pngData
         ]
         let pasteboardOptions: [UIPasteboard.OptionsKey: Any] = [
-            .expirationDate: Date().addingTimeInterval(60 * 5)
+            .expirationDate: Date().addingTimeInterval(60 * 5),
+            .localOnly: true
         ]
         UIPasteboard.general.setItems([pasteboardItems], options: pasteboardOptions)
 
