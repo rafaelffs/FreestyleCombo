@@ -33,6 +33,7 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
   String? _error;
 
   bool get _nameDisabled => overlayNameToggleDisabled(widget.combo);
+  bool get _sequenceForced => overlaySequenceForced(widget.combo);
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +102,7 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
             _toggleRow('Difficulty', _toggles.difficulty, false, (v) => setState(() => _toggles = _toggles.copyWith(difficulty: v))),
             _toggleRow('Trick count', _toggles.quantity, false, (v) => setState(() => _toggles = _toggles.copyWith(quantity: v))),
             _toggleRow('Rating', _toggles.rating, false, (v) => setState(() => _toggles = _toggles.copyWith(rating: v))),
-            _toggleRow('Trick sequence', _toggles.sequence, false, (v) => setState(() => _toggles = _toggles.copyWith(sequence: v))),
+            _toggleRow('Trick sequence', _sequenceForced || _toggles.sequence, _sequenceForced, (v) => setState(() => _toggles = _toggles.copyWith(sequence: v))),
             const SizedBox(height: 22),
             Text('TEXT SIZE', style: _sectionLabelStyle),
             const SizedBox(height: 10),
