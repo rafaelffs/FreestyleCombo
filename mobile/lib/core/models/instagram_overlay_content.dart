@@ -110,6 +110,12 @@ OverlayChips overlayChips(ComboDto combo, InstagramOverlayToggles toggles) {
   );
 }
 
+/// Content for the Minimal layout: a title, an uppercase meta line
+/// (tricks/diff/rating), and the trick chips. No [isEmpty] flag — unlike
+/// the Sequence/Stat styles, this layout always renders something
+/// presentable (the wordmark plus a blank meta line reads fine on its
+/// own), so there's no "nothing to show" state a consuming widget needs
+/// to react to.
 class MinimalOverlayContent {
   final String? title;
   final List<String> metaParts;
@@ -118,6 +124,7 @@ class MinimalOverlayContent {
       {required this.title, required this.metaParts, required this.chips});
 }
 
+/// Builds the Minimal layout's content from a combo and the current toggles.
 MinimalOverlayContent computeMinimalContent(
     ComboDto combo, InstagramOverlayToggles toggles) {
   final meta = <String>[];
@@ -133,6 +140,11 @@ MinimalOverlayContent computeMinimalContent(
   );
 }
 
+/// Content for the Sequence layout: a title, a difficulty badge, a sub-line
+/// (tricks/rating), and the trick chips. [isEmpty] is true only when every
+/// one of these is off/absent — unlike Minimal, this layout has no filler
+/// that reads fine on its own, so the consuming widget needs an explicit
+/// signal to render a fallback ("nothing to show") state instead.
 class SequenceOverlayContent {
   final String? title;
   final String? difficultyBadge;
@@ -148,6 +160,7 @@ class SequenceOverlayContent {
   });
 }
 
+/// Builds the Sequence layout's content from a combo and the current toggles.
 SequenceOverlayContent computeSequenceContent(
     ComboDto combo, InstagramOverlayToggles toggles) {
   final title = overlayEffectiveTitle(combo, toggles);
@@ -171,12 +184,19 @@ SequenceOverlayContent computeSequenceContent(
   );
 }
 
+/// One stat tile on the Stat layout, e.g. value "24", label "Diff".
 class OverlayStatTile {
   final String value;
   final String label;
   const OverlayStatTile(this.value, this.label);
 }
 
+/// Content for the Stat layout: a title, up to three stat tiles
+/// (Diff/Tricks/Rating, in that order), and the trick chips. [isEmpty]
+/// mirrors [SequenceOverlayContent.isEmpty] — true only when title, tiles,
+/// and chips are all off/absent — for the same reason: this layout has no
+/// filler that reads fine on its own, so the consuming widget needs an
+/// explicit signal to render a fallback ("nothing to show") state instead.
 class StatOverlayContent {
   final String? title;
   final List<OverlayStatTile> tiles;
@@ -190,6 +210,7 @@ class StatOverlayContent {
   });
 }
 
+/// Builds the Stat layout's content from a combo and the current toggles.
 StatOverlayContent computeStatContent(
     ComboDto combo, InstagramOverlayToggles toggles) {
   final title = overlayEffectiveTitle(combo, toggles);

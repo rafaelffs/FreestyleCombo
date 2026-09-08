@@ -178,6 +178,21 @@ void main() {
       );
       expect(content.metaParts, isNot(contains(contains('★'))));
     });
+
+    test('meta line is empty when every toggle is off', () {
+      final combo = _combo(name: 'Sunset Special');
+      final content = computeMinimalContent(
+        combo,
+        const InstagramOverlayToggles(
+          name: false,
+          difficulty: false,
+          quantity: false,
+          rating: false,
+          sequence: false,
+        ),
+      );
+      expect(content.metaParts, isEmpty);
+    });
   });
 
   group('computeSequenceContent', () {
@@ -244,6 +259,37 @@ void main() {
         const InstagramOverlayToggles(rating: true),
       );
       expect(content.tiles.map((t) => t.label), ['Diff', 'Tricks']);
+    });
+
+    test('isEmpty when everything is off for a named combo', () {
+      final combo = _combo(name: 'Sunset Special');
+      final content = computeStatContent(
+        combo,
+        const InstagramOverlayToggles(
+          name: false,
+          difficulty: false,
+          quantity: false,
+          rating: false,
+          sequence: false,
+        ),
+      );
+      expect(content.isEmpty, isTrue);
+    });
+
+    test('never isEmpty for a nameless combo — chips are forced on', () {
+      final combo = _combo(name: null, tricks: _tricks(3));
+      final content = computeStatContent(
+        combo,
+        const InstagramOverlayToggles(
+          name: false,
+          difficulty: false,
+          quantity: false,
+          rating: false,
+          sequence: false,
+        ),
+      );
+      expect(content.isEmpty, isFalse);
+      expect(content.chips.shown, ['T1', 'T2', 'T3']);
     });
   });
 }
