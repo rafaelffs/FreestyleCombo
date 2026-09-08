@@ -12,6 +12,7 @@ import '../../widgets/confirm_sheet.dart';
 import '../../widgets/difficulty_chip.dart';
 import '../../widgets/rate_combo_dialog.dart';
 import '../../widgets/setting_icon_button.dart';
+import 'instagram_share/share_options_sheet.dart';
 
 class ComboDetailScreen extends StatefulWidget {
   final String id;
@@ -164,7 +165,15 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
     }
   }
 
-  Future<void> _shareCombo(ComboDto combo) async {
+  Future<void> _openShareOptions(ComboDto combo) {
+    return showShareOptionsSheet(
+      context,
+      combo: combo,
+      onShareLink: () => _shareLinkCombo(combo),
+    );
+  }
+
+  Future<void> _shareLinkCombo(ComboDto combo) async {
     final url = '$kWebOrigin/share/combos/${combo.id}';
     // iOS requires a non-zero sharePositionOrigin (the share sheet's popover
     // anchor) — without it the native call throws PlatformException instead
@@ -240,7 +249,7 @@ class _ComboDetailScreenState extends State<ComboDetailScreen> {
                   onTogglePersonalReusable: () => _togglePersonalReusable(combo.id),
                   onEdit: () => _openEdit(combo),
                   onDelete: () => _deleteCombo(combo.id),
-                  onShare: () => _shareCombo(combo),
+                  onShare: () => _openShareOptions(combo),
                   onSaveCopy: isOwner ? null : () => _saveCopy(combo),
                   shareButtonKey: _shareButtonKey,
                 ),
