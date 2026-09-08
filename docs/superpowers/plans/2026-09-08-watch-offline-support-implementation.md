@@ -185,8 +185,15 @@ final class ComboCacheStore {
     }
 
     private func persist() {
-        guard let data = try? JSONEncoder().encode(cache) else { return }
-        try? data.write(to: fileURL, options: .atomic)
+        guard let data = try? JSONEncoder().encode(cache) else {
+            logger.error("Failed to encode ComboCache")
+            return
+        }
+        do {
+            try data.write(to: fileURL, options: .atomic)
+        } catch {
+            logger.error("Failed to write combo_cache.json: \(error, privacy: .public)")
+        }
     }
 }
 ```
@@ -220,6 +227,7 @@ Create `mobile/ios/Watch App Watch App/Offline/OfflineSyncQueue.swift`:
 ```swift
 // mobile/ios/Watch App/Offline/OfflineSyncQueue.swift
 import Foundation
+import os
 
 enum PendingActionKind: String, Codable {
     case favourite, unfavourite, complete, uncomplete
@@ -253,6 +261,7 @@ final class OfflineSyncQueue {
     private(set) var pending: [PendingAction]
     private var isFlushing = false
     private let fileURL: URL
+    private let logger = Logger(subsystem: "com.rafaelffs.freestyleCombo.watchkitapp", category: "OfflineSyncQueue")
 
     var count: Int { pending.count }
 
@@ -320,8 +329,15 @@ final class OfflineSyncQueue {
     }
 
     private func persist() {
-        guard let data = try? JSONEncoder().encode(pending) else { return }
-        try? data.write(to: fileURL, options: .atomic)
+        guard let data = try? JSONEncoder().encode(pending) else {
+            logger.error("Failed to encode pending actions")
+            return
+        }
+        do {
+            try data.write(to: fileURL, options: .atomic)
+        } catch {
+            logger.error("Failed to write pending_actions.json: \(error, privacy: .public)")
+        }
     }
 }
 ```
@@ -479,7 +495,7 @@ final class ComboRepository {
         let newValue = !combo.isFavourited
         var updated = combo
         updated.isFavourited = newValue
-        ComboCacheStore.shared.applyFavouriteToggle(comboId: combo.id, isFavourited: newValue, combo: updated)
+        ComboCacheStore.shared.applyFavouriteToggle(comboId: combo.id, combo: updated)
 
         do {
             if newValue {
@@ -492,7 +508,7 @@ final class ComboRepository {
             OfflineSyncQueue.shared.enqueue(comboId: combo.id, kind: newValue ? .favourite : .unfavourite)
             return updated
         } catch {
-            ComboCacheStore.shared.applyFavouriteToggle(comboId: combo.id, isFavourited: combo.isFavourited, combo: combo)
+            ComboCacheStore.shared.applyFavouriteToggle(comboId: combo.id, combo: combo)
             return combo
         }
     }
