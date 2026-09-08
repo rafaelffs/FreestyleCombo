@@ -54,6 +54,7 @@ public class ExternalSignInHandler : IRequestHandler<ExternalSignInCommand, Logi
                 EmailConfirmed = true,
                 AuthProvider = request.Provider,
                 ExternalSubject = identity.Subject,
+                CreatedAt = DateTime.UtcNow,
             };
 
             var result = await _userManager.CreateAsync(user);

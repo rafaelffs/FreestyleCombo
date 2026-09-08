@@ -48,6 +48,6 @@ public class UpdateUserHandler : IRequestHandler<UpdateUserCommand, AdminUserDto
         }
 
         var roles = await _userManager.GetRolesAsync(user);
-        return new AdminUserDto(user.Id, user.UserName!, user.Email!, roles.Contains("Admin"), 0);
+        return new AdminUserDto(user.Id, user.UserName!, user.Email!, roles.Contains("Admin"), 0, user.CreatedAt, user.AuthProvider);
     }
 }

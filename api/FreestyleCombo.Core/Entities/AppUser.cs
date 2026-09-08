@@ -4,6 +4,12 @@ namespace FreestyleCombo.Core.Entities;
 
 public class AppUser : IdentityUser<Guid>
 {
+    // Set explicitly (UtcNow) at creation in RegisterHandler/ExternalSignInHandler
+    // — the only two places an AppUser is created. Existing rows predating this
+    // column were backfilled to the migration-apply time (their real registration
+    // date isn't recoverable), so treat any pre-migration CreatedAt as approximate.
+    public DateTime CreatedAt { get; set; }
+
     public ICollection<Combo> Combos { get; set; } = [];
     public ICollection<ComboRating> Ratings { get; set; } = [];
     public ICollection<UserPreference> Preferences { get; set; } = [];

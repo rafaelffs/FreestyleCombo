@@ -19,6 +19,8 @@ export interface AdminUserDto {
   email: string
   isAdmin: boolean
   comboCount: number
+  createdAt: string
+  authProvider: string | null
 }
 
 export const accountApi = {

@@ -49,6 +49,8 @@ class AdminUserDto {
   final String email;
   final bool isAdmin;
   final int comboCount;
+  final DateTime createdAt;
+  final String? authProvider;
 
   const AdminUserDto({
     required this.id,
@@ -56,6 +58,8 @@ class AdminUserDto {
     required this.email,
     required this.isAdmin,
     required this.comboCount,
+    required this.createdAt,
+    this.authProvider,
   });
 
   factory AdminUserDto.fromJson(Map<String, dynamic> json) => AdminUserDto(
@@ -64,5 +68,7 @@ class AdminUserDto {
         email: json['email'] as String,
         isAdmin: json['isAdmin'] as bool? ?? false,
         comboCount: json['comboCount'] as int? ?? 0,
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        authProvider: json['authProvider'] as String?,
       );
 }

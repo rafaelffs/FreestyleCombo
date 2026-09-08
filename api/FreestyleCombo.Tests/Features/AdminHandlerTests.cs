@@ -18,15 +18,28 @@ public class AdminHandlerTests
     }
 
     [Fact]
-    public async Task GetUsers_ReturnsSortedUsersWithRoleAndComboCounts()
+    public async Task GetUsers_ReturnsNewestFirstWithRoleComboCountAndAuthProvider()
     {
         var userManager = CreateUserManagerMock();
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         await using var db = new AppDbContext(options);
-        var alpha = new AppUser { Id = Guid.NewGuid(), UserName = "alpha", Email = "a@example.com" };
-        var zeta = new AppUser { Id = Guid.NewGuid(), UserName = "zeta", Email = "z@example.com" };
+        var alpha = new AppUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "alpha",
+            Email = "a@example.com",
+            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+        };
+        var zeta = new AppUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = "zeta",
+            Email = "z@example.com",
+            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            AuthProvider = "google"
+        };
         db.Users.AddRange(alpha, zeta);
         db.Combos.AddRange(
             new Combo { Id = Guid.NewGuid(), OwnerId = alpha.Id },
@@ -41,10 +54,12 @@ public class AdminHandlerTests
         var result = await new GetUsersHandler(userManager.Object, db)
             .Handle(new GetUsersQuery(), CancellationToken.None);
 
-        result.Select(r => r.UserName).Should().Equal(["alpha", "zeta"]);
-        result[0].IsAdmin.Should().BeTrue();
-        result[0].ComboCount.Should().Be(2);
-        result[1].ComboCount.Should().Be(1);
+        // zeta registered later (2026-06) than alpha (2026-01) -> newest first.
+        result.Select(r => r.UserName).Should().Equal(["zeta", "alpha"]);
+        result[0].AuthProvider.Should().Be("google");
+        result[1].IsAdmin.Should().BeTrue();
+        result[1].ComboCount.Should().Be(2);
+        result[0].ComboCount.Should().Be(1);
     }
 
     [Fact]

@@ -16,7 +16,8 @@ public class RegisterHandler : IRequestHandler<RegisterCommand, RegisterResponse
         {
             Id = Guid.NewGuid(),
             Email = request.Email,
-            UserName = request.UserName
+            UserName = request.UserName,
+            CreatedAt = DateTime.UtcNow
         };
 
         var result = await _userManager.CreateAsync(user, request.Password);

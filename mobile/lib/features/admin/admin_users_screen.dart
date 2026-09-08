@@ -5,6 +5,18 @@ import '../../core/auth/auth_service.dart';
 import '../../core/models/user.dart';
 import '../../theme/app_colors.dart';
 
+const _monthNames = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+];
+
+String _formatJoined(DateTime d) => '${_monthNames[d.month - 1]} ${d.day}, ${d.year}';
+
+String _authLabel(String? provider) => switch (provider) {
+      'google' => 'Google',
+      'apple' => 'Apple',
+      _ => 'Password',
+    };
+
 class AdminUsersScreen extends StatefulWidget {
   const AdminUsersScreen({super.key});
 
@@ -16,11 +28,28 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   List<AdminUserDto> _users = [];
   bool _loading = true;
   String? _error;
+  final _searchCtrl = TextEditingController();
+  String _search = '';
 
   @override
   void initState() {
     super.initState();
     _load();
+    _searchCtrl.addListener(() => setState(() => _search = _searchCtrl.text));
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  List<AdminUserDto> get _filteredUsers {
+    final q = _search.trim().toLowerCase();
+    if (q.isEmpty) return _users;
+    return _users
+        .where((u) => u.userName.toLowerCase().contains(q) || u.email.toLowerCase().contains(q))
+        .toList();
   }
 
   Future<void> _load() async {
@@ -159,18 +188,59 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
           ),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.indigo))
-          : _error != null
-              ? Center(child: Text(_error!, style: const TextStyle(color: AppColors.red)))
-              : RefreshIndicator(
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 4, 22, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (!_loading && _error == null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Text(
+                      '${_users.length} registered user${_users.length == 1 ? '' : 's'}',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.muted),
+                    ),
+                  ),
+                TextField(
+                  controller: _searchCtrl,
+                  style: GoogleFonts.plusJakartaSans(fontSize: 14, color: AppColors.ink),
+                  decoration: InputDecoration(
+                    hintText: 'Search by username or email…',
+                    hintStyle: GoogleFonts.plusJakartaSans(fontSize: 14, color: AppColors.faint),
+                    prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.muted),
+                    filled: true,
+                    fillColor: AppColors.chipBg,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: AppColors.line2)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: AppColors.line2)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: AppColors.indigo, width: 1.5)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator(color: AppColors.indigo))
+                : _error != null
+                    ? Center(child: Text(_error!, style: const TextStyle(color: AppColors.red)))
+                    : _filteredUsers.isEmpty
+                        ? Center(
+                            child: Text(
+                              'No users match your search.',
+                              style: GoogleFonts.plusJakartaSans(fontSize: 13.5, color: AppColors.muted),
+                            ),
+                          )
+                        : RefreshIndicator(
                   color: AppColors.indigo,
                   onRefresh: _load,
                   child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(22, 4, 22, 20),
-                    itemCount: _users.length,
+                    padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
+                    itemCount: _filteredUsers.length,
                     itemBuilder: (context, index) {
-                      final user = _users[index];
+                      final user = _filteredUsers[index];
                       final isCurrentUser = user.id == currentUserId;
                       return _UserRow(
                         user: user,
@@ -192,6 +262,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                     },
                   ),
                 ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -268,6 +341,12 @@ class _UserRow extends StatelessWidget {
                 Text(
                   '${user.email} · ${user.comboCount} combo${user.comboCount == 1 ? '' : 's'}',
                   style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  '${_authLabel(user.authProvider)} · Joined ${_formatJoined(user.createdAt)}',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 11.5, color: AppColors.faint, fontWeight: FontWeight.w600),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],

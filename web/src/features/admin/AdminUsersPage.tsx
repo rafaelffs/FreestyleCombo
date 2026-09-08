@@ -16,6 +16,16 @@ function RoleBadge({ isAdmin }: { isAdmin: boolean }) {
   )
 }
 
+function authProviderLabel(t: (key: string) => string, provider: string | null): string {
+  if (provider === 'google') return t('adminUsers.authGoogle')
+  if (provider === 'apple') return t('adminUsers.authApple')
+  return t('adminUsers.authPassword')
+}
+
+function formatJoinedDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
 export function AdminUsersPage() {
   const qc = useQueryClient()
   const currentUserId = getUserId()
@@ -25,6 +35,12 @@ export function AdminUsersPage() {
     queryKey: ['admin-users'],
     queryFn: () => adminApi.getUsers().then((r) => r.data),
   })
+
+  const [search, setSearch] = useState('')
+  const searchQ = search.trim().toLowerCase()
+  const filteredUsers = users?.filter(
+    (u) => u.userName.toLowerCase().includes(searchQ) || u.email.toLowerCase().includes(searchQ),
+  )
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editUserName, setEditUserName] = useState('')
@@ -123,7 +139,22 @@ export function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">{t('adminUsers.pageTitle')}</h1>
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-bold text-gray-900">{t('adminUsers.pageTitle')}</h1>
+        {users && <p className="text-sm text-gray-500">{t('adminUsers.totalUsers', { count: users.length })}</p>}
+      </div>
+
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder={t('adminUsers.searchPlaceholder')}
+        className="w-full max-w-sm rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+      />
+
+      {filteredUsers?.length === 0 && (
+        <p className="text-sm text-gray-500">{t('adminUsers.noResults')}</p>
+      )}
 
       {/* Desktop table — hidden on mobile */}
       <div className="hidden sm:block overflow-hidden rounded-lg border border-gray-200 bg-white">
@@ -133,12 +164,14 @@ export function AdminUsersPage() {
               <th className="px-4 py-3 font-medium text-gray-600">{t('adminUsers.colUsername')}</th>
               <th className="px-4 py-3 font-medium text-gray-600">{t('adminUsers.colEmail')}</th>
               <th className="px-4 py-3 font-medium text-gray-600">{t('adminUsers.colRole')}</th>
+              <th className="px-4 py-3 font-medium text-gray-600">{t('adminUsers.colAuth')}</th>
+              <th className="px-4 py-3 font-medium text-gray-600">{t('adminUsers.colJoined')}</th>
               <th className="px-4 py-3 font-medium text-gray-600">{t('adminUsers.colCombos')}</th>
               <th className="px-4 py-3 font-medium text-gray-600">{t('adminUsers.colActions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {users?.map((user) => (
+            {filteredUsers?.map((user) => (
               <tr key={user.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium text-gray-900">
                   {user.userName}
@@ -150,6 +183,8 @@ export function AdminUsersPage() {
                 <td className="px-4 py-3">
                   <RoleBadge isAdmin={user.isAdmin} />
                 </td>
+                <td className="px-4 py-3 text-gray-600">{authProviderLabel(t, user.authProvider)}</td>
+                <td className="px-4 py-3 text-gray-600">{formatJoinedDate(user.createdAt)}</td>
                 <td className="px-4 py-3 text-gray-600">{user.comboCount}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5">
@@ -164,7 +199,7 @@ export function AdminUsersPage() {
 
       {/* Mobile card list — hidden on sm+ */}
       <div className="space-y-3 sm:hidden">
-        {users?.map((user) => (
+        {filteredUsers?.map((user) => (
           <div key={user.id} className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -175,7 +210,9 @@ export function AdminUsersPage() {
                   )}
                 </p>
                 <p className="text-sm text-gray-500 truncate">{user.email}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{t('adminUsers.comboCount', { count: user.comboCount })}</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {t('adminUsers.comboCount', { count: user.comboCount })} · {authProviderLabel(t, user.authProvider)} · {formatJoinedDate(user.createdAt)}
+                </p>
               </div>
               <RoleBadge isAdmin={user.isAdmin} />
             </div>
