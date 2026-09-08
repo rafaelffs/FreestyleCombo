@@ -1,1 +1,5 @@
-Initial release.
+This update brings:
+
+• More control over combo generation — combo length now stays adjustable even when using a saved preset, and every preference field can be toggled on or off individually
+• A companion Apple Watch app for browsing and completing combos on the go
+• Various bug fixes and polish

@@ -47,13 +47,13 @@ platform :ios do
     app = Spaceship::ConnectAPI::App.find("com.rafaelffs.freestyleCombo")
     versions = app.get_app_store_versions(
       filter: { platform: "IOS" },
-      includes: "appStoreVersionSubmission,appStoreReviewDetail"
+      includes: "appStoreVersionSubmission,appStoreReviewDetail,build"
     )
     if versions.empty?
       UI.important("No App Store versions exist yet — nothing has been created for review.")
     else
       versions.each do |v|
-        UI.message("Version #{v.version_string} — appStoreState=#{v.app_store_state} — appVersionState=#{v.app_version_state} — releaseType=#{v.release_type} — createdDate=#{v.created_date}")
+        UI.message("Version #{v.version_string} — appStoreState=#{v.app_store_state} — appVersionState=#{v.app_version_state} — releaseType=#{v.release_type} — build=#{v.build&.version} — createdDate=#{v.created_date}")
         begin
           review_detail = v.fetch_app_store_review_detail
           UI.message("  Review detail contact: #{review_detail&.contact_email.inspect}") if review_detail
@@ -390,6 +390,73 @@ platform :ios do
         notes: "Demo account provided for full app testing. No special setup required."
       }
     )
+  end
+
+  desc "Create a new App Store version (if it doesn't exist) and attach a build, without touching screenshots. Does NOT submit for review. Usage: fastlane ios create_and_attach_version app_version:1.0.1 build_number:16"
+  lane :create_and_attach_version do |options|
+    auth
+    app_version = options[:app_version] || UI.user_error!("Pass app_version:, e.g. app_version:1.0.1")
+    build_number = options[:build_number] || UI.user_error!("Pass build_number:, e.g. build_number:16")
+
+    # Same shape as upload_metadata, but skips screenshots — this is for a
+    # routine update where the listing images haven't changed, only the
+    # binary/release notes have. Text metadata (name/description/keywords/
+    # etc.) still gets resent from fastlane/metadata/en-US/ since deliver
+    # doesn't offer a clean way to push only release notes, but resending
+    # identical text is idempotent.
+    deliver(
+      app_version: app_version,
+      build_number: build_number,
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      submit_for_review: false,
+      automatic_release: true,
+      force: true,
+      run_precheck_before_submit: false,
+      app_review_information: {
+        first_name: "Rafael",
+        last_name: "Fashola",
+        phone_number: "+34601474653",
+        email_address: "ffs.rafael@gmail.com",
+        demo_user: "applereview",
+        demo_password: "AppReview2026!",
+        notes: "Demo account provided for full app testing. No special setup required."
+      }
+    )
+
+    # deliver's build_number param doesn't reliably attach the build to a
+    # brand-new version (confirmed: version came back with no build attached
+    # even though this call reported success) — patch it directly via the
+    # same reliable mechanism resubmit_for_review uses.
+    app = Spaceship::ConnectAPI::App.find("com.rafaelffs.freestyleCombo")
+    version = app.get_app_store_versions(filter: { platform: "IOS", versionString: app_version }).first
+    UI.user_error!("Version #{app_version} not found after deliver ran") unless version
+
+    target_build = Spaceship::ConnectAPI::Build.all(app_id: app.id, build_number: build_number.to_s).first
+    UI.user_error!("Build #{build_number} not found via API") unless target_build
+    UI.user_error!("Build #{build_number} isn't done processing yet (state=#{target_build.processing_state})") unless target_build.processing_state == "VALID"
+
+    Spaceship::ConnectAPI.patch_app_store_version_with_build(app_store_version_id: version.id, build_id: target_build.id)
+    UI.success("Attached build #{build_number} to version #{app_version}")
+  end
+
+  desc "Submit an already-created, build-attached App Store version for review. Usage: fastlane ios submit_version_for_review app_version:1.0.1"
+  lane :submit_version_for_review do |options|
+    auth
+    app_version = options[:app_version] || UI.user_error!("Pass app_version:, e.g. app_version:1.0.1")
+
+    app = Spaceship::ConnectAPI::App.find("com.rafaelffs.freestyleCombo")
+    version = app.get_app_store_versions(filter: { platform: "IOS", versionString: app_version }, includes: "build").first
+    UI.user_error!("Version #{app_version} not found") unless version
+    UI.user_error!("Version #{app_version} has no build attached — run create_and_attach_version first") unless version.build
+
+    begin
+      Spaceship::ConnectAPI.post_app_store_version_submission(app_store_version_id: version.id)
+      UI.success("Submitted #{app_version} for review!")
+    rescue StandardError => e
+      UI.error("Automatic submission failed: #{e.message}")
+      UI.important("Submit manually: App Store Connect → App → Distribution → version #{app_version} → Submit for Review.")
+    end
   end
 
   desc "Set primary/secondary category and content rights declaration"

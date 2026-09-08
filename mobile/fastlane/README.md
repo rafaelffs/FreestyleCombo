@@ -111,6 +111,22 @@ Upload the latest build to TestFlight
 
 Push App Store listing metadata + screenshots and attach a build. Does NOT submit for review.
 
+### ios create_and_attach_version
+
+```sh
+[bundle exec] fastlane ios create_and_attach_version
+```
+
+Create a new App Store version (if it doesn't exist) and attach a build, without touching screenshots. Does NOT submit for review. Usage: fastlane ios create_and_attach_version app_version:1.0.1 build_number:16
+
+### ios submit_version_for_review
+
+```sh
+[bundle exec] fastlane ios submit_version_for_review
+```
+
+Submit an already-created, build-attached App Store version for review. Usage: fastlane ios submit_version_for_review app_version:1.0.1
+
 ### ios set_app_info
 
 ```sh
