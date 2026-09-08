@@ -4,11 +4,11 @@ export interface UserPreference {
   id: string
   userId?: string
   name: string
-  comboLength: number
-  maxDifficulty: number
-  strongFootPercentage: number
-  noTouchPercentage: number
-  maxConsecutiveNoTouch: number
+  comboLength: number | null
+  maxDifficulty: number | null
+  strongFootPercentage: number | null
+  noTouchPercentage: number | null
+  maxConsecutiveNoTouch: number | null
   includeCrossOver: boolean
   includeKnee: boolean
   allowedRevolutions: number[]

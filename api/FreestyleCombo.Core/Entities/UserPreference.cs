@@ -5,13 +5,13 @@ public class UserPreference
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
     public string Name { get; set; } = string.Empty;
-    public int MaxDifficulty { get; set; } = 10;
-    public int ComboLength { get; set; } = 6;
-    public int StrongFootPercentage { get; set; } = 60;
-    public int NoTouchPercentage { get; set; } = 30;
-    public int MaxConsecutiveNoTouch { get; set; } = 2;
+    public int? MaxDifficulty { get; set; }
+    public int? ComboLength { get; set; }
+    public int? StrongFootPercentage { get; set; }
+    public int? NoTouchPercentage { get; set; }
+    public int? MaxConsecutiveNoTouch { get; set; }
     public bool IncludeCrossOver { get; set; } = true;
-    public bool IncludeKnee { get; set; } = true;
+    public bool IncludeKnee { get; set; } = false;
     public List<decimal> AllowedRevolutions { get; set; } = [];
 
     // Caps how many tricks with 3+ revolutions (the hardest, rarest moves)

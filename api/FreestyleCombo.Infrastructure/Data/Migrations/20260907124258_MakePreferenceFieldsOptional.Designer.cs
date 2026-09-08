@@ -3,6 +3,7 @@ using System;
 using FreestyleCombo.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FreestyleCombo.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260907124258_MakePreferenceFieldsOptional")]
+    partial class MakePreferenceFieldsOptional
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -403,7 +406,7 @@ namespace FreestyleCombo.Infrastructure.Data.Migrations
                     b.Property<int?>("NoTouchPercentage")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("StrongFootPercentage")
+                    b.Property<int>("StrongFootPercentage")
                         .HasColumnType("integer");
 
                     b.Property<Guid>("UserId")

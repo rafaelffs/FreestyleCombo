@@ -53,6 +53,25 @@ public class PreferenceHandlerTests
     }
 
     [Fact]
+    public async Task CreatePreference_WithNullOptionalFields_SavesNulls()
+    {
+        _repo.Setup(r => r.AddAsync(It.IsAny<UserPreference>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        var command = new CreatePreferenceCommand(
+            _userId, "No Limits", null, null, null, null, null, true, false, [], null, []);
+
+        var result = await new CreatePreferenceHandler(_repo.Object)
+            .Handle(command, CancellationToken.None);
+
+        result.MaxDifficulty.Should().BeNull();
+        result.ComboLength.Should().BeNull();
+        result.StrongFootPercentage.Should().BeNull();
+        result.NoTouchPercentage.Should().BeNull();
+        result.MaxConsecutiveNoTouch.Should().BeNull();
+        _repo.Verify(r => r.AddAsync(It.IsAny<UserPreference>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task UpdatePreferences_Owner_UpdatesAndReturnsDto()
     {
         var pref = StoredPref();
@@ -65,6 +84,27 @@ public class PreferenceHandlerTests
         result.Name.Should().Be("Updated");
         result.MaxDifficulty.Should().Be(7);
         result.AllowedRevolutions.Should().BeEquivalentTo(new List<decimal> { 3m });
+        _repo.Verify(r => r.UpdateAsync(pref, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdatePreferences_WithNullOptionalFields_SavesNulls()
+    {
+        var pref = StoredPref();
+        _repo.Setup(r => r.GetByIdAsync(_prefId, It.IsAny<CancellationToken>())).ReturnsAsync(pref);
+        _repo.Setup(r => r.UpdateAsync(pref, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        var command = new UpdatePreferencesCommand(
+            _prefId, _userId, "Updated", null, null, null, null, null, true, false, [], null, []);
+
+        var result = await new UpdatePreferencesHandler(_repo.Object)
+            .Handle(command, CancellationToken.None);
+
+        result.MaxDifficulty.Should().BeNull();
+        result.ComboLength.Should().BeNull();
+        result.StrongFootPercentage.Should().BeNull();
+        result.NoTouchPercentage.Should().BeNull();
+        result.MaxConsecutiveNoTouch.Should().BeNull();
         _repo.Verify(r => r.UpdateAsync(pref, It.IsAny<CancellationToken>()), Times.Once);
     }
 
