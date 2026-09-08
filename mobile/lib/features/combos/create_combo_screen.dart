@@ -120,11 +120,12 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
   int _maxHighRevTricks = 1;
   double _revMin = kRevolutionRangeMin;
   double _revMax = kRevolutionRangeMax;
-  bool _comboLengthEnabled = true;
-  bool _maxDifficultyEnabled = true;
-  bool _noTouchEnabled = true;
-  bool _maxConsecEnabled = true;
-  bool _maxHighRevEnabled = true;
+  bool _comboLengthEnabled = false;
+  bool _maxDifficultyEnabled = false;
+  bool _strongFootEnabled = false;
+  bool _noTouchEnabled = false;
+  bool _maxConsecEnabled = false;
+  bool _maxHighRevEnabled = false;
   bool _revEnabled = false;
   List<String> _allowedTrickIds = [];
   List<TrickItem>? _allTricksForPicker;
@@ -352,7 +353,7 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
           : GenerateComboOverrides(
               comboLength: _comboLengthEnabled ? _comboLength : null,
               maxDifficulty: _maxDifficultyEnabled ? _maxDifficulty : null,
-              strongFootPercentage: _strongFootPct,
+              strongFootPercentage: _strongFootEnabled ? _strongFootPct : null,
               noTouchPercentage: _noTouchEnabled ? _noTouchPct : null,
               maxConsecutiveNoTouch: _maxConsecEnabled ? _maxConsecNoTouch : null,
               includeCrossOver: _includeCrossOver,
@@ -993,11 +994,12 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                             _maxHighRevTricks = 1;
                             _revMin = kRevolutionRangeMin;
                             _revMax = kRevolutionRangeMax;
-                            _comboLengthEnabled = true;
-                            _maxDifficultyEnabled = true;
-                            _noTouchEnabled = true;
-                            _maxConsecEnabled = true;
-                            _maxHighRevEnabled = true;
+                            _comboLengthEnabled = false;
+                            _maxDifficultyEnabled = false;
+                            _strongFootEnabled = false;
+                            _noTouchEnabled = false;
+                            _maxConsecEnabled = false;
+                            _maxHighRevEnabled = false;
                             _revEnabled = false;
                             _allowedTrickIds = [];
                           }),
@@ -1009,7 +1011,8 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                             selected: _selectedPrefId == p.id,
                             onTap: () => setState(() {
                               _selectedPrefId = p.id;
-                              _strongFootPct = p.strongFootPercentage;
+                              _strongFootEnabled = p.strongFootPercentage != null;
+                              _strongFootPct = p.strongFootPercentage ?? 50;
                               _includeCrossOver = p.includeCrossOver;
                               _includeKnee = p.includeKnee;
                               _comboLengthEnabled = p.comboLength != null;
@@ -1126,15 +1129,21 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                _AppSlider(
+                _OptionalField(
                   label: 'Strong foot',
-                  value: _strongFootPct.toDouble(),
-                  min: 0,
-                  max: 100,
-                  formatValue: (v) => '${v.round()}%',
-                  onChanged: locked
-                      ? null
-                      : (v) => setState(() => _strongFootPct = v.round()),
+                  enabled: selectedPref != null ? selectedPref.strongFootPercentage != null : _strongFootEnabled,
+                  onChanged: locked ? null : (v) => setState(() => _strongFootEnabled = v),
+                  child: _AppSlider(
+                    label: 'Strong foot',
+                    value: _strongFootPct.toDouble(),
+                    min: 0,
+                    max: 100,
+                    formatValue: (v) => '${v.round()}%',
+                    showLabel: false,
+                    onChanged: locked
+                        ? null
+                        : (v) => setState(() => _strongFootPct = v.round()),
+                  ),
                 ),
                 const SizedBox(height: 20),
                 _OptionalField(

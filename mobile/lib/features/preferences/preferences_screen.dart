@@ -303,11 +303,12 @@ class _PreferenceFormState extends State<_PreferenceForm> {
   int _maxHighRevTricks = 1;
   double _revMin = kRevolutionRangeMin;
   double _revMax = kRevolutionRangeMax;
-  bool _comboLengthEnabled = true;
-  bool _maxDifficultyEnabled = true;
-  bool _noTouchEnabled = true;
-  bool _maxConsecEnabled = true;
-  bool _maxHighRevEnabled = true;
+  bool _comboLengthEnabled = false;
+  bool _maxDifficultyEnabled = false;
+  bool _strongFootEnabled = false;
+  bool _noTouchEnabled = false;
+  bool _maxConsecEnabled = false;
+  bool _maxHighRevEnabled = false;
   bool _revEnabled = false;
   List<String> _allowedTrickIds = [];
   List<TrickItem>? _allTricks;
@@ -324,7 +325,8 @@ class _PreferenceFormState extends State<_PreferenceForm> {
       _comboLength = p.comboLength ?? 6;
       _maxDifficultyEnabled = p.maxDifficulty != null;
       _maxDifficulty = p.maxDifficulty ?? 10;
-      _strongFootPct = p.strongFootPercentage;
+      _strongFootEnabled = p.strongFootPercentage != null;
+      _strongFootPct = p.strongFootPercentage ?? 60;
       _noTouchEnabled = p.noTouchPercentage != null;
       _noTouchPct = p.noTouchPercentage ?? 30;
       _maxConsecEnabled = p.maxConsecutiveNoTouch != null;
@@ -493,7 +495,7 @@ class _PreferenceFormState extends State<_PreferenceForm> {
         name: name,
         comboLength: _comboLengthEnabled ? _comboLength : null,
         maxDifficulty: _maxDifficultyEnabled ? _maxDifficulty : null,
-        strongFootPercentage: _strongFootPct,
+        strongFootPercentage: _strongFootEnabled ? _strongFootPct : null,
         noTouchPercentage: _noTouchEnabled ? _noTouchPct : null,
         maxConsecutiveNoTouch: _maxConsecEnabled ? _maxConsecNoTouch : null,
         includeCrossOver: _includeCrossOver,
@@ -611,7 +613,19 @@ class _PreferenceFormState extends State<_PreferenceForm> {
               ),
             ),
             const SizedBox(height: 18),
-            _PrefSlider(label: 'Strong foot', value: _strongFootPct.toDouble(), min: 0, max: 100, formatValue: (v) => '${v.round()}%', onChanged: (v) => setState(() => _strongFootPct = v.round())),
+            _OptionalField(
+              label: 'Strong foot',
+              enabled: _strongFootEnabled,
+              onChanged: (v) => setState(() => _strongFootEnabled = v),
+              child: _PrefSlider(
+                label: 'Strong foot',
+                value: _strongFootPct.toDouble(),
+                min: 0, max: 100,
+                formatValue: (v) => '${v.round()}%',
+                showLabel: false,
+                onChanged: (v) => setState(() => _strongFootPct = v.round()),
+              ),
+            ),
             const SizedBox(height: 18),
             _OptionalField(
               label: 'No-touch',

@@ -4,7 +4,7 @@ class UserPreference {
   final String name;
   final int? comboLength;
   final int? maxDifficulty;
-  final int strongFootPercentage;
+  final int? strongFootPercentage;
   final int? noTouchPercentage;
   final int? maxConsecutiveNoTouch;
   final bool includeCrossOver;
@@ -19,7 +19,7 @@ class UserPreference {
     required this.name,
     this.comboLength,
     this.maxDifficulty,
-    required this.strongFootPercentage,
+    this.strongFootPercentage,
     this.noTouchPercentage,
     this.maxConsecutiveNoTouch,
     required this.includeCrossOver,
@@ -35,7 +35,7 @@ class UserPreference {
         name: (j['name'] as String?) ?? '',
         comboLength: j['comboLength'] as int?,
         maxDifficulty: j['maxDifficulty'] as int?,
-        strongFootPercentage: j['strongFootPercentage'] as int,
+        strongFootPercentage: j['strongFootPercentage'] as int?,
         noTouchPercentage: j['noTouchPercentage'] as int?,
         maxConsecutiveNoTouch: j['maxConsecutiveNoTouch'] as int?,
         includeCrossOver: j['includeCrossOver'] as bool,
