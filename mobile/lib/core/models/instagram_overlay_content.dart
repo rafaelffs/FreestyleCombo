@@ -25,7 +25,7 @@ class InstagramOverlayToggles {
 
   const InstagramOverlayToggles({
     this.name = true,
-    this.difficulty = true,
+    this.difficulty = false,
     this.quantity = true,
     this.rating = false,
     this.sequence = true,
