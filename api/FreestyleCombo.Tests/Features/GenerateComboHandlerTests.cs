@@ -176,4 +176,31 @@ public class GenerateComboHandlerTests
         // ComboLength null -> rolled fresh from the 5-20 range for this generation.
         result.TrickCount.Should().BeInRange(5, 20);
     }
+
+    [Fact]
+    public async Task Handle_ComboLengthIsFinalTotal_IncludingInsertedTransitionTricks()
+    {
+        // A pool that alternates CrossOver types, plus a transition trick — this
+        // reliably triggers Step 4's "combo" bridge insertion between adjacent
+        // tricks that switch CrossOver type, so TrickCount must land on the exact
+        // requested total (real tricks + transitions), not just the count of
+        // "real" tricks initially picked.
+        var crossOverTrick = TrickFaker.Create("XO", crossOver: true, difficulty: 1, commonLevel: 5);
+        var nonCrossOverTrick = TrickFaker.Create("NXO", crossOver: false, difficulty: 1, commonLevel: 5);
+        var transitionTrick = TrickFaker.Create("Combo", crossOver: false, difficulty: 1, commonLevel: 5);
+        transitionTrick.IsTransition = true;
+
+        var tricks = new List<Trick> { crossOverTrick, nonCrossOverTrick, transitionTrick };
+        _trickRepo.Setup(r => r.GetAllAsync(It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(tricks);
+
+        var handler = CreateHandler();
+
+        foreach (var length in new[] { 1, 3, 8, 15 })
+        {
+            var command = new GenerateComboCommand(null, new GenerateComboOverrides { ComboLength = length });
+            var result = await handler.Handle(command, CancellationToken.None);
+            result.TrickCount.Should().Be(length);
+        }
+    }
 }
