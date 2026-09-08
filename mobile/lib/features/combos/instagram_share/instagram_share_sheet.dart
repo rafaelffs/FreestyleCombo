@@ -98,7 +98,7 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
             const SizedBox(height: 22),
             Text('SHOW ON OVERLAY', style: _sectionLabelStyle),
             const SizedBox(height: 10),
-            _toggleRow('Combo name', _toggles.name, _nameDisabled, (v) => setState(() => _toggles = _toggles.copyWith(name: v))),
+            _toggleRow('Combo name', _nameDisabled ? false : _toggles.name, _nameDisabled, (v) => setState(() => _toggles = _toggles.copyWith(name: v))),
             _toggleRow('Difficulty', _toggles.difficulty, false, (v) => setState(() => _toggles = _toggles.copyWith(difficulty: v))),
             _toggleRow('Trick count', _toggles.quantity, false, (v) => setState(() => _toggles = _toggles.copyWith(quantity: v))),
             _toggleRow('Rating', _toggles.rating, false, (v) => setState(() => _toggles = _toggles.copyWith(rating: v))),
@@ -211,7 +211,7 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
             ),
           ),
           CupertinoSwitch(
-            value: disabled ? false : value,
+            value: value,
             activeTrackColor: AppColors.indigo,
             onChanged: disabled ? null : onChanged,
           ),
