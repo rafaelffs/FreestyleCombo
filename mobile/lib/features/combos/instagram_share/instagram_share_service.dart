@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -33,6 +32,8 @@ class InstagramShareService {
         throw Exception('Install Instagram to share to your Story.');
       }
       throw Exception(e.message ?? 'Could not open Instagram.');
+    } on MissingPluginException {
+      throw Exception('Could not open Instagram.');
     }
   }
 }
