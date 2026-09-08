@@ -1,5 +1,6 @@
 // mobile/ios/Watch App/Offline/ComboCacheStore.swift
 import Foundation
+import os
 
 struct ComboCache: Codable {
     var publicCombos: [Combo] = []
@@ -20,6 +21,7 @@ final class ComboCacheStore {
 
     private var cache: ComboCache
     private let fileURL: URL
+    private let logger = Logger(subsystem: "com.rafaelffs.freestyleCombo.watchkitapp", category: "ComboCacheStore")
 
     private init() {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -57,20 +59,21 @@ final class ComboCacheStore {
 
     /// Flips isFavourited on every cached entry with this id (Public/Mine),
     /// and adds/removes the entry from the cached Favourites list itself to
-    /// match what GET /combos/favourites would return — the passed-in combo
-    /// must already carry the new isFavourited value.
-    func applyFavouriteToggle(comboId: String, isFavourited: Bool, combo: Combo) {
+    /// match what GET /combos/favourites would return. `combo.isFavourited`
+    /// is the single source of truth for the new state — the caller must pass
+    /// a combo that already carries it.
+    func applyFavouriteToggle(comboId: String, combo: Combo) {
         cache.publicCombos = cache.publicCombos.map { c in
             var c = c
-            if c.id == comboId { c.isFavourited = isFavourited }
+            if c.id == comboId { c.isFavourited = combo.isFavourited }
             return c
         }
         cache.mineCombos = cache.mineCombos.map { c in
             var c = c
-            if c.id == comboId { c.isFavourited = isFavourited }
+            if c.id == comboId { c.isFavourited = combo.isFavourited }
             return c
         }
-        if isFavourited {
+        if combo.isFavourited {
             if !cache.favouriteCombos.contains(where: { $0.id == comboId }) {
                 cache.favouriteCombos.append(combo)
             }
@@ -109,7 +112,14 @@ final class ComboCacheStore {
     }
 
     private func persist() {
-        guard let data = try? JSONEncoder().encode(cache) else { return }
-        try? data.write(to: fileURL, options: .atomic)
+        guard let data = try? JSONEncoder().encode(cache) else {
+            logger.error("Failed to encode ComboCache")
+            return
+        }
+        do {
+            try data.write(to: fileURL, options: .atomic)
+        } catch {
+            logger.error("Failed to write combo_cache.json: \(error, privacy: .public)")
+        }
     }
 }
