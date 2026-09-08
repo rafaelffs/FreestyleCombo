@@ -1130,11 +1130,11 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                 ),
                 const SizedBox(height: 20),
                 _OptionalField(
-                  label: 'Strong foot',
+                  label: 'Strong foot (%)',
                   enabled: selectedPref != null ? selectedPref.strongFootPercentage != null : _strongFootEnabled,
                   onChanged: locked ? null : (v) => setState(() => _strongFootEnabled = v),
                   child: _AppSlider(
-                    label: 'Strong foot',
+                    label: 'Strong foot (%)',
                     value: _strongFootPct.toDouble(),
                     min: 0,
                     max: 100,
@@ -1147,11 +1147,11 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                 ),
                 const SizedBox(height: 20),
                 _OptionalField(
-                  label: 'No-touch',
+                  label: 'No-touch (%)',
                   enabled: selectedPref != null ? selectedPref.noTouchPercentage != null : _noTouchEnabled,
                   onChanged: locked ? null : (v) => setState(() => _noTouchEnabled = v),
                   child: _AppSlider(
-                    label: 'No-touch',
+                    label: 'No-touch (%)',
                     value: _noTouchPct.toDouble(),
                     min: 0,
                     max: 100,

@@ -614,11 +614,11 @@ class _PreferenceFormState extends State<_PreferenceForm> {
             ),
             const SizedBox(height: 18),
             _OptionalField(
-              label: 'Strong foot',
+              label: 'Strong foot (%)',
               enabled: _strongFootEnabled,
               onChanged: (v) => setState(() => _strongFootEnabled = v),
               child: _PrefSlider(
-                label: 'Strong foot',
+                label: 'Strong foot (%)',
                 value: _strongFootPct.toDouble(),
                 min: 0, max: 100,
                 formatValue: (v) => '${v.round()}%',
@@ -628,11 +628,11 @@ class _PreferenceFormState extends State<_PreferenceForm> {
             ),
             const SizedBox(height: 18),
             _OptionalField(
-              label: 'No-touch',
+              label: 'No-touch (%)',
               enabled: _noTouchEnabled,
               onChanged: (v) => setState(() => _noTouchEnabled = v),
               child: _PrefSlider(
-                label: 'No-touch',
+                label: 'No-touch (%)',
                 value: _noTouchPct.toDouble(),
                 min: 0, max: 100,
                 formatValue: (v) => '${v.round()}%',
