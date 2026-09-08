@@ -81,7 +81,9 @@ List<String> _trickAbbreviations(ComboDto combo) {
   final tricks = combo.tricks;
   if (tricks == null) return [];
   return tricks.map((t) {
-    final base = t.type == 'combo' ? (t.subComboName ?? 'Combo') : (t.abbreviation ?? t.name ?? '?');
+    final base = t.type == 'combo'
+        ? (t.subComboName ?? 'Combo')
+        : (t.abbreviation ?? t.name ?? '?');
     return (t.noTouch && !t.isTransition) ? '$base(nt)' : base;
   }).toList();
 }

@@ -46,37 +46,56 @@ void main() {
     });
 
     test('false when combo has a name', () {
-      expect(overlayNameToggleDisabled(_combo(name: 'Sunset Special')), isFalse);
+      expect(
+          overlayNameToggleDisabled(_combo(name: 'Sunset Special')), isFalse);
     });
   });
 
   group('overlayEffectiveTitle', () {
     test('null when combo has no name, regardless of toggle', () {
       final combo = _combo(name: null);
-      expect(overlayEffectiveTitle(combo, const InstagramOverlayToggles(name: true)), isNull);
+      expect(
+          overlayEffectiveTitle(
+              combo, const InstagramOverlayToggles(name: true)),
+          isNull);
     });
 
     test('null when combo has a name but the Name toggle is off', () {
       final combo = _combo(name: 'Sunset Special');
-      expect(overlayEffectiveTitle(combo, const InstagramOverlayToggles(name: false)), isNull);
+      expect(
+          overlayEffectiveTitle(
+              combo, const InstagramOverlayToggles(name: false)),
+          isNull);
     });
 
     test('the name when combo has one and the toggle is on', () {
       final combo = _combo(name: 'Sunset Special');
-      expect(overlayEffectiveTitle(combo, const InstagramOverlayToggles(name: true)), 'Sunset Special');
+      expect(
+          overlayEffectiveTitle(
+              combo, const InstagramOverlayToggles(name: true)),
+          'Sunset Special');
     });
   });
 
   group('overlaySequenceOn', () {
     test('forced on for a nameless combo even if the toggle is off', () {
       final combo = _combo(name: null);
-      expect(overlaySequenceOn(combo, const InstagramOverlayToggles(sequence: false)), isTrue);
+      expect(
+          overlaySequenceOn(
+              combo, const InstagramOverlayToggles(sequence: false)),
+          isTrue);
     });
 
     test('follows the toggle for a named combo', () {
       final combo = _combo(name: 'Sunset Special');
-      expect(overlaySequenceOn(combo, const InstagramOverlayToggles(sequence: false)), isFalse);
-      expect(overlaySequenceOn(combo, const InstagramOverlayToggles(sequence: true)), isTrue);
+      expect(
+          overlaySequenceOn(
+              combo, const InstagramOverlayToggles(sequence: false)),
+          isFalse);
+      expect(
+          overlaySequenceOn(
+              combo, const InstagramOverlayToggles(sequence: true)),
+          isTrue);
     });
   });
 
@@ -106,7 +125,8 @@ void main() {
 
     test('empty when Trick sequence is off and the combo has a name', () {
       final combo = _combo(name: 'Sunset Special', tricks: _tricks(5));
-      final chips = overlayChips(combo, const InstagramOverlayToggles(sequence: false));
+      final chips =
+          overlayChips(combo, const InstagramOverlayToggles(sequence: false));
       expect(chips.shown, isEmpty);
       expect(chips.overflow, 0);
     });
@@ -115,6 +135,25 @@ void main() {
       final combo = _combo(tricks: _tricks(2, lastNoTouch: true));
       final chips = overlayChips(combo, const InstagramOverlayToggles());
       expect(chips.shown, ['T1', 'T2(nt)']);
+    });
+
+    test('empty when the combo has no trick data at all', () {
+      final combo = _combo(tricks: null);
+      final chips = overlayChips(combo, const InstagramOverlayToggles());
+      expect(chips.shown, isEmpty);
+      expect(chips.overflow, 0);
+    });
+
+    test('uses subComboName for a sub-combo entry, falling back to "Combo"',
+        () {
+      final combo = _combo(tricks: [
+        const ComboTrickDto(type: 'trick', position: 1, abbreviation: 'T1'),
+        const ComboTrickDto(
+            type: 'combo', position: 2, subComboName: 'My Reusable'),
+        const ComboTrickDto(type: 'combo', position: 3, subComboName: null),
+      ]);
+      final chips = overlayChips(combo, const InstagramOverlayToggles());
+      expect(chips.shown, ['T1', 'My Reusable', 'Combo']);
     });
   });
 }
