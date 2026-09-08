@@ -11,6 +11,8 @@ import '../../widgets/combo_card.dart';
 import '../../widgets/display_options.dart';
 
 enum _DoneFilter { all, done, undone }
+enum _NoTouchFilter { all, noNt, hasNt }
+enum _SortOption { none, difficultyDesc, trickCountDesc, newestFirst, ratingDesc }
 
 class CombosScreen extends StatefulWidget {
   final bool initialDoneOnly;
@@ -42,6 +44,10 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
   List<ComboDto>? _favouritesItems;
 
   _DoneFilter _doneFilter = _DoneFilter.all;
+  _NoTouchFilter _noTouchFilter = _NoTouchFilter.all;
+  _SortOption _sortOption = _SortOption.none;
+  Set<String> _requiredTrickIds = {};
+  List<TrickItem>? _allTricksForFilter;
   final _searchCtrl = TextEditingController();
   String _search = '';
   Timer? _searchDebounce;
@@ -167,11 +173,11 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
         if (snap.hasError) {
           return _errorView(snap.error.toString(), onRefresh);
         }
-        final items = (snap.data?.items ?? [])
+        final items = _applySort((snap.data?.items ?? [])
             .where((c) => !filterPublic || c.visibility != 'Public')
-            .where(_matchesDoneFilter)
-            .toList();
-        if (items.isEmpty) return Center(child: _doneEmptyState() ?? emptyWidget);
+            .where(_matchesFilters)
+            .toList());
+        if (items.isEmpty) return Center(child: _filtersEmptyState() ?? emptyWidget);
         return _listView(items, showActions, onRefresh);
       },
     );
@@ -193,14 +199,14 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
           return _errorView(snap.error.toString(), onRefresh);
         }
         final q = _search.toLowerCase();
-        final items = (snap.data ?? [])
-            .where(_matchesDoneFilter)
+        final items = _applySort((snap.data ?? [])
+            .where(_matchesFilters)
             .where((c) =>
                 q.isEmpty ||
                 (c.name ?? c.displayText).toLowerCase().contains(q) ||
                 (c.ownerUserName ?? '').toLowerCase().contains(q))
-            .toList();
-        if (items.isEmpty) return Center(child: _doneEmptyState() ?? emptyWidget);
+            .toList());
+        if (items.isEmpty) return Center(child: _filtersEmptyState() ?? emptyWidget);
         return _listView(items, showActions, onRefresh);
       },
     );
@@ -273,6 +279,66 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
     }
   }
 
+  bool _comboHasNoTouch(ComboDto c) =>
+      (c.tricks ?? []).any((t) => t.type == 'trick' && !t.isTransition && t.noTouch);
+
+  bool _matchesNoTouchFilter(ComboDto c) {
+    switch (_noTouchFilter) {
+      case _NoTouchFilter.all:
+        return true;
+      case _NoTouchFilter.noNt:
+        return !_comboHasNoTouch(c);
+      case _NoTouchFilter.hasNt:
+        return _comboHasNoTouch(c);
+    }
+  }
+
+  bool _matchesTrickFilter(ComboDto c) {
+    if (_requiredTrickIds.isEmpty) return true;
+    final ids = (c.tricks ?? [])
+        .where((t) => t.type == 'trick' && t.trickId != null)
+        .map((t) => t.trickId!)
+        .toSet();
+    return _requiredTrickIds.every(ids.contains);
+  }
+
+  bool _matchesFilters(ComboDto c) =>
+      _matchesDoneFilter(c) && _matchesNoTouchFilter(c) && _matchesTrickFilter(c);
+
+  bool get _filtersActive =>
+      _noTouchFilter != _NoTouchFilter.all || _sortOption != _SortOption.none || _requiredTrickIds.isNotEmpty;
+
+  List<ComboDto> _applySort(List<ComboDto> items) {
+    if (_sortOption == _SortOption.none) return items;
+    final sorted = [...items];
+    switch (_sortOption) {
+      case _SortOption.none:
+        break;
+      case _SortOption.difficultyDesc:
+        sorted.sort((a, b) => b.totalDifficulty.compareTo(a.totalDifficulty));
+      case _SortOption.trickCountDesc:
+        sorted.sort((a, b) => b.trickCount.compareTo(a.trickCount));
+      case _SortOption.newestFirst:
+        sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      case _SortOption.ratingDesc:
+        sorted.sort((a, b) => b.averageRating.compareTo(a.averageRating));
+    }
+    return sorted;
+  }
+
+  // Combines the done-filter's own empty message (still the most specific
+  // one when it's the active filter) with a generic message for the newer
+  // no-touch/trick filters, which don't have a state-specific empty copy of
+  // their own the way done/landed does.
+  Widget? _filtersEmptyState() {
+    final doneEmpty = _doneEmptyState();
+    if (doneEmpty != null) return doneEmpty;
+    if (_noTouchFilter != _NoTouchFilter.all || _requiredTrickIds.isNotEmpty) {
+      return _emptyState(Icons.filter_list_off, 'No combos match your filters.');
+    }
+    return null;
+  }
+
   // Total/landed counts for whichever tab is currently active, mirroring
   // the same filtering each tab's own list applies (filterPublic on Mine,
   // client-side search matching on All/Favourites — Public/Mine already
@@ -310,6 +376,7 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
               (c.ownerUserName ?? '').toLowerCase().contains(q))
           .toList();
     }
+    items = items.where((c) => _matchesNoTouchFilter(c) && _matchesTrickFilter(c)).toList();
     final landed = items.where((c) => c.isCompleted).length;
     return (items.length, landed);
   }
@@ -408,6 +475,257 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  TextStyle get _filterSectionLabelStyle => GoogleFonts.plusJakartaSans(
+        fontSize: 11,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0.5,
+        color: AppColors.faint,
+      );
+
+  String _sortOptionLabel(_SortOption opt) => switch (opt) {
+        _SortOption.none => 'Default',
+        _SortOption.difficultyDesc => 'Difficulty',
+        _SortOption.trickCountDesc => 'Trick count',
+        _SortOption.newestFirst => 'Newest',
+        _SortOption.ratingDesc => 'Rating',
+      };
+
+  Future<void> _showFiltersSheet() async {
+    if (_allTricksForFilter == null) {
+      final all = await ApiClient.instance.getTricks();
+      _allTricksForFilter = all.whereType<TrickItem>().where((t) => !t.isTransition).toList()
+        ..sort((a, b) => a.name.compareTo(b.name));
+    }
+    if (!mounted) return;
+    var search = '';
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.bg,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) {
+          final filtered = _allTricksForFilter!.where((t) {
+            if (search.isEmpty) return true;
+            final q = search.toLowerCase();
+            return t.name.toLowerCase().contains(q) || t.abbreviation.toLowerCase().contains(q);
+          }).toList();
+          return DraggableScrollableSheet(
+            initialChildSize: 0.85,
+            minChildSize: 0.5,
+            maxChildSize: 0.95,
+            expand: false,
+            builder: (ctx, scrollController) => SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(color: AppColors.line2, borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 16, 22, 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Filters & Sort',
+                            style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.ink),
+                          ),
+                        ),
+                        if (_filtersActive)
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _noTouchFilter = _NoTouchFilter.all;
+                                _sortOption = _SortOption.none;
+                                _requiredTrickIds = {};
+                              });
+                              setSt(() {});
+                            },
+                            child: const Text('Reset'),
+                          ),
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: Text(
+                            'Done',
+                            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: AppColors.indigo),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 4, 22, 6),
+                    child: Text('NO-TOUCH', style: _filterSectionLabelStyle),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 0, 22, 16),
+                    child: Wrap(
+                      spacing: 8,
+                      children: [
+                        SegmentButton(
+                          label: 'All',
+                          active: _noTouchFilter == _NoTouchFilter.all,
+                          onTap: () {
+                            setState(() => _noTouchFilter = _NoTouchFilter.all);
+                            setSt(() {});
+                          },
+                        ),
+                        SegmentButton(
+                          label: 'No NT',
+                          active: _noTouchFilter == _NoTouchFilter.noNt,
+                          onTap: () {
+                            setState(() => _noTouchFilter = _NoTouchFilter.noNt);
+                            setSt(() {});
+                          },
+                        ),
+                        SegmentButton(
+                          label: 'Has NT',
+                          active: _noTouchFilter == _NoTouchFilter.hasNt,
+                          onTap: () {
+                            setState(() => _noTouchFilter = _NoTouchFilter.hasNt);
+                            setSt(() {});
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 0, 22, 6),
+                    child: Text('SORT BY', style: _filterSectionLabelStyle),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 0, 22, 16),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final opt in _SortOption.values)
+                          SegmentButton(
+                            label: _sortOptionLabel(opt),
+                            active: _sortOption == opt,
+                            onTap: () {
+                              setState(() => _sortOption = opt);
+                              setSt(() {});
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 0, 22, 6),
+                    child: Text(
+                      _requiredTrickIds.isEmpty
+                          ? 'CONTAINS TRICKS'
+                          : 'CONTAINS TRICKS (${_requiredTrickIds.length})',
+                      style: _filterSectionLabelStyle,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 0, 22, 10),
+                    child: TextField(
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      onChanged: (v) => setSt(() => search = v),
+                      decoration: InputDecoration(
+                        hintText: 'Search tricks...',
+                        filled: true,
+                        fillColor: AppColors.chipBg,
+                        prefixIcon: const Icon(Icons.search, size: 18),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 14),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Center(
+                              child: Text('No tricks match', style: GoogleFonts.plusJakartaSans(fontSize: 13, color: AppColors.muted)),
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: scrollController,
+                            padding: const EdgeInsets.fromLTRB(10, 0, 10, 20),
+                            itemCount: filtered.length,
+                            itemBuilder: (_, i) {
+                              final t = filtered[i];
+                              final selected = _requiredTrickIds.contains(t.id);
+                              return CheckboxListTile(
+                                value: selected,
+                                activeColor: AppColors.indigo,
+                                controlAffinity: ListTileControlAffinity.leading,
+                                dense: true,
+                                title: Text(
+                                  '${t.abbreviation} · ${t.name}',
+                                  style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink),
+                                ),
+                                onChanged: (v) {
+                                  setState(() {
+                                    _requiredTrickIds = v == true
+                                        ? {..._requiredTrickIds, t.id}
+                                        : _requiredTrickIds.where((id) => id != t.id).toSet();
+                                  });
+                                  setSt(() {});
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _filtersChip() {
+    final active = _filtersActive;
+    return GestureDetector(
+      onTap: _showFiltersSheet,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: active ? AppColors.indigo : AppColors.surface,
+          borderRadius: BorderRadius.circular(9),
+          border: active ? null : Border.all(color: AppColors.line2),
+          boxShadow: active
+              ? null
+              : [
+                  BoxShadow(
+                    color: AppColors.ink.withValues(alpha: 0.05),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.filter_list, size: 14, color: active ? Colors.white : AppColors.ink2),
+            const SizedBox(width: 4),
+            Text(
+              'Filters',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                color: active ? Colors.white : AppColors.ink2,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -539,10 +857,18 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  if (_authed)
-                    _doneFilterChip()
-                  else
-                    const SizedBox.shrink(),
+                  Expanded(
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (_authed) _doneFilterChip(),
+                        _filtersChip(),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   GestureDetector(
                     onTap: _showDisplaySheet,
                     child: Container(
