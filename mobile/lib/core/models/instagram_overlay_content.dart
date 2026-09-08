@@ -109,3 +109,103 @@ OverlayChips overlayChips(ComboDto combo, InstagramOverlayToggles toggles) {
     overflow: all.length - kOverlayChipShowAllUpTo,
   );
 }
+
+class MinimalOverlayContent {
+  final String? title;
+  final List<String> metaParts;
+  final OverlayChips chips;
+  const MinimalOverlayContent(
+      {required this.title, required this.metaParts, required this.chips});
+}
+
+MinimalOverlayContent computeMinimalContent(
+    ComboDto combo, InstagramOverlayToggles toggles) {
+  final meta = <String>[];
+  if (toggles.quantity) meta.add('${combo.trickCount} TRICKS');
+  if (toggles.difficulty) meta.add('${combo.totalDifficulty.round()} DIFF');
+  if (toggles.rating && combo.totalRatings > 0) {
+    meta.add('${combo.averageRating.toStringAsFixed(1)}★');
+  }
+  return MinimalOverlayContent(
+    title: overlayEffectiveTitle(combo, toggles),
+    metaParts: meta,
+    chips: overlayChips(combo, toggles),
+  );
+}
+
+class SequenceOverlayContent {
+  final String? title;
+  final String? difficultyBadge;
+  final List<String> subParts;
+  final OverlayChips chips;
+  final bool isEmpty;
+  const SequenceOverlayContent({
+    required this.title,
+    required this.difficultyBadge,
+    required this.subParts,
+    required this.chips,
+    required this.isEmpty,
+  });
+}
+
+SequenceOverlayContent computeSequenceContent(
+    ComboDto combo, InstagramOverlayToggles toggles) {
+  final title = overlayEffectiveTitle(combo, toggles);
+  final diffBadge =
+      toggles.difficulty ? '${combo.totalDifficulty.round()}' : null;
+  final sub = <String>[];
+  if (toggles.quantity) sub.add('${combo.trickCount} tricks');
+  if (toggles.rating && combo.totalRatings > 0) {
+    sub.add(
+        '${combo.averageRating.toStringAsFixed(1)}★ (${combo.totalRatings})');
+  }
+  final chips = overlayChips(combo, toggles);
+  final isEmpty =
+      title == null && diffBadge == null && sub.isEmpty && chips.shown.isEmpty;
+  return SequenceOverlayContent(
+    title: title,
+    difficultyBadge: diffBadge,
+    subParts: sub,
+    chips: chips,
+    isEmpty: isEmpty,
+  );
+}
+
+class OverlayStatTile {
+  final String value;
+  final String label;
+  const OverlayStatTile(this.value, this.label);
+}
+
+class StatOverlayContent {
+  final String? title;
+  final List<OverlayStatTile> tiles;
+  final OverlayChips chips;
+  final bool isEmpty;
+  const StatOverlayContent({
+    required this.title,
+    required this.tiles,
+    required this.chips,
+    required this.isEmpty,
+  });
+}
+
+StatOverlayContent computeStatContent(
+    ComboDto combo, InstagramOverlayToggles toggles) {
+  final title = overlayEffectiveTitle(combo, toggles);
+  final tiles = <OverlayStatTile>[];
+  if (toggles.difficulty) {
+    tiles.add(OverlayStatTile('${combo.totalDifficulty.round()}', 'Diff'));
+  }
+  if (toggles.quantity) {
+    tiles.add(OverlayStatTile('${combo.trickCount}', 'Tricks'));
+  }
+  if (toggles.rating && combo.totalRatings > 0) {
+    tiles.add(OverlayStatTile(
+        '${combo.averageRating.toStringAsFixed(1)}★', 'Rating'));
+  }
+  final chips = overlayChips(combo, toggles);
+  final isEmpty = title == null && tiles.isEmpty && chips.shown.isEmpty;
+  return StatOverlayContent(
+      title: title, tiles: tiles, chips: chips, isEmpty: isEmpty);
+}

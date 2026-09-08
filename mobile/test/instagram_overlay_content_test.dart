@@ -156,4 +156,94 @@ void main() {
       expect(chips.shown, ['T1', 'My Reusable', 'Combo']);
     });
   });
+
+  group('computeMinimalContent', () {
+    test('title, meta line, and chips reflect the toggles', () {
+      final combo = _combo(name: 'Sunset Special', tricks: _tricks(3));
+      final content = computeMinimalContent(
+        combo,
+        const InstagramOverlayToggles(rating: true),
+      );
+      expect(content.title, 'Sunset Special');
+      expect(content.metaParts, ['5 TRICKS', '24 DIFF', '4.8★']);
+      expect(content.chips.shown, ['T1', 'T2', 'T3']);
+    });
+
+    test('meta line omits rating when the combo has zero ratings', () {
+      final combo =
+          _combo(name: 'Sunset Special', averageRating: 0, totalRatings: 0);
+      final content = computeMinimalContent(
+        combo,
+        const InstagramOverlayToggles(rating: true),
+      );
+      expect(content.metaParts, isNot(contains(contains('★'))));
+    });
+  });
+
+  group('computeSequenceContent', () {
+    test('difficulty badge and sub-line reflect the toggles', () {
+      final combo = _combo(name: 'Sunset Special', tricks: _tricks(3));
+      final content = computeSequenceContent(
+        combo,
+        const InstagramOverlayToggles(rating: true),
+      );
+      expect(content.title, 'Sunset Special');
+      expect(content.difficultyBadge, '24');
+      expect(content.subParts, ['5 tricks', '4.8★ (12)']);
+      expect(content.isEmpty, isFalse);
+    });
+
+    test('isEmpty when everything is off for a named combo', () {
+      final combo = _combo(name: 'Sunset Special');
+      final content = computeSequenceContent(
+        combo,
+        const InstagramOverlayToggles(
+          name: false,
+          difficulty: false,
+          quantity: false,
+          rating: false,
+          sequence: false,
+        ),
+      );
+      expect(content.isEmpty, isTrue);
+    });
+
+    test('never isEmpty for a nameless combo — chips are forced on', () {
+      final combo = _combo(name: null, tricks: _tricks(3));
+      final content = computeSequenceContent(
+        combo,
+        const InstagramOverlayToggles(
+          name: false,
+          difficulty: false,
+          quantity: false,
+          rating: false,
+          sequence: false,
+        ),
+      );
+      expect(content.isEmpty, isFalse);
+      expect(content.chips.shown, ['T1', 'T2', 'T3']);
+    });
+  });
+
+  group('computeStatContent', () {
+    test('tiles reflect the toggles, in Diff/Tricks/Rating order', () {
+      final combo = _combo(name: 'Sunset Special');
+      final content = computeStatContent(
+        combo,
+        const InstagramOverlayToggles(rating: true),
+      );
+      expect(content.tiles.map((t) => t.label), ['Diff', 'Tricks', 'Rating']);
+      expect(content.tiles.map((t) => t.value), ['24', '5', '4.8★']);
+    });
+
+    test('drops the rating tile when the combo has zero ratings', () {
+      final combo =
+          _combo(name: 'Sunset Special', averageRating: 0, totalRatings: 0);
+      final content = computeStatContent(
+        combo,
+        const InstagramOverlayToggles(rating: true),
+      );
+      expect(content.tiles.map((t) => t.label), ['Diff', 'Tricks']);
+    });
+  });
 }
