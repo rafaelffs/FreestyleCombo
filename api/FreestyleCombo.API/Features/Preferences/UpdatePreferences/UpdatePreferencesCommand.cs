@@ -9,7 +9,7 @@ public record UpdatePreferencesCommand(
     string Name,
     int? MaxDifficulty,
     int? ComboLength,
-    int StrongFootPercentage,
+    int? StrongFootPercentage,
     int? NoTouchPercentage,
     int? MaxConsecutiveNoTouch,
     bool IncludeCrossOver,

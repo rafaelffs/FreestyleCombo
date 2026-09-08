@@ -58,16 +58,16 @@ public class PreferenceHandlerTests
         _repo.Setup(r => r.AddAsync(It.IsAny<UserPreference>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         var command = new CreatePreferenceCommand(
-            _userId, "No Limits", null, null, 50, null, null, true, false, [], null, []);
+            _userId, "No Limits", null, null, null, null, null, true, false, [], null, []);
 
         var result = await new CreatePreferenceHandler(_repo.Object)
             .Handle(command, CancellationToken.None);
 
         result.MaxDifficulty.Should().BeNull();
         result.ComboLength.Should().BeNull();
+        result.StrongFootPercentage.Should().BeNull();
         result.NoTouchPercentage.Should().BeNull();
         result.MaxConsecutiveNoTouch.Should().BeNull();
-        result.StrongFootPercentage.Should().Be(50);
         _repo.Verify(r => r.AddAsync(It.IsAny<UserPreference>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -95,13 +95,14 @@ public class PreferenceHandlerTests
         _repo.Setup(r => r.UpdateAsync(pref, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         var command = new UpdatePreferencesCommand(
-            _prefId, _userId, "Updated", null, null, 50, null, null, true, false, [], null, []);
+            _prefId, _userId, "Updated", null, null, null, null, null, true, false, [], null, []);
 
         var result = await new UpdatePreferencesHandler(_repo.Object)
             .Handle(command, CancellationToken.None);
 
         result.MaxDifficulty.Should().BeNull();
         result.ComboLength.Should().BeNull();
+        result.StrongFootPercentage.Should().BeNull();
         result.NoTouchPercentage.Should().BeNull();
         result.MaxConsecutiveNoTouch.Should().BeNull();
         _repo.Verify(r => r.UpdateAsync(pref, It.IsAny<CancellationToken>()), Times.Once);

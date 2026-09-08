@@ -87,7 +87,7 @@ public class PreferenceRequest
     public string? Name { get; set; }
     public int? MaxDifficulty { get; set; }
     public int? ComboLength { get; set; }
-    public int StrongFootPercentage { get; set; } = 60;
+    public int? StrongFootPercentage { get; set; }
     public int? NoTouchPercentage { get; set; }
     public int? MaxConsecutiveNoTouch { get; set; }
     public bool IncludeCrossOver { get; set; } = true;
