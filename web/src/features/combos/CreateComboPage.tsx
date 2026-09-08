@@ -175,8 +175,21 @@ export function CreateComboPage() {
   const selectedPref = selectedPrefId ? savedPrefs.find((p) => p.id === selectedPrefId) ?? null : null
   const revRange = decodeRevolutionRange(selectedPref ? selectedPref.allowedRevolutions : (overrides.allowedRevolutions ?? []))
 
+  // Combo length stays freely editable even with a preset selected (unlike every
+  // other field, which is locked to the preset's own value) — bring its starting
+  // value from the preset, but let the user override it for this generation.
+  useEffect(() => {
+    updateOverride('comboLength', selectedPref ? (selectedPref.comboLength ?? undefined) : undefined)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPrefId])
+
   const previewMutation = useMutation({
-    mutationFn: () => combosApi.preview(selectedPrefId, selectedPrefId ? undefined : overrides),
+    mutationFn: () => combosApi.preview(
+      selectedPrefId,
+      selectedPrefId
+        ? (overrides.comboLength !== undefined ? { comboLength: overrides.comboLength } : undefined)
+        : overrides,
+    ),
     onSuccess: ({ data }) => {
       setPreviewWarnings(data.warnings)
       setSlots(
@@ -424,17 +437,13 @@ export function CreateComboPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
               <OptionalField
                 label={t('create.comboLength')}
-                enabled={selectedPref ? selectedPref.comboLength !== null : overrides.comboLength !== undefined}
-                onToggle={(enabled) => updateOverride('comboLength', enabled ? 5 : undefined)}
-                disabled={!!selectedPref}
+                enabled={overrides.comboLength !== undefined}
+                onToggle={(enabled) => updateOverride('comboLength', enabled ? (selectedPref?.comboLength ?? 5) : undefined)}
               >
                 <Input
                   type="number" min={1} max={100}
-                  value={(selectedPref ? selectedPref.comboLength : overrides.comboLength) ?? 5}
-                  readOnly={!!selectedPref}
-                  disabled={!!selectedPref}
+                  value={overrides.comboLength ?? 5}
                   onChange={(e) => updateOverride('comboLength', Number(e.target.value))}
-                  className={selectedPref ? 'bg-gray-50 text-gray-500' : ''}
                 />
               </OptionalField>
 

@@ -158,7 +158,7 @@
     "revRange": "Revolutions",
     "includeCrossover": "Include Crossover",
     "includeKnee": "Include Knee",
-    "lockedPref": "Fields are locked to the \"{{name}}\" preference. Select \"Custom\" to edit.",
+    "lockedPref": "Fields are locked to the \"{{name}}\" preference, except combo length. Select \"Custom\" to edit the rest.",
     "generating": "Generating…",
     "generateCombo": "Generate Combo",
     "previewFailed": "Preview failed",

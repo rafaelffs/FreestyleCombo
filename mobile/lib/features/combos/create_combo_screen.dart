@@ -349,7 +349,12 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
     });
     try {
       final overrides = _selectedPrefId != null
-          ? null
+          // Every field besides combo length is locked to the preset's own
+          // saved value, so no override is needed for them — but combo length
+          // stays user-editable, so send it as an override when set.
+          ? (_comboLengthEnabled
+              ? GenerateComboOverrides(comboLength: _comboLength)
+              : null)
           : GenerateComboOverrides(
               comboLength: _comboLengthEnabled ? _comboLength : null,
               maxDifficulty: _maxDifficultyEnabled ? _maxDifficulty : null,
@@ -1086,25 +1091,27 @@ class _CreateComboScreenState extends State<CreateComboScreen> {
                   Padding(
                     padding: const EdgeInsets.only(top: 10),
                     child: Text(
-                      'Fields are locked to the selected preset. Choose "Custom" to edit.',
+                      'Fields are locked to the selected preset, except combo length. Choose "Custom" to edit the rest.',
                       style: GoogleFonts.plusJakartaSans(
                           fontSize: 11.5, color: AppColors.faint),
                     ),
                   ),
                 const SizedBox(height: 20),
                 _OptionalField(
+                  // Unlike every other field here, combo length stays freely
+                  // editable even with a preset selected — its starting value
+                  // comes from the preset (see the chip's onTap above), but the
+                  // user can still override it for this one generation.
                   label: 'Combo length',
-                  enabled: selectedPref != null ? selectedPref.comboLength != null : _comboLengthEnabled,
-                  onChanged: locked ? null : (v) => setState(() => _comboLengthEnabled = v),
+                  enabled: _comboLengthEnabled,
+                  onChanged: (v) => setState(() => _comboLengthEnabled = v),
                   child: _AppSlider(
                     label: 'Combo length',
                     value: _comboLength.toDouble(),
                     min: 1,
                     max: 100,
                     showLabel: false,
-                    onChanged: locked
-                        ? null
-                        : (v) => setState(() => _comboLength = v.round()),
+                    onChanged: (v) => setState(() => _comboLength = v.round()),
                   ),
                 ),
                 const SizedBox(height: 20),

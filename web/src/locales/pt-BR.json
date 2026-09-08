@@ -158,7 +158,7 @@
     "revRange": "Giros",
     "includeCrossover": "Incluir Crossover",
     "includeKnee": "Incluir Joelho",
-    "lockedPref": "Campos bloqueados pela preferência \"{{name}}\". Selecione \"Personalizado\" para editar.",
+    "lockedPref": "Campos bloqueados pela preferência \"{{name}}\", exceto o comprimento do combo. Selecione \"Personalizado\" para editar o resto.",
     "generating": "Gerando…",
     "generateCombo": "Gerar Combo",
     "previewFailed": "Falha na pré-visualização",
