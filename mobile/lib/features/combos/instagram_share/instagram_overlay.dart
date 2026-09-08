@@ -165,6 +165,23 @@ const _kTextShadow = [
   Shadow(blurRadius: 12, color: Colors.black54, offset: Offset(0, 2))
 ];
 
+class _EmptyStateText extends StatelessWidget {
+  final double scale;
+  const _EmptyStateText({required this.scale});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      'No stats selected',
+      style: GoogleFonts.plusJakartaSans(
+        fontSize: 9 * scale,
+        fontStyle: FontStyle.italic,
+        color: Colors.white.withValues(alpha: 0.55),
+      ),
+    );
+  }
+}
+
 class _MinimalContent extends StatelessWidget {
   final MinimalOverlayContent content;
   final double scale;
@@ -270,15 +287,7 @@ class _SequenceContent extends StatelessWidget {
             ),
           ),
         _ChipRow(chips: content.chips, scale: scale),
-        if (content.isEmpty)
-          Text(
-            'No stats selected',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 9 * scale,
-              fontStyle: FontStyle.italic,
-              color: Colors.white.withValues(alpha: 0.55),
-            ),
-          ),
+        if (content.isEmpty) _EmptyStateText(scale: scale),
       ],
     );
   }
@@ -310,50 +319,40 @@ class _StatContent extends StatelessWidget {
         if (content.tiles.isNotEmpty)
           Padding(
             padding: EdgeInsets.only(top: 3 * scale),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+            child: Wrap(
+              spacing: 16 * scale,
+              runSpacing: 8 * scale,
               children: [
                 for (final tile in content.tiles)
-                  Padding(
-                    padding: EdgeInsets.only(right: 16 * scale),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          tile.value,
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 19 * scale,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            shadows: _kTextShadow,
-                          ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        tile.value,
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 19 * scale,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          shadows: _kTextShadow,
                         ),
-                        Text(
-                          tile.label.toUpperCase(),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 7.5 * scale,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                            color: Colors.white.withValues(alpha: 0.6),
-                          ),
+                      ),
+                      Text(
+                        tile.label.toUpperCase(),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 7.5 * scale,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                          color: Colors.white.withValues(alpha: 0.6),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
               ],
             ),
           ),
         _ChipRow(chips: content.chips, scale: scale),
-        if (content.isEmpty)
-          Text(
-            'No stats selected',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 9 * scale,
-              fontStyle: FontStyle.italic,
-              color: Colors.white.withValues(alpha: 0.55),
-            ),
-          ),
+        if (content.isEmpty) _EmptyStateText(scale: scale),
       ],
     );
   }
