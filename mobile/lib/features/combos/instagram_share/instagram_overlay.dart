@@ -48,23 +48,28 @@ class InstagramOverlay extends StatelessWidget {
       child: _buildContent(),
     );
     final wordmarkPadding = Padding(
-      padding: const EdgeInsets.only(top: 8, right: 8, bottom: 8),
+      // Extra top clearance only when the band is at the top: Instagram's
+      // own Story UI (profile picture, username, close button) sits right
+      // along the true top edge, on top of everything including this
+      // sticker — without it, that chrome would sit directly over the
+      // wordmark/combo text instead of over empty video.
+      padding: EdgeInsets.only(top: isTop ? 34 : 8, right: 8, bottom: 8),
       child: Align(
         alignment: Alignment.centerRight,
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 3,
-              height: 3,
+              width: 2.5,
+              height: 2.5,
               decoration: const BoxDecoration(
                   color: AppColors.lime, shape: BoxShape.circle),
             ),
-            const SizedBox(width: 2.5),
+            const SizedBox(width: 2),
             Text(
               'FSCOMBO',
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 5.5,
+                fontSize: 4.5,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.3,
                 color: Colors.white.withValues(alpha: 0.85),
@@ -123,20 +128,44 @@ class InstagramOverlay extends StatelessWidget {
   }
 
   Widget _buildContent() {
+    final isTop = position == InstagramOverlayPosition.top;
     switch (style) {
       case InstagramOverlayStyle.minimal:
         return _MinimalContent(
             content: computeMinimalContent(combo, toggles),
-            scale: textSize.scale);
+            scale: textSize.scale,
+            reversed: isTop);
       case InstagramOverlayStyle.sequence:
         return _SequenceContent(
             content: computeSequenceContent(combo, toggles),
-            scale: textSize.scale);
+            scale: textSize.scale,
+            reversed: isTop);
       case InstagramOverlayStyle.stat:
         return _StatContent(
-            content: computeStatContent(combo, toggles), scale: textSize.scale);
+            content: computeStatContent(combo, toggles),
+            scale: textSize.scale,
+            reversed: isTop);
     }
   }
+}
+
+/// Lays out [pieces] top-to-bottom with a uniform gap between each visible
+/// one, in [pieces] order — or reversed, when the text band is anchored to
+/// the top of the canvas ([reversed]), so e.g. the combo name ends up
+/// closest to the video/photo (center of the screen) instead of closest to
+/// the top edge, mirroring how it reads when the band is at the bottom.
+Widget _stackPieces(List<Widget> pieces, {required bool reversed, required double scale}) {
+  final ordered = reversed ? pieces.reversed.toList() : pieces;
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      for (var i = 0; i < ordered.length; i++) ...[
+        if (i > 0) SizedBox(height: 8 * scale),
+        ordered[i],
+      ],
+    ],
+  );
 }
 
 class _ChipRow extends StatelessWidget {
@@ -146,46 +175,42 @@ class _ChipRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (chips.shown.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: EdgeInsets.only(top: 9 * scale),
-      child: Wrap(
-        spacing: 4 * scale,
-        runSpacing: 4 * scale,
-        children: [
-          for (final t in chips.shown)
-            Container(
-              padding: EdgeInsets.symmetric(
-                  horizontal: 5.5 * scale, vertical: 3.5 * scale),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.4),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-                borderRadius: BorderRadius.circular(5 * scale),
-              ),
-              child: Text(
-                t,
-                style: GoogleFonts.jetBrainsMono(
-                  fontSize: 7.5 * scale,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
+    return Wrap(
+      spacing: 4 * scale,
+      runSpacing: 4 * scale,
+      children: [
+        for (final t in chips.shown)
+          Container(
+            padding: EdgeInsets.symmetric(
+                horizontal: 5.5 * scale, vertical: 3.5 * scale),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.4),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+              borderRadius: BorderRadius.circular(5 * scale),
+            ),
+            child: Text(
+              t,
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 7.5 * scale,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
               ),
             ),
-          if (chips.overflow > 0)
-            Padding(
-              padding: const EdgeInsets.only(left: 1),
-              child: Text(
-                '+${chips.overflow} more',
-                style: GoogleFonts.jetBrainsMono(
-                  fontSize: 7.5 * scale,
-                  fontStyle: FontStyle.italic,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withValues(alpha: 0.65),
-                ),
+          ),
+        if (chips.overflow > 0)
+          Padding(
+            padding: const EdgeInsets.only(left: 1),
+            child: Text(
+              '+${chips.overflow} more',
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 7.5 * scale,
+                fontStyle: FontStyle.italic,
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withValues(alpha: 0.65),
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 }
@@ -214,175 +239,159 @@ class _EmptyStateText extends StatelessWidget {
 class _MinimalContent extends StatelessWidget {
   final MinimalOverlayContent content;
   final double scale;
-  const _MinimalContent({required this.content, required this.scale});
+  final bool reversed;
+  const _MinimalContent({required this.content, required this.scale, required this.reversed});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (content.title != null)
-          Text(
-            content.title!,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 15 * scale,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.3,
-              height: 1.18,
-              color: Colors.white,
-              shadows: _kTextShadow,
-            ),
+    final pieces = <Widget>[
+      if (content.title != null)
+        Text(
+          content.title!,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 15 * scale,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.3,
+            height: 1.18,
+            color: Colors.white,
+            shadows: _kTextShadow,
           ),
-        if (content.metaParts.isNotEmpty)
-          Padding(
-            padding:
-                EdgeInsets.only(top: content.title != null ? 6 * scale : 0),
-            child: Text(
-              content.metaParts.join(' · '),
-              style: GoogleFonts.jetBrainsMono(
-                fontSize: 9 * scale,
-                fontWeight: FontWeight.w600,
-                color: Colors.white.withValues(alpha: 0.85),
-              ),
-            ),
+        ),
+      if (content.metaParts.isNotEmpty)
+        Text(
+          content.metaParts.join(' · '),
+          style: GoogleFonts.jetBrainsMono(
+            fontSize: 9 * scale,
+            fontWeight: FontWeight.w600,
+            color: Colors.white.withValues(alpha: 0.85),
           ),
-        _ChipRow(chips: content.chips, scale: scale),
-      ],
-    );
+        ),
+      if (content.chips.shown.isNotEmpty) _ChipRow(chips: content.chips, scale: scale),
+    ];
+    return _stackPieces(pieces, reversed: reversed, scale: scale);
   }
 }
 
 class _SequenceContent extends StatelessWidget {
   final SequenceOverlayContent content;
   final double scale;
-  const _SequenceContent({required this.content, required this.scale});
+  final bool reversed;
+  const _SequenceContent({required this.content, required this.scale, required this.reversed});
 
   @override
   Widget build(BuildContext context) {
     final hasNameRow = content.title != null || content.difficultyBadge != null;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (hasNameRow)
-          Row(
-            mainAxisAlignment: content.title != null
-                ? MainAxisAlignment.start
-                : MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              if (content.title != null)
-                Flexible(
-                  child: Text(
-                    content.title!,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13.5 * scale,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.2,
-                      color: Colors.white,
-                      shadows: _kTextShadow,
-                    ),
-                  ),
-                ),
-              if (content.difficultyBadge != null) ...[
-                if (content.title != null) SizedBox(width: 8 * scale),
-                Text(
-                  content.difficultyBadge!,
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 10.5 * scale,
+    final pieces = <Widget>[
+      if (hasNameRow)
+        Row(
+          mainAxisAlignment: content.title != null
+              ? MainAxisAlignment.start
+              : MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            if (content.title != null)
+              Flexible(
+                child: Text(
+                  content.title!,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13.5 * scale,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.lime,
+                    letterSpacing: -0.2,
+                    color: Colors.white,
+                    shadows: _kTextShadow,
                   ),
                 ),
-              ],
-            ],
-          ),
-        if (content.subParts.isNotEmpty)
-          Padding(
-            padding: EdgeInsets.only(top: hasNameRow ? 6 * scale : 0),
-            child: Text(
-              content.subParts.join(' · '),
-              style: GoogleFonts.jetBrainsMono(
-                fontSize: 9 * scale,
-                fontWeight: FontWeight.w600,
-                color: Colors.white.withValues(alpha: 0.85),
               ),
-            ),
+            if (content.difficultyBadge != null) ...[
+              if (content.title != null) SizedBox(width: 8 * scale),
+              Text(
+                content.difficultyBadge!,
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 10.5 * scale,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.lime,
+                ),
+              ),
+            ],
+          ],
+        ),
+      if (content.subParts.isNotEmpty)
+        Text(
+          content.subParts.join(' · '),
+          style: GoogleFonts.jetBrainsMono(
+            fontSize: 9 * scale,
+            fontWeight: FontWeight.w600,
+            color: Colors.white.withValues(alpha: 0.85),
           ),
-        _ChipRow(chips: content.chips, scale: scale),
-        if (content.isEmpty) _EmptyStateText(scale: scale),
-      ],
-    );
+        ),
+      if (content.chips.shown.isNotEmpty) _ChipRow(chips: content.chips, scale: scale),
+      if (content.isEmpty) _EmptyStateText(scale: scale),
+    ];
+    return _stackPieces(pieces, reversed: reversed, scale: scale);
   }
 }
 
 class _StatContent extends StatelessWidget {
   final StatOverlayContent content;
   final double scale;
-  const _StatContent({required this.content, required this.scale});
+  final bool reversed;
+  const _StatContent({required this.content, required this.scale, required this.reversed});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (content.title != null)
-          Text(
-            content.title!.toUpperCase(),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 11.5 * scale,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-              color: Colors.white.withValues(alpha: 0.85),
-            ),
+    final pieces = <Widget>[
+      if (content.title != null)
+        Text(
+          content.title!.toUpperCase(),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 11.5 * scale,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+            color: Colors.white.withValues(alpha: 0.85),
           ),
-        if (content.tiles.isNotEmpty)
-          Padding(
-            padding: EdgeInsets.only(top: 3 * scale),
-            child: Wrap(
-              spacing: 16 * scale,
-              runSpacing: 8 * scale,
-              children: [
-                for (final tile in content.tiles)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        tile.value,
-                        style: GoogleFonts.jetBrainsMono(
-                          fontSize: 19 * scale,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          shadows: _kTextShadow,
-                        ),
-                      ),
-                      Text(
-                        tile.label.toUpperCase(),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 7.5 * scale,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                          color: Colors.white.withValues(alpha: 0.6),
-                        ),
-                      ),
-                    ],
+        ),
+      if (content.tiles.isNotEmpty)
+        Wrap(
+          spacing: 16 * scale,
+          runSpacing: 8 * scale,
+          children: [
+            for (final tile in content.tiles)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    tile.value,
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 19 * scale,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      shadows: _kTextShadow,
+                    ),
                   ),
-              ],
-            ),
-          ),
-        _ChipRow(chips: content.chips, scale: scale),
-        if (content.isEmpty) _EmptyStateText(scale: scale),
-      ],
-    );
+                  Text(
+                    tile.label.toUpperCase(),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 7.5 * scale,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                      color: Colors.white.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      if (content.chips.shown.isNotEmpty) _ChipRow(chips: content.chips, scale: scale),
+      if (content.isEmpty) _EmptyStateText(scale: scale),
+    ];
+    return _stackPieces(pieces, reversed: reversed, scale: scale);
   }
 }
