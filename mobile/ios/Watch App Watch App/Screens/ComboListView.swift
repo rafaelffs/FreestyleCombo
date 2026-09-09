@@ -8,6 +8,7 @@ struct ComboListView: View {
     @State private var combos: [Combo] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var isFromCache = false
 
     var body: some View {
         Group {
@@ -33,29 +34,36 @@ struct ComboListView: View {
                     systemImage: "list.bullet"
                 )
             } else {
-                List(combos) { combo in
-                    NavigationLink(value: combo) {
-                        ComboRow(combo: combo)
+                List {
+                    if isFromCache {
+                        Text("Offline · showing saved data")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     }
-                    .swipeActions(edge: .leading) {
-                        Button {
-                            Task { await toggleFavourite(combo) }
-                        } label: {
-                            Label("Favourite", systemImage: combo.isFavourited ? "heart.slash" : "heart")
+                    ForEach(combos) { combo in
+                        NavigationLink(value: combo) {
+                            ComboRow(combo: combo)
                         }
-                        .tint(.pink)
-                    }
-                    .swipeActions(edge: .trailing) {
-                        // Same checkmark glyph either way — only the tint reflects
-                        // current state (green landed, grey not), matching
-                        // combo_card.dart's check_circle/check_circle_outline +
-                        // green/faint pattern rather than swapping to an X.
-                        Button {
-                            Task { await toggleDone(combo) }
-                        } label: {
-                            Label("Landed", systemImage: combo.isCompleted ? "checkmark.circle.fill" : "checkmark.circle")
+                        .swipeActions(edge: .leading) {
+                            Button {
+                                Task { await toggleFavourite(combo) }
+                            } label: {
+                                Label("Favourite", systemImage: combo.isFavourited ? "heart.slash" : "heart")
+                            }
+                            .tint(.pink)
                         }
-                        .tint(combo.isCompleted ? .green : .gray)
+                        .swipeActions(edge: .trailing) {
+                            // Same checkmark glyph either way — only the tint reflects
+                            // current state (green landed, grey not), matching
+                            // combo_card.dart's check_circle/check_circle_outline +
+                            // green/faint pattern rather than swapping to an X.
+                            Button {
+                                Task { await toggleDone(combo) }
+                            } label: {
+                                Label("Landed", systemImage: combo.isCompleted ? "checkmark.circle.fill" : "checkmark.circle")
+                            }
+                            .tint(combo.isCompleted ? .green : .gray)
+                        }
                     }
                 }
             }
@@ -80,7 +88,9 @@ struct ComboListView: View {
         isLoading = true
         errorMessage = nil
         do {
-            combos = try await filter.fetch()
+            let result = try await filter.fetch()
+            combos = result.combos
+            isFromCache = result.isFromCache
         } catch APIError.unauthorized {
             errorMessage = nil // FilterMenuView's reconnect state takes over on the way back
         } catch {
@@ -89,34 +99,28 @@ struct ComboListView: View {
         isLoading = false
     }
 
-    private func refresh() async {
-        combos = (try? await filter.fetch()) ?? combos
-    }
-
     private func toggleFavourite(_ combo: Combo) async {
-        do {
-            if combo.isFavourited {
-                try await APIClient.shared.removeFavourite(id: combo.id)
-            } else {
-                try await APIClient.shared.addFavourite(id: combo.id)
-            }
-            await refresh() // refetch rather than mutate local state — see design doc
-        } catch {
-            // Best-effort action from a list row — a failed toggle just leaves
-            // the row as it was; the user can retry the swipe.
-        }
+        let updated = await ComboRepository.shared.toggleFavourite(combo)
+        applyLocalUpdate(updated)
     }
 
     private func toggleDone(_ combo: Combo) async {
-        do {
-            if combo.isCompleted {
-                try await APIClient.shared.unmarkCompleted(id: combo.id)
-            } else {
-                try await APIClient.shared.markCompleted(id: combo.id)
-            }
-            await refresh()
-        } catch {
-            // Same rationale as toggleFavourite.
+        let updated = await ComboRepository.shared.toggleDone(combo)
+        applyLocalUpdate(updated)
+    }
+
+    /// Patches the local combos array with ComboRepository's returned value
+    /// instead of refetching — a live refetch isn't always possible while
+    /// offline (the whole point of this feature), and the repository's
+    /// optimistic update already reflects the correct end state either way.
+    /// On the Favourites screen specifically, an unfavourite also removes
+    /// the row, matching what a live re-fetch of GET /combos/favourites
+    /// would return.
+    private func applyLocalUpdate(_ updated: Combo) {
+        if filter == .favourites && !updated.isFavourited {
+            combos.removeAll { $0.id == updated.id }
+        } else if let index = combos.firstIndex(where: { $0.id == updated.id }) {
+            combos[index] = updated
         }
     }
 }
