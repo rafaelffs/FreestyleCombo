@@ -158,22 +158,26 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
         color: AppColors.faint,
       );
 
-  // Row + Expanded (not Wrap) so the chips always stay on one line,
-  // splitting the available width evenly, regardless of how many options
-  // or how long their labels are (e.g. "Smallest" alongside "Small").
+  // Chips keep their natural compact size (like the original Wrap did —
+  // forcing them into equal-width Expanded slots made differently-sized
+  // chips look centered with uneven gaps between them, which read as
+  // "ugly"/inconsistent). Wrapped in a horizontal scroll instead of Wrap
+  // so a row that doesn't fit (e.g. Text Size's 4 chips including the long
+  // "Smallest" label) scrolls sideways rather than breaking to a second
+  // line — on most devices it still fits and there's nothing to scroll.
   Widget _chipRow<T>(List<(T, String)> options, T selected, ValueChanged<T> onSelected) {
-    return Row(
-      children: [
-        for (final (value, label) in options) ...[
-          if (value != options.first.$1) const SizedBox(width: 8),
-          Expanded(
-            child: ChoiceChip(
-              label: Text(label, overflow: TextOverflow.ellipsis),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final (value, label) in options) ...[
+            if (value != options.first.$1) const SizedBox(width: 8),
+            ChoiceChip(
+              label: Text(label),
               selected: selected == value,
               onSelected: (_) => onSelected(value),
               selectedColor: AppColors.indigoTint,
               backgroundColor: AppColors.surface,
-              labelPadding: EdgeInsets.zero,
               labelStyle: GoogleFonts.plusJakartaSans(
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
@@ -184,9 +188,9 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
                 side: BorderSide(color: selected == value ? AppColors.indigo : AppColors.line2),
               ),
             ),
-          ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
