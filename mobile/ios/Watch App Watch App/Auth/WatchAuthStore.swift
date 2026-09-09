@@ -46,25 +46,38 @@ final class WatchAuthStore: NSObject, ObservableObject, WCSessionDelegate {
     private func apply(context: [String: Any]) {
         DispatchQueue.main.async {
             guard let jwt = context["jwt"] as? String, !jwt.isEmpty else { return }
+            let newName = context["userName"] as? String
+
+            func applyCredentials() {
+                KeychainStore.set(jwt, forKey: jwtKey)
+                self.token = jwt
+                self.needsReconnect = false
+                if let newName {
+                    KeychainStore.set(newName, forKey: userNameKey)
+                    self.userName = newName
+                }
+            }
+
             // A different account logged in on the paired iPhone — drop this
-            // account's cached combos and queued offline toggles so they
-            // don't linger and show up under the new account. ComboCacheStore/
-            // OfflineSyncQueue are actors, so their calls need `await` — wrapped
-            // in a Task since this closure itself is synchronous.
-            if let newName = context["userName"] as? String,
-               let previousName = self.userName,
-               newName != previousName {
+            // account's cached combos and queued offline toggles, and only
+            // THEN apply the new credentials. Setting self.token is what lets
+            // ComboListView leave the reconnect screen and start making live
+            // API calls — if that happened before the clear finished, a
+            // queued old-account toggle could get replayed under the new
+            // account's token via APIClient's opportunistic flush trigger, a
+            // real cross-account data bug, not just a UI staleness flash.
+            // ComboCacheStore/OfflineSyncQueue are actors, so their calls
+            // need `await` — wrapped in a Task since this closure itself is
+            // synchronous, hopping back via MainActor.run to safely touch
+            // @Published state afterward.
+            if let newName, let previousName = self.userName, newName != previousName {
                 Task {
                     await ComboCacheStore.shared.clear()
                     await OfflineSyncQueue.shared.clear()
+                    await MainActor.run { applyCredentials() }
                 }
-            }
-            KeychainStore.set(jwt, forKey: jwtKey)
-            self.token = jwt
-            self.needsReconnect = false
-            if let name = context["userName"] as? String {
-                KeychainStore.set(name, forKey: userNameKey)
-                self.userName = name
+            } else {
+                applyCredentials()
             }
         }
     }
