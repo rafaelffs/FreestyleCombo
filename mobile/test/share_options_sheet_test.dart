@@ -18,7 +18,7 @@ ComboDto _combo() {
 }
 
 void main() {
-  testWidgets('shows both Share Link and Share to Instagram options', (tester) async {
+  testWidgets('shows both Share to Social Media and Share Link options', (tester) async {
     var linkTapped = false;
     await tester.pumpWidget(
       MaterialApp(
@@ -38,15 +38,15 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
+    expect(find.text('Share to Social Media'), findsOneWidget);
     expect(find.text('Share Link'), findsOneWidget);
-    expect(find.text('Share to Instagram'), findsOneWidget);
 
     await tester.tap(find.text('Share Link'));
     await tester.pumpAndSettle();
     expect(linkTapped, isTrue);
   });
 
-  testWidgets('tapping Share to Instagram opens the style picker', (tester) async {
+  testWidgets('tapping Share to Social Media opens the style picker', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Builder(
@@ -60,19 +60,19 @@ void main() {
 
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Share to Instagram'));
+    await tester.tap(find.text('Share to Social Media'));
     await tester.pumpAndSettle();
 
-    // The picker sheet (Task 6) renders inside a scrollable DraggableScrollableSheet
+    // The picker sheet renders inside a scrollable DraggableScrollableSheet
     // taller than the default test viewport, so its ListView lazily builds only the
     // visible extent — scroll to bring the button into the built subtree first.
     await tester.dragUntilVisible(
-      find.text('Add to Story'),
+      find.text('Save to device'),
       find.byType(ListView),
       const Offset(0, -50),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Add to Story'), findsOneWidget);
+    expect(find.text('Save to device'), findsOneWidget);
   });
 }

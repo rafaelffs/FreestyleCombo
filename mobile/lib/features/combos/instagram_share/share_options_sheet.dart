@@ -4,10 +4,13 @@ import '../../../core/models/combo.dart';
 import '../../../theme/app_colors.dart';
 import 'instagram_share_sheet.dart';
 
-/// Shows the "Share Link" vs. "Share to Instagram" choice — the existing
+/// Shows the "Share to Social Media" vs. "Share Link" choice — the existing
 /// share icon opens this instead of firing Share.share directly.
-/// [onShareLink] runs the existing link-share flow unchanged; Instagram
-/// opens the style/stats picker (instagram_share_sheet.dart) directly.
+/// [onShareLink] runs the existing link-share flow unchanged; the social
+/// option opens the style/stats picker (instagram_share_sheet.dart) to build
+/// a shareable image, saved to the device (see the "Add to Story" removal —
+/// Instagram's sticker-share API can't layer onto a video the user picks
+/// afterward, since it opens a blank canvas rather than a media picker).
 Future<void> showShareOptionsSheet(
   BuildContext context, {
   required ComboDto combo,
@@ -44,6 +47,18 @@ Future<void> showShareOptionsSheet(
           ),
           const SizedBox(height: 12),
           _ShareOptionTile(
+            iconGradient: const LinearGradient(
+              colors: [Color(0xFFFEDA75), Color(0xFFD62976), Color(0xFF4F5BD5)],
+            ),
+            icon: const Icon(Icons.camera_alt_outlined, color: Colors.white),
+            title: 'Share to Social Media',
+            subtitle: 'Create a shareable image',
+            onTap: () {
+              Navigator.pop(sheetContext);
+              showInstagramShareSheet(context, combo);
+            },
+          ),
+          _ShareOptionTile(
             iconBackground: AppColors.indigoTint,
             icon: const Icon(Icons.link, color: AppColors.indigo),
             title: 'Share Link',
@@ -51,18 +66,6 @@ Future<void> showShareOptionsSheet(
             onTap: () {
               Navigator.pop(sheetContext);
               onShareLink();
-            },
-          ),
-          _ShareOptionTile(
-            iconGradient: const LinearGradient(
-              colors: [Color(0xFFFEDA75), Color(0xFFD62976), Color(0xFF4F5BD5)],
-            ),
-            icon: const Icon(Icons.camera_alt_outlined, color: Colors.white),
-            title: 'Share to Instagram',
-            subtitle: 'Create a story overlay',
-            onTap: () {
-              Navigator.pop(sheetContext);
-              showInstagramShareSheet(context, combo);
             },
           ),
         ],

@@ -29,11 +29,8 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
   InstagramOverlayStyle _style = InstagramOverlayStyle.sequence;
   InstagramTextSize _textSize = InstagramTextSize.medium;
   InstagramOverlayToggles _toggles = const InstagramOverlayToggles();
-  bool _sharing = false;
   bool _saving = false;
   String? _error;
-
-  bool get _busy => _sharing || _saving;
 
   bool get _nameDisabled => overlayNameToggleDisabled(widget.combo);
   bool get _sequenceForced => overlaySequenceForced(widget.combo);
@@ -63,7 +60,7 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
             ),
             const SizedBox(height: 20),
             Text(
-              'Share to Instagram',
+              'Share Image',
               style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink),
             ),
             const SizedBox(height: 20),
@@ -116,54 +113,25 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(_error!, style: const TextStyle(color: AppColors.red, fontSize: 13)),
               ),
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 52,
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.line2),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                      onPressed: _busy ? null : _saveImage,
-                      child: _saving
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.indigo),
-                            )
-                          : Text(
-                              'Save Image',
-                              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.ink2),
-                            ),
-                    ),
-                  ),
+            SizedBox(
+              height: 52,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.indigo,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: SizedBox(
-                    height: 52,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.indigo,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                onPressed: _saving ? null : _saveImage,
+                child: _saving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : Text(
+                        'Save to device',
+                        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white),
                       ),
-                      onPressed: _busy ? null : _addToStory,
-                      child: _sharing
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
-                          : Text(
-                              'Add to Story',
-                              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white),
-                            ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ],
         ),
@@ -250,21 +218,6 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
         ],
       ),
     );
-  }
-
-  Future<void> _addToStory() async {
-    setState(() {
-      _sharing = true;
-      _error = null;
-    });
-    try {
-      await InstagramShareService.shareToStory(_boundaryKey, pixelRatio: kInstagramOverlayExportPixelRatio);
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
-    } finally {
-      if (mounted) setState(() => _sharing = false);
-    }
   }
 
   Future<void> _saveImage() async {
