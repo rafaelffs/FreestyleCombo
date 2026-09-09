@@ -106,19 +106,6 @@ final class APIClient {
         return try await send(req, as: [Combo].self)
     }
 
-    /// "All" = every Public combo plus the caller's own combos regardless of
-    /// visibility, merged and de-duplicated by id — mirrors combos_screen.dart's
-    /// `_fetchAllCombined()` (mine wins on a collision, since it carries the
-    /// full owner-context flags).
-    func getAllCombos() async throws -> [Combo] {
-        async let publicCombos = getPublicCombos()
-        async let mineCombos = getMyCombos()
-        var merged: [String: Combo] = [:]
-        for c in try await mineCombos { merged[c.id] = c }
-        for c in try await publicCombos where merged[c.id] == nil { merged[c.id] = c }
-        return Array(merged.values)
-    }
-
     private func mutate(_ path: String, method: String) async throws {
         var req = try request(path)
         req.httpMethod = method

@@ -20,16 +20,13 @@ enum ComboFilter: String, CaseIterable, Identifiable {
         }
     }
 
-    func fetch() async throws -> [Combo] {
+    func fetch() async throws -> ComboListResult {
         switch self {
-        case .all: return try await APIClient.shared.getAllCombos()
-        case .pub: return try await APIClient.shared.getPublicCombos()
-        case .mine: return try await APIClient.shared.getMyCombos()
-        case .favourites: return try await APIClient.shared.getFavourites()
-        case .done:
-            // No dedicated "landed" endpoint — filter the merged All list
-            // client-side, matching combos_screen.dart's _matchesDoneFilter.
-            return try await APIClient.shared.getAllCombos().filter(\.isCompleted)
+        case .all: return try await ComboRepository.shared.loadAll()
+        case .pub: return try await ComboRepository.shared.loadPublic()
+        case .mine: return try await ComboRepository.shared.loadMine()
+        case .favourites: return try await ComboRepository.shared.loadFavourites()
+        case .done: return try await ComboRepository.shared.loadDone()
         }
     }
 }
@@ -37,6 +34,7 @@ enum ComboFilter: String, CaseIterable, Identifiable {
 struct FilterMenuView: View {
     @StateObject private var authStore = WatchAuthStore.shared
     @State private var counts: [ComboFilter: Int] = [:]
+    @State private var pendingCount = 0
 
     var body: some View {
         NavigationStack {
@@ -50,14 +48,23 @@ struct FilterMenuView: View {
                         description: Text("Open FreestyleCombo on your iPhone and log in first.")
                     )
                 } else {
-                    List(ComboFilter.allCases) { filter in
-                        NavigationLink(value: filter) {
-                            HStack {
-                                Circle().fill(filter.dotColor).frame(width: 8, height: 8)
-                                Text(filter.rawValue)
-                                Spacer()
-                                if let count = counts[filter] {
-                                    Text("\(count)").foregroundStyle(.secondary).monospacedDigit()
+                    List {
+                        if pendingCount > 0 {
+                            Text(pendingCount == 1
+                                 ? "1 change will sync automatically"
+                                 : "\(pendingCount) changes will sync automatically")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        ForEach(ComboFilter.allCases) { filter in
+                            NavigationLink(value: filter) {
+                                HStack {
+                                    Circle().fill(filter.dotColor).frame(width: 8, height: 8)
+                                    Text(filter.rawValue)
+                                    Spacer()
+                                    if let count = counts[filter] {
+                                        Text("\(count)").foregroundStyle(.secondary).monospacedDigit()
+                                    }
                                 }
                             }
                         }
@@ -73,26 +80,27 @@ struct FilterMenuView: View {
     }
 
     private func loadCounts() async {
-        async let publicCombos = APIClient.shared.getPublicCombos()
-        async let mineCombos = APIClient.shared.getMyCombos()
-        async let favouriteCombos = APIClient.shared.getFavourites()
+        async let publicResult = ComboRepository.shared.loadPublic()
+        async let mineResult = ComboRepository.shared.loadMine()
+        async let favouritesResult = ComboRepository.shared.loadFavourites()
 
         guard
-            let pub = try? await publicCombos,
-            let mine = try? await mineCombos,
-            let favs = try? await favouriteCombos
+            let pub = try? await publicResult,
+            let mine = try? await mineResult,
+            let favs = try? await favouritesResult
         else { return }
 
         var merged: [String: Combo] = [:]
-        for c in mine { merged[c.id] = c }
-        for c in pub where merged[c.id] == nil { merged[c.id] = c }
+        for c in mine.combos { merged[c.id] = c }
+        for c in pub.combos where merged[c.id] == nil { merged[c.id] = c }
         let all = Array(merged.values)
 
         counts[.all] = all.count
-        counts[.pub] = pub.count
-        counts[.mine] = mine.count
-        counts[.favourites] = favs.count
+        counts[.pub] = pub.combos.count
+        counts[.mine] = mine.combos.count
+        counts[.favourites] = favs.combos.count
         counts[.done] = all.filter(\.isCompleted).count
+        pendingCount = await OfflineSyncQueue.shared.count
     }
 }
 
