@@ -55,19 +55,19 @@ class InstagramOverlay extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 3.5,
-              height: 3.5,
+              width: 3,
+              height: 3,
               decoration: const BoxDecoration(
                   color: AppColors.lime, shape: BoxShape.circle),
             ),
-            const SizedBox(width: 3),
+            const SizedBox(width: 2.5),
             Text(
               'FSCOMBO',
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 6.5,
+                fontSize: 5.5,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.3,
-                color: Colors.white.withValues(alpha: 0.5),
+                color: Colors.white.withValues(alpha: 0.85),
               ),
             ),
           ],
