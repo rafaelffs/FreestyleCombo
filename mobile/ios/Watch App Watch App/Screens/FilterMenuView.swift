@@ -80,6 +80,12 @@ struct FilterMenuView: View {
     }
 
     private func loadCounts() async {
+        // Computed unconditionally, before the guard below — the pending
+        // count has nothing to do with whether the three list fetches
+        // succeed, so a failure in any of them shouldn't also suppress the
+        // "N changes will sync automatically" banner.
+        pendingCount = await OfflineSyncQueue.shared.count
+
         async let publicResult = ComboRepository.shared.loadPublic()
         async let mineResult = ComboRepository.shared.loadMine()
         async let favouritesResult = ComboRepository.shared.loadFavourites()
@@ -100,7 +106,6 @@ struct FilterMenuView: View {
         counts[.mine] = mine.combos.count
         counts[.favourites] = favs.combos.count
         counts[.done] = all.filter(\.isCompleted).count
-        pendingCount = await OfflineSyncQueue.shared.count
     }
 }
 
