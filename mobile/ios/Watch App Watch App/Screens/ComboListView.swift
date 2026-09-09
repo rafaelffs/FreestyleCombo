@@ -119,6 +119,8 @@ struct ComboListView: View {
     private func applyLocalUpdate(_ updated: Combo) {
         if filter == .favourites && !updated.isFavourited {
             combos.removeAll { $0.id == updated.id }
+        } else if filter == .done && !updated.isCompleted {
+            combos.removeAll { $0.id == updated.id }
         } else if let index = combos.firstIndex(where: { $0.id == updated.id }) {
             combos[index] = updated
         }
