@@ -89,7 +89,10 @@ struct ComboCache: Codable {
 /// (not one per list) keeps writes simple at this app's scale (at most ~150
 /// combos total across the three lists). See
 /// docs/superpowers/specs/2026-09-08-watch-offline-support-design.md.
-final class ComboCacheStore {
+/// An actor: ComboRepository's loadAll() fetches Public and Mine concurrently
+/// (async let), and both writes land here around the same time — actor
+/// isolation serializes that instead of racing on a plain mutable property.
+actor ComboCacheStore {
     static let shared = ComboCacheStore()
 
     private var cache: ComboCache
@@ -255,7 +258,11 @@ struct PendingAction: Codable, Identifiable {
 /// Persists a queue of favourite/landed toggles made while offline and
 /// replays them against the API once connectivity returns. See
 /// docs/superpowers/specs/2026-09-08-watch-offline-support-design.md.
-final class OfflineSyncQueue {
+/// An actor: ComboRepository's toggleFavourite/toggleDone can both enqueue
+/// around the same time as APIClient's success-triggered flush is already
+/// draining the queue — actor isolation serializes access to `pending`
+/// instead of racing on a plain mutable array.
+actor OfflineSyncQueue {
     static let shared = OfflineSyncQueue()
 
     private(set) var pending: [PendingAction]
@@ -291,10 +298,17 @@ final class OfflineSyncQueue {
     }
 
     /// Replays queued actions against the API in order. Guarded against
-    /// concurrent/recursive invocation via isFlushing — a successful replay
-    /// call goes through APIClient, whose own success path also calls this
-    /// method (see APIClient.triggerSyncFlush), so without the guard this
-    /// would recurse into itself.
+    /// recursive invocation via isFlushing — a successful replay call goes
+    /// through APIClient, whose own success path also calls this method
+    /// (see APIClient.triggerSyncFlush), so without the guard this would
+    /// recurse into itself. Removes each action by id rather than
+    /// pending.removeFirst() — `replay(action)`'s await can suspend for a
+    /// while, during which `enqueue()` (also actor-isolated, so it can only
+    /// run in a gap between this method's own suspension points, but that
+    /// gap exists right here) could have removed or reordered the front of
+    /// the queue; removing by id guarantees the action actually just
+    /// processed is the one that gets removed, not whatever now happens to
+    /// sit at index 0.
     func flushIfNeeded() async {
         guard !isFlushing, !pending.isEmpty else { return }
         isFlushing = true
@@ -303,7 +317,7 @@ final class OfflineSyncQueue {
         while let action = pending.first {
             do {
                 try await replay(action)
-                pending.removeFirst()
+                pending.removeAll { $0.id == action.id }
                 persist()
             } catch APIError.unauthorized {
                 await MainActor.run { WatchAuthStore.shared.markReconnectNeeded() }
@@ -313,7 +327,7 @@ final class OfflineSyncQueue {
                 return
             } catch {
                 // Definitive rejection (e.g. combo deleted) — drop just this one, keep going.
-                pending.removeFirst()
+                pending.removeAll { $0.id == action.id }
                 persist()
             }
         }
@@ -381,6 +395,8 @@ struct ComboListResult {
 /// a try-live-then-fall-back-to-cache read path and an optimistic-update-
 /// then-queue-or-rollback write path. See
 /// docs/superpowers/specs/2026-09-08-watch-offline-support-design.md.
+/// ComboCacheStore/OfflineSyncQueue are actors, so every call into them
+/// below is awaited.
 final class ComboRepository {
     static let shared = ComboRepository()
 
@@ -394,10 +410,10 @@ final class ComboRepository {
     func loadPublic() async throws -> ComboListResult {
         do {
             let combos = try await APIClient.shared.getPublicCombos()
-            ComboCacheStore.shared.writePublic(combos)
+            await ComboCacheStore.shared.writePublic(combos)
             return ComboListResult(combos: combos, isFromCache: false)
         } catch let error as URLError {
-            let cached = ComboCacheStore.shared.read()
+            let cached = await ComboCacheStore.shared.read()
             if cached.publicUpdatedAt != nil {
                 return ComboListResult(combos: cached.publicCombos, isFromCache: true)
             }
@@ -408,10 +424,10 @@ final class ComboRepository {
     func loadMine() async throws -> ComboListResult {
         do {
             let combos = try await APIClient.shared.getMyCombos()
-            ComboCacheStore.shared.writeMine(combos)
+            await ComboCacheStore.shared.writeMine(combos)
             return ComboListResult(combos: combos, isFromCache: false)
         } catch let error as URLError {
-            let cached = ComboCacheStore.shared.read()
+            let cached = await ComboCacheStore.shared.read()
             if cached.mineUpdatedAt != nil {
                 return ComboListResult(combos: cached.mineCombos, isFromCache: true)
             }
@@ -422,10 +438,10 @@ final class ComboRepository {
     func loadFavourites() async throws -> ComboListResult {
         do {
             let combos = try await APIClient.shared.getFavourites()
-            ComboCacheStore.shared.writeFavourites(combos)
+            await ComboCacheStore.shared.writeFavourites(combos)
             return ComboListResult(combos: combos, isFromCache: false)
         } catch let error as URLError {
-            let cached = ComboCacheStore.shared.read()
+            let cached = await ComboCacheStore.shared.read()
             if cached.favouritesUpdatedAt != nil {
                 return ComboListResult(combos: cached.favouriteCombos, isFromCache: true)
             }
@@ -495,7 +511,7 @@ final class ComboRepository {
         let newValue = !combo.isFavourited
         var updated = combo
         updated.isFavourited = newValue
-        ComboCacheStore.shared.applyFavouriteToggle(comboId: combo.id, combo: updated)
+        await ComboCacheStore.shared.applyFavouriteToggle(comboId: combo.id, combo: updated)
 
         do {
             if newValue {
@@ -505,10 +521,10 @@ final class ComboRepository {
             }
             return updated
         } catch is URLError {
-            OfflineSyncQueue.shared.enqueue(comboId: combo.id, kind: newValue ? .favourite : .unfavourite)
+            await OfflineSyncQueue.shared.enqueue(comboId: combo.id, kind: newValue ? .favourite : .unfavourite)
             return updated
         } catch {
-            ComboCacheStore.shared.applyFavouriteToggle(comboId: combo.id, combo: combo)
+            await ComboCacheStore.shared.applyFavouriteToggle(comboId: combo.id, combo: combo)
             return combo
         }
     }
@@ -517,7 +533,7 @@ final class ComboRepository {
         let newValue = !combo.isCompleted
         var updated = combo
         updated.isCompleted = newValue
-        ComboCacheStore.shared.applyDoneToggle(comboId: combo.id, isCompleted: newValue)
+        await ComboCacheStore.shared.applyDoneToggle(comboId: combo.id, isCompleted: newValue)
 
         do {
             if newValue {
@@ -527,10 +543,10 @@ final class ComboRepository {
             }
             return updated
         } catch is URLError {
-            OfflineSyncQueue.shared.enqueue(comboId: combo.id, kind: newValue ? .complete : .uncomplete)
+            await OfflineSyncQueue.shared.enqueue(comboId: combo.id, kind: newValue ? .complete : .uncomplete)
             return updated
         } catch {
-            ComboCacheStore.shared.applyDoneToggle(comboId: combo.id, isCompleted: combo.isCompleted)
+            await ComboCacheStore.shared.applyDoneToggle(comboId: combo.id, isCompleted: combo.isCompleted)
             return combo
         }
     }
@@ -688,12 +704,16 @@ Replace with:
             guard let jwt = context["jwt"] as? String, !jwt.isEmpty else { return }
             // A different account logged in on the paired iPhone — drop this
             // account's cached combos and queued offline toggles so they
-            // don't linger and show up under the new account.
+            // don't linger and show up under the new account. ComboCacheStore/
+            // OfflineSyncQueue are actors, so their calls need `await` — wrapped
+            // in a Task since this closure itself is synchronous.
             if let newName = context["userName"] as? String,
                let previousName = self.userName,
                newName != previousName {
-                ComboCacheStore.shared.clear()
-                OfflineSyncQueue.shared.clear()
+                Task {
+                    await ComboCacheStore.shared.clear()
+                    await OfflineSyncQueue.shared.clear()
+                }
             }
             KeychainStore.set(jwt, forKey: jwtKey)
             self.token = jwt
@@ -815,7 +835,7 @@ Replace with:
         counts[.mine] = mine.combos.count
         counts[.favourites] = favs.combos.count
         counts[.done] = all.filter(\.isCompleted).count
-        pendingCount = OfflineSyncQueue.shared.count
+        pendingCount = await OfflineSyncQueue.shared.count
     }
 ```
 
