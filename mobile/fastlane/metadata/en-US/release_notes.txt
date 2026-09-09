@@ -1,5 +1,5 @@
 This update brings:
 
-• More control over combo generation — combo length now stays adjustable even when using a saved preset, and every preference field can be toggled on or off individually
-• A companion Apple Watch app for browsing and completing combos on the go
+• Share your combos to social media — generate a branded image with your combo's name, stats, and trick sequence, customize its layout and size, then save it to add to a Story or post
+• The Apple Watch app now works offline — browse your last-loaded combos and mark favourites/landed with no connection, and it syncs automatically once you're back online
 • Various bug fixes and polish
