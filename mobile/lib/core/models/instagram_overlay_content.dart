@@ -11,10 +11,10 @@ enum InstagramOverlayPosition { top, bottom }
 /// except the FSCOMBO wordmark, which stays a fixed size regardless of
 /// this choice — see InstagramOverlay.
 enum InstagramTextSize {
-  smallest(0.68),
-  small(0.82),
-  medium(1.0),
-  large(1.28);
+  smallest(0.55),
+  small(0.68),
+  medium(0.82),
+  large(1.0);
 
   final double scale;
   const InstagramTextSize(this.scale);
