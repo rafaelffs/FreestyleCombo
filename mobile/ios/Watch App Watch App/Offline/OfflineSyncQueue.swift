@@ -28,7 +28,11 @@ struct PendingAction: Codable, Identifiable {
 /// Persists a queue of favourite/landed toggles made while offline and
 /// replays them against the API once connectivity returns. See
 /// docs/superpowers/specs/2026-09-08-watch-offline-support-design.md.
-final class OfflineSyncQueue {
+/// An actor: ComboRepository's toggleFavourite/toggleDone can both enqueue
+/// around the same time as APIClient's success-triggered flush is already
+/// draining the queue — actor isolation serializes access to `pending`
+/// instead of racing on a plain mutable array.
+actor OfflineSyncQueue {
     static let shared = OfflineSyncQueue()
 
     private(set) var pending: [PendingAction]
@@ -64,10 +68,17 @@ final class OfflineSyncQueue {
     }
 
     /// Replays queued actions against the API in order. Guarded against
-    /// concurrent/recursive invocation via isFlushing — a successful replay
-    /// call goes through APIClient, whose own success path also calls this
-    /// method (see APIClient.triggerSyncFlush), so without the guard this
-    /// would recurse into itself.
+    /// recursive invocation via isFlushing — a successful replay call goes
+    /// through APIClient, whose own success path also calls this method
+    /// (see APIClient.triggerSyncFlush), so without the guard this would
+    /// recurse into itself. Removes each action by id rather than
+    /// pending.removeFirst() — `replay(action)`'s await can suspend for a
+    /// while, during which `enqueue()` (also actor-isolated, so it can only
+    /// run in a gap between this method's own suspension points, but that
+    /// gap exists right here) could have removed or reordered the front of
+    /// the queue; removing by id guarantees the action actually just
+    /// processed is the one that gets removed, not whatever now happens to
+    /// sit at index 0.
     func flushIfNeeded() async {
         guard !isFlushing, !pending.isEmpty else { return }
         isFlushing = true
@@ -76,7 +87,7 @@ final class OfflineSyncQueue {
         while let action = pending.first {
             do {
                 try await replay(action)
-                pending.removeFirst()
+                pending.removeAll { $0.id == action.id }
                 persist()
             } catch APIError.unauthorized {
                 await MainActor.run { WatchAuthStore.shared.markReconnectNeeded() }
@@ -86,7 +97,7 @@ final class OfflineSyncQueue {
                 return
             } catch {
                 // Definitive rejection (e.g. combo deleted) — drop just this one, keep going.
-                pending.removeFirst()
+                pending.removeAll { $0.id == action.id }
                 persist()
             }
         }
