@@ -68,10 +68,11 @@ final class ComboRepository {
     /// APIClient.getAllCombos(). A 401 from either side propagates
     /// immediately regardless of the other's outcome (a stale/invalid token
     /// affects every endpoint the same way, so there's no reason to wait on
-    /// the other call). Otherwise, throws only if BOTH sub-loads throw — a
+    /// the other call). Otherwise, throws if EITHER sub-load throws — a
     /// partial "All" list silently missing every Public or every Mine combo
-    /// would be more misleading than an error. isFromCache is true if either
-    /// sub-load came from cache.
+    /// would be more misleading than an error, so this never merges a
+    /// half-populated result. isFromCache is true if either sub-load came
+    /// from cache.
     func loadAll() async throws -> ComboListResult {
         async let publicResult = loadPublic()
         async let mineResult = loadMine()
@@ -97,15 +98,15 @@ final class ComboRepository {
             mineError = error
         }
 
-        if pub == nil && mine == nil {
-            throw mineError ?? pubError ?? APIError.server("No data available")
+        guard let pub, let mine else {
+            throw pubError ?? mineError ?? APIError.server("No data available")
         }
 
         var merged: [String: Combo] = [:]
-        for c in mine?.combos ?? [] { merged[c.id] = c }
-        for c in pub?.combos ?? [] where merged[c.id] == nil { merged[c.id] = c }
+        for c in mine.combos { merged[c.id] = c }
+        for c in pub.combos where merged[c.id] == nil { merged[c.id] = c }
 
-        let isFromCache = (pub?.isFromCache ?? false) || (mine?.isFromCache ?? false)
+        let isFromCache = pub.isFromCache || mine.isFromCache
         return ComboListResult(combos: Array(merged.values), isFromCache: isFromCache)
     }
 
