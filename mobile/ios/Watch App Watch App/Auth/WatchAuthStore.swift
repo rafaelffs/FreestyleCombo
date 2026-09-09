@@ -46,6 +46,19 @@ final class WatchAuthStore: NSObject, ObservableObject, WCSessionDelegate {
     private func apply(context: [String: Any]) {
         DispatchQueue.main.async {
             guard let jwt = context["jwt"] as? String, !jwt.isEmpty else { return }
+            // A different account logged in on the paired iPhone — drop this
+            // account's cached combos and queued offline toggles so they
+            // don't linger and show up under the new account. ComboCacheStore/
+            // OfflineSyncQueue are actors, so their calls need `await` — wrapped
+            // in a Task since this closure itself is synchronous.
+            if let newName = context["userName"] as? String,
+               let previousName = self.userName,
+               newName != previousName {
+                Task {
+                    await ComboCacheStore.shared.clear()
+                    await OfflineSyncQueue.shared.clear()
+                }
+            }
             KeychainStore.set(jwt, forKey: jwtKey)
             self.token = jwt
             self.needsReconnect = false
