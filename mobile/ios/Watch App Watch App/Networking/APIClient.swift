@@ -60,6 +60,7 @@ final class APIClient {
         guard (200...299).contains(http.statusCode) else {
             throw APIError.server(errorMessage(from: data, statusCode: http.statusCode))
         }
+        triggerSyncFlush()
         do {
             return try decoder.decode(T.self, from: data)
         } catch {
@@ -77,6 +78,17 @@ final class APIClient {
         guard (200...299).contains(http.statusCode) else {
             throw APIError.server(errorMessage(from: data, statusCode: http.statusCode))
         }
+        triggerSyncFlush()
+    }
+
+    /// Opportunistically drains OfflineSyncQueue whenever any API call
+    /// succeeds — the "sync trigger" from the offline-support design.
+    /// Fire-and-forget (not awaited) so it never delays the response that
+    /// triggered it; OfflineSyncQueue's own isFlushing guard prevents this
+    /// from recursing into itself when a replayed call succeeds and hits
+    /// this same code path again.
+    private func triggerSyncFlush() {
+        Task { await OfflineSyncQueue.shared.flushIfNeeded() }
     }
 
     func getPublicCombos() async throws -> [Combo] {
