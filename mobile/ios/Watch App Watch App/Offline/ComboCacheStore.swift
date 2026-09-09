@@ -16,7 +16,10 @@ struct ComboCache: Codable {
 /// (not one per list) keeps writes simple at this app's scale (at most ~150
 /// combos total across the three lists). See
 /// docs/superpowers/specs/2026-09-08-watch-offline-support-design.md.
-final class ComboCacheStore {
+/// An actor: ComboRepository's loadAll() fetches Public and Mine concurrently
+/// (async let), and both writes land here around the same time — actor
+/// isolation serializes that instead of racing on a plain mutable property.
+actor ComboCacheStore {
     static let shared = ComboCacheStore()
 
     private var cache: ComboCache
@@ -60,8 +63,8 @@ final class ComboCacheStore {
     /// Flips isFavourited on every cached entry with this id (Public/Mine),
     /// and adds/removes the entry from the cached Favourites list itself to
     /// match what GET /combos/favourites would return. `combo.isFavourited`
-    /// is the single source of truth for the new state — the caller must pass
-    /// a combo that already carries it.
+    /// is the single source of truth for the new state — the caller must
+    /// pass a combo that already carries it.
     func applyFavouriteToggle(comboId: String, combo: Combo) {
         cache.publicCombos = cache.publicCombos.map { c in
             var c = c
