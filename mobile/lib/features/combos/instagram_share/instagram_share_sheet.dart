@@ -50,6 +50,12 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
         ),
         child: ListView(
           controller: scrollController,
+          // Without this, iOS's default overscroll-bounce at the end of the
+          // list feeds drag deltas into the DraggableScrollableSheet's own
+          // resize handling — so scrolling past the bottom (or top) reads
+          // as "drag the sheet down" and closes the whole modal instead of
+          // just bouncing in place.
+          physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
           children: [
             Center(
@@ -98,6 +104,10 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
             const SizedBox(height: 10),
             _styleRow(),
             const SizedBox(height: 22),
+            Text('TEXT SIZE', style: _sectionLabelStyle),
+            const SizedBox(height: 10),
+            _sizeRow(),
+            const SizedBox(height: 22),
             Text('POSITION', style: _sectionLabelStyle),
             const SizedBox(height: 10),
             _positionRow(),
@@ -109,10 +119,6 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
             _toggleRow('Trick count', _toggles.quantity, false, (v) => setState(() => _toggles = _toggles.copyWith(quantity: v))),
             _toggleRow('Rating', _toggles.rating, false, (v) => setState(() => _toggles = _toggles.copyWith(rating: v))),
             _toggleRow('Trick sequence', _sequenceForced || _toggles.sequence, _sequenceForced, (v) => setState(() => _toggles = _toggles.copyWith(sequence: v))),
-            const SizedBox(height: 22),
-            Text('TEXT SIZE', style: _sectionLabelStyle),
-            const SizedBox(height: 10),
-            _sizeRow(),
             const SizedBox(height: 24),
             if (_error != null)
               Padding(
@@ -152,27 +158,34 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
         color: AppColors.faint,
       );
 
+  // Row + Expanded (not Wrap) so the chips always stay on one line,
+  // splitting the available width evenly, regardless of how many options
+  // or how long their labels are (e.g. "Smallest" alongside "Small").
   Widget _chipRow<T>(List<(T, String)> options, T selected, ValueChanged<T> onSelected) {
-    return Wrap(
-      spacing: 8,
+    return Row(
       children: [
-        for (final (value, label) in options)
-          ChoiceChip(
-            label: Text(label),
-            selected: selected == value,
-            onSelected: (_) => onSelected(value),
-            selectedColor: AppColors.indigoTint,
-            backgroundColor: AppColors.surface,
-            labelStyle: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-              color: selected == value ? AppColors.indigo : AppColors.ink2,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(999),
-              side: BorderSide(color: selected == value ? AppColors.indigo : AppColors.line2),
+        for (final (value, label) in options) ...[
+          if (value != options.first.$1) const SizedBox(width: 8),
+          Expanded(
+            child: ChoiceChip(
+              label: Text(label, overflow: TextOverflow.ellipsis),
+              selected: selected == value,
+              onSelected: (_) => onSelected(value),
+              selectedColor: AppColors.indigoTint,
+              backgroundColor: AppColors.surface,
+              labelPadding: EdgeInsets.zero,
+              labelStyle: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                color: selected == value ? AppColors.indigo : AppColors.ink2,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(999),
+                side: BorderSide(color: selected == value ? AppColors.indigo : AppColors.line2),
+              ),
             ),
           ),
+        ],
       ],
     );
   }

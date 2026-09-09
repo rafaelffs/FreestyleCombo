@@ -162,7 +162,7 @@ void main() {
       final combo = _combo(name: 'Sunset Special', tricks: _tricks(3));
       final content = computeMinimalContent(
         combo,
-        const InstagramOverlayToggles(difficulty: true, rating: true),
+        const InstagramOverlayToggles(difficulty: true, quantity: true, rating: true),
       );
       expect(content.title, 'Sunset Special');
       expect(content.metaParts, ['5 TRICKS', '24 DIFF', '4.8★']);
@@ -200,7 +200,7 @@ void main() {
       final combo = _combo(name: 'Sunset Special', tricks: _tricks(3));
       final content = computeSequenceContent(
         combo,
-        const InstagramOverlayToggles(difficulty: true, rating: true),
+        const InstagramOverlayToggles(difficulty: true, quantity: true, rating: true),
       );
       expect(content.title, 'Sunset Special');
       expect(content.difficultyBadge, '24');
@@ -245,7 +245,7 @@ void main() {
       final combo = _combo(name: 'Sunset Special');
       final content = computeStatContent(
         combo,
-        const InstagramOverlayToggles(difficulty: true, rating: true),
+        const InstagramOverlayToggles(difficulty: true, quantity: true, rating: true),
       );
       expect(content.tiles.map((t) => t.label), ['Diff', 'Tricks', 'Rating']);
       expect(content.tiles.map((t) => t.value), ['24', '5', '4.8★']);
@@ -256,7 +256,7 @@ void main() {
           _combo(name: 'Sunset Special', averageRating: 0, totalRatings: 0);
       final content = computeStatContent(
         combo,
-        const InstagramOverlayToggles(difficulty: true, rating: true),
+        const InstagramOverlayToggles(difficulty: true, quantity: true, rating: true),
       );
       expect(content.tiles.map((t) => t.label), ['Diff', 'Tricks']);
     });

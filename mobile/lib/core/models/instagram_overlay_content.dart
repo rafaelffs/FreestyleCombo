@@ -31,7 +31,7 @@ class InstagramOverlayToggles {
   const InstagramOverlayToggles({
     this.name = true,
     this.difficulty = false,
-    this.quantity = true,
+    this.quantity = false,
     this.rating = false,
     this.sequence = true,
   });
