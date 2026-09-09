@@ -490,7 +490,7 @@ final class ComboRepository {
         for c in mine?.combos ?? [] { merged[c.id] = c }
         for c in pub?.combos ?? [] where merged[c.id] == nil { merged[c.id] = c }
 
-        let isFromCache = (pub?.isFromCache ?? true) || (mine?.isFromCache ?? true)
+        let isFromCache = (pub?.isFromCache ?? false) || (mine?.isFromCache ?? false)
         return ComboListResult(combos: Array(merged.values), isFromCache: isFromCache)
     }
 
