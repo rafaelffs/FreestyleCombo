@@ -113,9 +113,10 @@ struct ComboListView: View {
     /// instead of refetching — a live refetch isn't always possible while
     /// offline (the whole point of this feature), and the repository's
     /// optimistic update already reflects the correct end state either way.
-    /// On the Favourites screen specifically, an unfavourite also removes
-    /// the row, matching what a live re-fetch of GET /combos/favourites
-    /// would return.
+    /// On the Favourites screen, an unfavourite also removes the row; on the
+    /// Landed screen, un-marking a combo as done does the same — each
+    /// matches what a live re-fetch of that filter's own endpoint would
+    /// return.
     private func applyLocalUpdate(_ updated: Combo) {
         if filter == .favourites && !updated.isFavourited {
             combos.removeAll { $0.id == updated.id }
