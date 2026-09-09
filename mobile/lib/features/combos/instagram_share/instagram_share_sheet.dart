@@ -27,6 +27,7 @@ class _InstagramShareSheet extends StatefulWidget {
 class _InstagramShareSheetState extends State<_InstagramShareSheet> {
   final _boundaryKey = GlobalKey();
   InstagramOverlayStyle _style = InstagramOverlayStyle.sequence;
+  InstagramOverlayPosition _position = InstagramOverlayPosition.bottom;
   InstagramTextSize _textSize = InstagramTextSize.medium;
   InstagramOverlayToggles _toggles = const InstagramOverlayToggles();
   bool _saving = false;
@@ -86,6 +87,7 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
                       style: _style,
                       toggles: _toggles,
                       textSize: _textSize,
+                      position: _position,
                     ),
                   ),
                 ),
@@ -95,6 +97,10 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
             Text('LAYOUT', style: _sectionLabelStyle),
             const SizedBox(height: 10),
             _styleRow(),
+            const SizedBox(height: 22),
+            Text('POSITION', style: _sectionLabelStyle),
+            const SizedBox(height: 10),
+            _positionRow(),
             const SizedBox(height: 22),
             Text('SHOW ON OVERLAY', style: _sectionLabelStyle),
             const SizedBox(height: 10),
@@ -183,9 +189,21 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
     );
   }
 
+  Widget _positionRow() {
+    return _chipRow<InstagramOverlayPosition>(
+      const [
+        (InstagramOverlayPosition.top, 'Top'),
+        (InstagramOverlayPosition.bottom, 'Bottom'),
+      ],
+      _position,
+      (v) => setState(() => _position = v),
+    );
+  }
+
   Widget _sizeRow() {
     return _chipRow<InstagramTextSize>(
       const [
+        (InstagramTextSize.smallest, 'Smallest'),
         (InstagramTextSize.small, 'Small'),
         (InstagramTextSize.medium, 'Medium'),
         (InstagramTextSize.large, 'Large'),

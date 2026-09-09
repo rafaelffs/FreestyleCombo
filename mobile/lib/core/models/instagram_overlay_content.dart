@@ -3,10 +3,15 @@ import 'combo.dart';
 /// Which of the three overlay layouts is selected on the share picker.
 enum InstagramOverlayStyle { minimal, sequence, stat }
 
+/// Which edge of the canvas the text band (scrim + content + wordmark)
+/// anchors to — see InstagramOverlay.
+enum InstagramOverlayPosition { top, bottom }
+
 /// Text-size multiplier applied uniformly to every overlay text element
 /// except the FSCOMBO wordmark, which stays a fixed size regardless of
 /// this choice — see InstagramOverlay.
 enum InstagramTextSize {
+  smallest(0.68),
   small(0.82),
   medium(1.0),
   large(1.28);

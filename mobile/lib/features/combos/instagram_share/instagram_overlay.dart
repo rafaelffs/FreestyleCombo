@@ -11,15 +11,16 @@ const double kInstagramOverlayWidth = 220;
 const double kInstagramOverlayHeight = 391;
 const double kInstagramOverlayExportPixelRatio = 1080 / kInstagramOverlayWidth;
 
-/// The overlay content itself — fully transparent except the bottom text
-/// band, so it composites over the person's own photo/video in Instagram
-/// rather than sitting on top of it as an opaque card. Deliberately has no
-/// background decoration of its own.
+/// The overlay content itself — fully transparent except the text band
+/// (top or bottom, see [position]), so it composites over the person's own
+/// photo/video in Instagram rather than sitting on top of it as an opaque
+/// card. Deliberately has no background decoration of its own.
 class InstagramOverlay extends StatelessWidget {
   final ComboDto combo;
   final InstagramOverlayStyle style;
   final InstagramOverlayToggles toggles;
   final InstagramTextSize textSize;
+  final InstagramOverlayPosition position;
 
   const InstagramOverlay({
     super.key,
@@ -27,10 +28,53 @@ class InstagramOverlay extends StatelessWidget {
     required this.style,
     required this.toggles,
     required this.textSize,
+    this.position = InstagramOverlayPosition.bottom,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isTop = position == InstagramOverlayPosition.top;
+
+    // Content and the wordmark share one Column, edge-anchored per
+    // [position] — the wordmark always sits closest to the outer screen
+    // edge (bottom-most when the band is at the bottom, top-most when it's
+    // at the top), with content filling in toward the canvas center.
+    // Flutter's layout guarantees the two never overlap, since it's one
+    // ordered Column rather than two independently-positioned Stack
+    // children that could visually collide if content grew tall enough to
+    // reach the wordmark's fixed corner position.
+    final contentPadding = Padding(
+      padding: EdgeInsets.fromLTRB(18, isTop ? 0 : 20, 18, isTop ? 20 : 0),
+      child: _buildContent(),
+    );
+    final wordmarkPadding = Padding(
+      padding: const EdgeInsets.only(top: 8, right: 8, bottom: 8),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 3.5,
+              height: 3.5,
+              decoration: const BoxDecoration(
+                  color: AppColors.lime, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 3),
+            Text(
+              'FSCOMBO',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 6.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.3,
+                color: Colors.white.withValues(alpha: 0.5),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
     return SizedBox(
       width: kInstagramOverlayWidth,
       height: kInstagramOverlayHeight,
@@ -39,13 +83,14 @@ class InstagramOverlay extends StatelessWidget {
           Positioned(
             left: 0,
             right: 0,
-            bottom: 0,
+            top: isTop ? 0 : null,
+            bottom: isTop ? null : 0,
             height: kInstagramOverlayHeight * 0.44,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
+                  begin: isTop ? Alignment.topCenter : Alignment.bottomCenter,
+                  end: isTop ? Alignment.bottomCenter : Alignment.topCenter,
                   colors: [
                     Colors.black.withValues(alpha: 0.8),
                     Colors.black.withValues(alpha: 0),
@@ -57,35 +102,19 @@ class InstagramOverlay extends StatelessWidget {
           Positioned(
             left: 0,
             right: 0,
-            bottom: 0,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
-              child: _buildContent(),
-            ),
-          ),
-          Positioned(
-            right: 14,
-            bottom: 12,
-            child: Row(
+            top: isTop ? 0 : null,
+            bottom: isTop ? null : 0,
+            child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 3.5,
-                  height: 3.5,
-                  decoration: const BoxDecoration(
-                      color: AppColors.lime, shape: BoxShape.circle),
-                ),
-                const SizedBox(width: 3),
-                Text(
-                  'FSCOMBO',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 6.5,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.3,
-                    color: Colors.white.withValues(alpha: 0.5),
-                  ),
-                ),
-              ],
+              // Stretch so both children get the full canvas width — the
+              // content Padding needs it to stay left-anchored (its own
+              // inner Column uses CrossAxisAlignment.start), and the
+              // wordmark's Align(centerRight) needs it to actually reach
+              // the right edge rather than shrink-wrapping to nothing.
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: isTop
+                  ? [wordmarkPadding, contentPadding]
+                  : [contentPadding, wordmarkPadding],
             ),
           ),
         ],
