@@ -266,7 +266,7 @@ class SubComboSlotTile extends StatelessWidget {
                 spacing: 6,
                 runSpacing: 6,
                 children: slot.subComboTricks!.map((t) {
-                  final suffix = t.noTouch ? '·nt' : (!t.strongFoot ? '·wf' : '');
+                  final suffix = '${t.noTouch ? '·nt' : ''}${!t.strongFoot ? '·wf' : ''}';
                   return Container(
                     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                     decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(9)),

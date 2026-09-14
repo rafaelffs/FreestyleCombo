@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { combosApi, extractError, type ComboDto } from '@/lib/api'
 import { getUserId, isAuthenticated, isAdmin as getIsAdmin } from '@/lib/auth'
-import { getShowDifficulty } from '@/lib/displayPrefs'
+import { getShowDifficulty, getComboNameDisplay, comboTitleUsesName } from '@/lib/displayPrefs'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -319,14 +319,18 @@ export function ComboCard({ combo, showActions = false }: Props) {
             )}
           </div>
 
-          {/* Title: name only (no displayText when named), or displayText if unnamed */}
+          {/* Title: name only (no displayText when named), or displayText if unnamed — shown/hidden per the combo-name display mode */}
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              {combo.name ? (
-                <p className="text-sm font-semibold text-gray-900 truncate">{combo.name}</p>
-              ) : (
-                <p className="text-sm font-mono font-semibold text-gray-900 truncate">{combo.displayText}</p>
-              )}
+              {(() => {
+                const useName = comboTitleUsesName(!!combo.name, getComboNameDisplay())
+                if (useName === null) return null
+                return useName ? (
+                  <p className="text-sm font-semibold text-gray-900 truncate">{combo.name}</p>
+                ) : (
+                  <p className="text-sm font-mono font-semibold text-gray-900 truncate">{combo.displayText}</p>
+                )
+              })()}
               {combo.ownerUserName && !combo.isReusable && (
                 <p className="mt-0.5 text-xs text-gray-500">
                   {t('combos.by')}{' '}

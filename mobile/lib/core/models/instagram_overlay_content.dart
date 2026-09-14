@@ -82,36 +82,50 @@ bool overlaySequenceForced(ComboDto combo) => overlayNameToggleDisabled(combo);
 bool overlaySequenceOn(ComboDto combo, InstagramOverlayToggles toggles) =>
     toggles.sequence || overlaySequenceForced(combo);
 
-List<String> _trickAbbreviations(ComboDto combo) {
+/// One trick's chip label plus its foot, kept separate from the label
+/// string (unlike `(nt)`, which is same-size and baked straight into the
+/// label) since strong/weak foot render at different sizes — see
+/// `_ChipRow` in instagram_overlay.dart. Null means the chip has no foot
+/// of its own (a transition trick, e.g. "Combo") — same suppression as
+/// everywhere else in the app that shows a foot marker.
+List<({String label, bool? strongFoot})> _trickAbbreviations(ComboDto combo) {
   final tricks = combo.tricks;
   if (tricks == null) return [];
   return tricks.map((t) {
     final base = t.type == 'combo'
         ? (t.subComboName ?? 'Combo')
         : (t.abbreviation ?? t.name ?? '?');
-    return (t.noTouch && !t.isTransition) ? '$base(nt)' : base;
+    final label = (t.noTouch && !t.isTransition) ? '$base(nt)' : base;
+    return (label: label, strongFoot: t.isTransition ? null : t.strongFoot);
   }).toList();
 }
 
 /// The chips to render, already truncated per [kOverlayChipShowAllUpTo],
-/// plus how many tricks were left off (0 if none).
+/// plus how many tricks were left off (0 if none). [shownStrongFoot] is
+/// parallel to [shown] — each entry is true/false for a trick with a foot
+/// of its own, or null for a transition trick with none.
 class OverlayChips {
   final List<String> shown;
+  final List<bool?> shownStrongFoot;
   final int overflow;
-  const OverlayChips({required this.shown, required this.overflow});
+  const OverlayChips(
+      {required this.shown, required this.shownStrongFoot, required this.overflow});
 }
 
 OverlayChips overlayChips(ComboDto combo, InstagramOverlayToggles toggles) {
   if (!overlaySequenceOn(combo, toggles)) {
-    return const OverlayChips(shown: [], overflow: 0);
+    return const OverlayChips(shown: [], shownStrongFoot: [], overflow: 0);
   }
   final all = _trickAbbreviations(combo);
+  final labels = [for (final t in all) t.label];
+  final feet = [for (final t in all) t.strongFoot];
   if (all.length <= kOverlayChipShowAllUpTo) {
-    return OverlayChips(shown: all, overflow: 0);
+    return OverlayChips(shown: labels, shownStrongFoot: feet, overflow: 0);
   }
   return OverlayChips(
-    shown: all.sublist(0, kOverlayChipShowAllUpTo),
-    overflow: all.length - kOverlayChipShowAllUpTo,
+    shown: labels.sublist(0, kOverlayChipShowAllUpTo),
+    shownStrongFoot: feet.sublist(0, kOverlayChipShowAllUpTo),
+    overflow: labels.length - kOverlayChipShowAllUpTo,
   );
 }
 

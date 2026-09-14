@@ -144,6 +144,18 @@ void main() {
       expect(chips.overflow, 0);
     });
 
+    test('shownStrongFoot is parallel to shown: true/false per trick, null for a transition', () {
+      final combo = _combo(tricks: [
+        const ComboTrickDto(position: 1, abbreviation: 'T1'),
+        const ComboTrickDto(position: 2, abbreviation: 'T2', strongFoot: false),
+        const ComboTrickDto(
+            position: 3, abbreviation: 'Combo', isTransition: true, strongFoot: true),
+      ]);
+      final chips = overlayChips(combo, const InstagramOverlayToggles());
+      expect(chips.shown, ['T1', 'T2', 'Combo']);
+      expect(chips.shownStrongFoot, [true, false, null]);
+    });
+
     test('uses subComboName for a sub-combo entry, falling back to "Combo"',
         () {
       final combo = _combo(tricks: [

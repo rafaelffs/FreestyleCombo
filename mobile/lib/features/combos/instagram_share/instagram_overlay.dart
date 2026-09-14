@@ -11,11 +11,17 @@ const double kInstagramOverlayWidth = 220;
 const double kInstagramOverlayHeight = 391;
 const double kInstagramOverlayExportPixelRatio = 1080 / kInstagramOverlayWidth;
 
+// The leading gap `contentPadding` puts between the content and the far
+// (non-edge) side of the column — see its EdgeInsets.fromLTRB call below.
+// Kept as one named constant so the scrim math and the padding it's
+// describing can't drift out of sync.
+const double _kContentLeadingGap = 20;
+
 /// The overlay content itself — fully transparent except the text band
 /// (top or bottom, see [position]), so it composites over the person's own
 /// photo/video in Instagram rather than sitting on top of it as an opaque
 /// card. Deliberately has no background decoration of its own.
-class InstagramOverlay extends StatelessWidget {
+class InstagramOverlay extends StatefulWidget {
   final ComboDto combo;
   final InstagramOverlayStyle style;
   final InstagramOverlayToggles toggles;
@@ -32,8 +38,27 @@ class InstagramOverlay extends StatelessWidget {
   });
 
   @override
+  State<InstagramOverlay> createState() => _InstagramOverlayState();
+}
+
+class _InstagramOverlayState extends State<InstagramOverlay> {
+  // Height of the actual rendered content+wordmark column, measured after
+  // layout (see _MeasureSize below) — null until the first frame. Falls
+  // back to a reasonable estimate for that first frame so there's no
+  // flash of an unscrimmed image before the real measurement lands.
+  double? _measuredHeight;
+
+  // Height of just the text/chips content, excluding the wordmark row and
+  // the fixed padding around both — used to scale the *fade* portion of
+  // the scrim. Using the whole-column height (above) for that too made the
+  // fade grow with fixed layout padding, not just with how much text was
+  // actually showing, so it read as an oversized grey wash even for short
+  // content — this keeps the fade tied to the real text only.
+  double? _measuredContentOnlyHeight;
+
+  @override
   Widget build(BuildContext context) {
-    final isTop = position == InstagramOverlayPosition.top;
+    final isTop = widget.position == InstagramOverlayPosition.top;
 
     // Content and the wordmark share one Column, edge-anchored per
     // [position] — the wordmark always sits closest to the outer screen
@@ -44,8 +69,16 @@ class InstagramOverlay extends StatelessWidget {
     // children that could visually collide if content grew tall enough to
     // reach the wordmark's fixed corner position.
     final contentPadding = Padding(
-      padding: EdgeInsets.fromLTRB(18, isTop ? 0 : 20, 18, isTop ? 20 : 0),
-      child: _buildContent(),
+      padding: EdgeInsets.fromLTRB(
+          18, isTop ? 0 : _kContentLeadingGap, 18, isTop ? _kContentLeadingGap : 0),
+      child: _MeasureSize(
+        onChange: (size) {
+          if (size.height != _measuredContentOnlyHeight) {
+            setState(() => _measuredContentOnlyHeight = size.height);
+          }
+        },
+        child: _buildContent(),
+      ),
     );
     final wordmarkPadding = Padding(
       // Extra top clearance only when the band is at the top: Instagram's
@@ -80,6 +113,32 @@ class InstagramOverlay extends StatelessWidget {
       ),
     );
 
+    // Scrim sizing derived from the actual measured content height, not a
+    // fixed fraction of the canvas — so a bigger text size or more toggled-
+    // on stats (taller content) gets a proportionally bigger scrim, and a
+    // small Minimal layout at Smallest text doesn't get an oversized one.
+    //
+    // `solidHeight` is held at full weight — it only needs to cover the
+    // wordmark and the actual text/chips, i.e. the whole measured column
+    // *minus* the content's own leading gap (`_kContentLeadingGap`, the 20
+    // set on `contentPadding` above — on the far side of the content from
+    // the true edge in both [position]s, so it's not covering anything).
+    // Folding that gap into the flat zone (as an earlier version did, by
+    // using the whole column for `solidHeight`) left a wide band of solid
+    // color with no text anywhere near it, which is what read as an
+    // oversized, mostly-empty grey wash. `fadeHeight` reclaims that gap as
+    // actual fade room, plus a bit more scaled off `contentOnlyHeight` (the
+    // text/chips alone) so a taller/bigger-text layout still gets a
+    // correspondingly longer fade.
+    const fadeRatio = 0.2;
+    final measuredColumn = _measuredHeight ?? kInstagramOverlayHeight * 0.3;
+    final contentOnlyHeight = _measuredContentOnlyHeight ?? measuredColumn * 0.6;
+    final solidHeight = (measuredColumn - _kContentLeadingGap).clamp(0.0, measuredColumn);
+    final fadeHeight = _kContentLeadingGap + contentOnlyHeight * fadeRatio;
+    final scrimHeight = (solidHeight + fadeHeight)
+        .clamp(kInstagramOverlayHeight * 0.14, kInstagramOverlayHeight * 0.55);
+    final flatStop = (solidHeight / (solidHeight + fadeHeight)).clamp(0.1, 0.92);
+
     return SizedBox(
       width: kInstagramOverlayWidth,
       height: kInstagramOverlayHeight,
@@ -90,16 +149,24 @@ class InstagramOverlay extends StatelessWidget {
             right: 0,
             top: isTop ? 0 : null,
             bottom: isTop ? null : 0,
-            height: kInstagramOverlayHeight * 0.44,
+            // Held at full weight right behind the text (plus a small
+            // buffer) then falling off over a proportional distance — a
+            // slow ramp across a tall fixed band reads as grey across most
+            // of the image, which is what was washing out video
+            // backgrounds; sizing it off the real content instead keeps
+            // that same tight look no matter how much text is showing.
+            height: scrimHeight,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: isTop ? Alignment.topCenter : Alignment.bottomCenter,
                   end: isTop ? Alignment.bottomCenter : Alignment.topCenter,
                   colors: [
-                    Colors.black.withValues(alpha: 0.8),
+                    Colors.black.withValues(alpha: 0.28),
+                    Colors.black.withValues(alpha: 0.28),
                     Colors.black.withValues(alpha: 0),
                   ],
+                  stops: [0, flatStop, 1],
                 ),
               ),
             ),
@@ -109,17 +176,24 @@ class InstagramOverlay extends StatelessWidget {
             right: 0,
             top: isTop ? 0 : null,
             bottom: isTop ? null : 0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              // Stretch so both children get the full canvas width — the
-              // content Padding needs it to stay left-anchored (its own
-              // inner Column uses CrossAxisAlignment.start), and the
-              // wordmark's Align(centerRight) needs it to actually reach
-              // the right edge rather than shrink-wrapping to nothing.
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: isTop
-                  ? [wordmarkPadding, contentPadding]
-                  : [contentPadding, wordmarkPadding],
+            child: _MeasureSize(
+              onChange: (size) {
+                if (size.height != _measuredHeight) {
+                  setState(() => _measuredHeight = size.height);
+                }
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                // Stretch so both children get the full canvas width — the
+                // content Padding needs it to stay left-anchored (its own
+                // inner Column uses CrossAxisAlignment.start), and the
+                // wordmark's Align(centerRight) needs it to actually reach
+                // the right edge rather than shrink-wrapping to nothing.
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: isTop
+                    ? [wordmarkPadding, contentPadding]
+                    : [contentPadding, wordmarkPadding],
+              ),
             ),
           ),
         ],
@@ -128,24 +202,50 @@ class InstagramOverlay extends StatelessWidget {
   }
 
   Widget _buildContent() {
-    final isTop = position == InstagramOverlayPosition.top;
-    switch (style) {
+    final isTop = widget.position == InstagramOverlayPosition.top;
+    switch (widget.style) {
       case InstagramOverlayStyle.minimal:
         return _MinimalContent(
-            content: computeMinimalContent(combo, toggles),
-            scale: textSize.scale,
+            content: computeMinimalContent(widget.combo, widget.toggles),
+            scale: widget.textSize.scale,
             reversed: isTop);
       case InstagramOverlayStyle.sequence:
         return _SequenceContent(
-            content: computeSequenceContent(combo, toggles),
-            scale: textSize.scale,
+            content: computeSequenceContent(widget.combo, widget.toggles),
+            scale: widget.textSize.scale,
             reversed: isTop);
       case InstagramOverlayStyle.stat:
         return _StatContent(
-            content: computeStatContent(combo, toggles),
-            scale: textSize.scale,
+            content: computeStatContent(widget.combo, widget.toggles),
+            scale: widget.textSize.scale,
             reversed: isTop);
     }
+  }
+}
+
+/// Reports the actual laid-out size of [child] after every frame via
+/// [onChange], without affecting layout itself (it renders [child]
+/// directly with no wrapper box). Used to size the scrim off the real
+/// rendered height of the text/chips content rather than a guessed fixed
+/// fraction of the canvas.
+class _MeasureSize extends StatefulWidget {
+  final Widget child;
+  final ValueChanged<Size> onChange;
+  const _MeasureSize({required this.child, required this.onChange});
+
+  @override
+  State<_MeasureSize> createState() => _MeasureSizeState();
+}
+
+class _MeasureSizeState extends State<_MeasureSize> {
+  @override
+  Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final size = context.size;
+      if (size != null) widget.onChange(size);
+    });
+    return widget.child;
   }
 }
 
@@ -175,11 +275,16 @@ class _ChipRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final labelStyle = GoogleFonts.jetBrainsMono(
+      fontSize: 7.5 * scale,
+      fontWeight: FontWeight.w700,
+      color: Colors.white,
+    );
     return Wrap(
       spacing: 4 * scale,
       runSpacing: 4 * scale,
       children: [
-        for (final t in chips.shown)
+        for (var i = 0; i < chips.shown.length; i++)
           Container(
             padding: EdgeInsets.symmetric(
                 horizontal: 5.5 * scale, vertical: 3.5 * scale),
@@ -188,12 +293,24 @@ class _ChipRow extends StatelessWidget {
               border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
               borderRadius: BorderRadius.circular(5 * scale),
             ),
-            child: Text(
-              t,
-              style: GoogleFonts.jetBrainsMono(
-                fontSize: 7.5 * scale,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
+            // Weak foot gets a small, muted "wf" suffix — present without
+            // competing with the trick label itself. Strong foot (the
+            // common case) and transition tricks (strongFoot null) get no
+            // marker at all.
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(text: chips.shown[i], style: labelStyle),
+                  if (chips.shownStrongFoot[i] == false)
+                    TextSpan(
+                      text: ' wf',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 5.5 * scale,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white.withValues(alpha: 0.6),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),

@@ -28,6 +28,27 @@ class TrickNameDisplay {
   }
 }
 
+/// Whether combo cards/detail show the combo's own name, the abbreviation-
+/// notation sequence/displayText fallback, or nothing at all in that title
+/// slot. Same static-flag pattern as [TrickNameDisplay], toggled from the
+/// combos list header, read fresh on every build.
+enum ComboNameDisplayMode { show, hideUnnamed, hideAlways }
+
+class ComboNameDisplay {
+  ComboNameDisplay._();
+  static ComboNameDisplayMode mode = ComboNameDisplayMode.show;
+
+  /// Whether the title slot should use `combo.name` (true), the sequence/
+  /// displayText fallback (false), or render nothing at all (null) — per
+  /// [mode]. [hasName] is whether the combo has a real name to show.
+  static bool? useName(bool hasName) {
+    if (mode == ComboNameDisplayMode.hideAlways) return null;
+    if (hasName) return true;
+    if (mode == ComboNameDisplayMode.hideUnnamed) return null;
+    return false;
+  }
+}
+
 /// Formats the trick list as "(ABBR)(nt) (ABBR) (SubCombo)…" — each trick
 /// wrapped in parentheses, with "(nt)" appended right after any no-touch
 /// trick. Returns null when there's nothing to format (caller falls back to
@@ -297,6 +318,8 @@ class _ComboCardState extends State<ComboCard> {
         (isOwner && visibilityState == 'pending') ||
         (isAdmin && visibilityState == 'public');
     final canRate = widget.showActions && !isOwner && currentUserId != null;
+    final useComboName =
+        ComboNameDisplay.useName(combo.name != null && combo.name!.isNotEmpty);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -380,26 +403,30 @@ class _ComboCardState extends State<ComboCard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            (combo.name != null && combo.name!.isNotEmpty)
-                                ? combo.name!
-                                : _formatSequence(combo.tricks) ?? combo.displayText,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: (combo.name != null && combo.name!.isNotEmpty)
-                                ? GoogleFonts.plusJakartaSans(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: -0.3,
-                                    height: 1.2,
-                                    color: AppColors.ink,
-                                  )
-                                : GoogleFonts.jetBrainsMono(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.ink,
-                                  ),
-                          ),
+                          if (useComboName == true)
+                            Text(
+                              combo.name!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.3,
+                                height: 1.2,
+                                color: AppColors.ink,
+                              ),
+                            )
+                          else if (useComboName == false)
+                            Text(
+                              _formatSequence(combo.tricks) ?? combo.displayText,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.ink,
+                              ),
+                            ),
                           if (combo.ownerUserName != null) ...[
                             const SizedBox(height: 3),
                             _OwnerLine(combo: combo),
@@ -572,7 +599,9 @@ class _TrickChips extends StatelessWidget {
     // regardless of the full-name/abbreviation toggle, which only affects
     // the card's headline sequence (_formatSequence).
     final label = t.type == 'combo' ? (t.subComboName ?? 'Combo') : (t.abbreviation ?? '?');
-    final suffix = t.isTransition ? '' : (t.noTouch ? '·nt' : (!t.strongFoot ? '·wf' : ''));
+    final suffix = t.isTransition
+        ? ''
+        : '${t.noTouch ? '·nt' : ''}${!t.strongFoot ? '·wf' : ''}';
     final isNoTouch = t.noTouch;
 
     return Container(

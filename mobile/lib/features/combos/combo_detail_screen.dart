@@ -6,7 +6,7 @@ import '../../core/api/api_client.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/models/combo.dart';
 import '../../theme/app_colors.dart';
-import '../../widgets/combo_card.dart' show TrickNameDisplay;
+import '../../widgets/combo_card.dart' show TrickNameDisplay, ComboNameDisplay;
 import '../../widgets/combo_slot_tile.dart';
 import '../../widgets/confirm_sheet.dart';
 import '../../widgets/difficulty_chip.dart';
@@ -440,6 +440,8 @@ class _DetailHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final useComboName =
+        ComboNameDisplay.useName(combo.name != null && combo.name!.isNotEmpty);
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(gradient: AppColors.grad),
@@ -517,20 +519,23 @@ class _DetailHero extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
-                      (combo.name != null && combo.name!.isNotEmpty)
-                          ? combo.name!
-                          : _formatSequence(combo.tricks) ?? combo.displayText,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.6,
-                        color: Colors.white,
+                    if (useComboName != null) ...[
+                      Text(
+                        useComboName
+                            ? combo.name!
+                            : _formatSequence(combo.tricks) ?? combo.displayText,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.6,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
+                    ] else
+                      const SizedBox(height: 10),
                     Row(
                       children: [
                         _StatPill(value: '${combo.totalDifficulty.toInt()}', label: 'Difficulty'),
@@ -827,7 +832,9 @@ class _SequenceStepState extends State<_SequenceStep> {
               runSpacing: 6,
               children: (t.subComboTricks ?? []).map((st) {
                 final label = st.abbreviation ?? '?';
-                final suffix = st.isTransition ? '' : (st.noTouch ? '·nt' : (!st.strongFoot ? '·wf' : ''));
+                final suffix = st.isTransition
+                    ? ''
+                    : '${st.noTouch ? '·nt' : ''}${!st.strongFoot ? '·wf' : ''}';
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                   decoration: BoxDecoration(

@@ -5,7 +5,13 @@ import { useTranslation } from 'react-i18next'
 import { combosApi } from '@/lib/api'
 import { ComboCard } from './ComboCard'
 import { isAuthenticated } from '@/lib/auth'
-import { getShowDifficulty, setShowDifficulty } from '@/lib/displayPrefs'
+import {
+  getShowDifficulty,
+  setShowDifficulty,
+  getComboNameDisplay,
+  setComboNameDisplay,
+  type ComboNameDisplayMode,
+} from '@/lib/displayPrefs'
 import { SEO } from '@/components/SEO'
 
 type Tab = 'public' | 'mine' | 'favourites'
@@ -74,6 +80,11 @@ export function CombosPage() {
       setShowDifficulty(next)
       return next
     })
+  }
+  const [comboNameDisplay, setComboNameDisplayState] = useState(getComboNameDisplay)
+  const changeComboNameDisplay = (mode: ComboNameDisplayMode) => {
+    setComboNameDisplayState(mode)
+    setComboNameDisplay(mode)
   }
   const debouncedSearch = useDebounce(search, 350)
 
@@ -188,6 +199,18 @@ export function CombosPage() {
               className="h-4 w-4 rounded border-gray-300 text-indigo-600"
             />
             {t('tricks.showDifficulty')}
+          </label>
+          <label className="flex items-center gap-1.5 text-sm text-gray-600 whitespace-nowrap">
+            {t('combos.nameDisplayLabel')}
+            <select
+              value={comboNameDisplay}
+              onChange={(e) => changeComboNameDisplay(e.target.value as ComboNameDisplayMode)}
+              className="rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            >
+              <option value="show">{t('combos.nameDisplayShow')}</option>
+              <option value="hideUnnamed">{t('combos.nameDisplayHideUnnamed')}</option>
+              <option value="hideAlways">{t('combos.nameDisplayHideAlways')}</option>
+            </select>
           </label>
           {tab === 'public' && (
             <>

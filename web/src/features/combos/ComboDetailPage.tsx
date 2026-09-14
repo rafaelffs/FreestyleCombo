@@ -6,7 +6,7 @@ import { GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
 import { FootToggle } from '@/components/ui/foot-toggle'
 import { combosApi, tricksApi, extractError, type BuildComboTrickItem, type TrickItem } from '@/lib/api'
 import { getUserId, isAdmin, isAuthenticated } from '@/lib/auth'
-import { getShowDifficulty } from '@/lib/displayPrefs'
+import { getShowDifficulty, getComboNameDisplay } from '@/lib/displayPrefs'
 import { SEO } from '@/components/SEO'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -269,7 +269,7 @@ export function ComboDetailPage() {
         <CardHeader>
           <div className="flex items-start justify-between gap-2">
             <div>
-              {combo.name && <p className="text-sm font-semibold text-gray-900 mb-1">{combo.name}</p>}
+              {combo.name && getComboNameDisplay() !== 'hideAlways' && <p className="text-sm font-semibold text-gray-900 mb-1">{combo.name}</p>}
               <CardTitle className="font-mono text-xl">{combo.displayText}</CardTitle>
               {combo.ownerUserName && !combo.isReusable && (
                 <p className="text-sm text-gray-500 mt-0.5">{t('combos.by')} {combo.ownerUserName}</p>

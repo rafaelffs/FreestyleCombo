@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
-import 'combo_card.dart' show TrickNameDisplay;
+import 'combo_card.dart' show TrickNameDisplay, ComboNameDisplay, ComboNameDisplayMode;
 import 'difficulty_chip.dart';
 
 /// "Display" section (trick-name format + difficulty show/hide) shared by
@@ -50,8 +50,72 @@ Widget buildDisplayOptionsSection({required VoidCallback onChanged}) {
           },
         ),
       ),
+      const SizedBox(height: 12),
+      DisplayOptionRow(
+        label: 'Combo name',
+        child: _ComboNameDropdown(onChanged: onChanged),
+      ),
     ],
   );
+}
+
+const _kComboNameDisplayLabels = {
+  ComboNameDisplayMode.show: 'Show',
+  ComboNameDisplayMode.hideUnnamed: 'Hide unnamed',
+  ComboNameDisplayMode.hideAlways: 'Hide always',
+};
+
+/// A compact dropdown for the 3-way combo-name display mode — a row of
+/// SegmentButtons (as used for Trick names above) was tried first, but
+/// "Hide unnamed" made a 3-chip row wide enough to need horizontal
+/// scrolling next to a label, which read awkwardly for a settings row.
+/// `PopupMenuButton` (the same widget already used for row actions in
+/// `admin_users_screen.dart`) rather than `DropdownButton` — the latter
+/// silently ate every tap in this settings-sheet context (a bare
+/// `DropdownButton` needs to indirectly find a `Navigator`/`Overlay` via
+/// context the way `showMenu`-based widgets don't rely on quite the same
+/// way; every other control in this same sheet responded fine, isolating
+/// it to that widget specifically) while `PopupMenuButton` opens reliably.
+class _ComboNameDropdown extends StatelessWidget {
+  final VoidCallback onChanged;
+  const _ComboNameDropdown({required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<ComboNameDisplayMode>(
+      initialValue: ComboNameDisplay.mode,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      onSelected: (v) {
+        ComboNameDisplay.mode = v;
+        onChanged();
+      },
+      itemBuilder: (context) => [
+        for (final entry in _kComboNameDisplayLabels.entries)
+          PopupMenuItem(value: entry.key, child: Text(entry.value)),
+      ],
+      child: Container(
+        padding: const EdgeInsets.only(left: 10, right: 6, top: 6, bottom: 6),
+        decoration: BoxDecoration(
+          color: AppColors.chipBg,
+          borderRadius: BorderRadius.circular(11),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _kComboNameDisplayLabels[ComboNameDisplay.mode]!,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+              ),
+            ),
+            const Icon(Icons.expand_more, size: 18, color: AppColors.ink2),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class DisplayOptionRow extends StatelessWidget {

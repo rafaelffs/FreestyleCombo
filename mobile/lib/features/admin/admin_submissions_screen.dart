@@ -284,7 +284,7 @@ class _ComboReviewCard extends StatelessWidget {
               runSpacing: 6,
               children: combo.tricks!.map((t) {
                 final label = t.type == 'combo' ? (t.subComboName ?? 'Combo') : (t.abbreviation ?? '?');
-                final suffix = t.noTouch ? '·nt' : (!t.strongFoot ? '·wf' : '');
+                final suffix = '${t.noTouch ? '·nt' : ''}${!t.strongFoot ? '·wf' : ''}';
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                   decoration: BoxDecoration(
