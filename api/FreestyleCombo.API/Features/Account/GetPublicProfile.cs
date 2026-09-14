@@ -6,7 +6,10 @@ namespace FreestyleCombo.API.Features.Account;
 
 public record GetPublicProfileQuery(Guid UserId) : IRequest<PublicProfileDto>;
 
-public record PublicProfileDto(Guid Id, string UserName, string Email);
+// No Email — this endpoint has no [Authorize] (anyone can look up any user's
+// profile by id, e.g. via a combo's "by [username]" link), so an email field
+// here would be a public data leak, not just a UI display choice.
+public record PublicProfileDto(Guid Id, string UserName);
 
 public class GetPublicProfileHandler : IRequestHandler<GetPublicProfileQuery, PublicProfileDto>
 {
@@ -22,6 +25,6 @@ public class GetPublicProfileHandler : IRequestHandler<GetPublicProfileQuery, Pu
         var user = await _userManager.FindByIdAsync(request.UserId.ToString())
             ?? throw new InvalidOperationException("User not found.");
 
-        return new PublicProfileDto(user.Id, user.UserName!, user.Email!);
+        return new PublicProfileDto(user.Id, user.UserName!);
     }
 }

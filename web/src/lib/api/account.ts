@@ -7,10 +7,11 @@ export interface ProfileDto {
   isAdmin: boolean
 }
 
+// No email — GET /account/{id} is unauthenticated (anyone can look up any
+// user's profile by id), so the API no longer includes it here.
 export interface PublicProfileDto {
   id: string
   userName: string
-  email: string
 }
 
 export interface AdminUserDto {

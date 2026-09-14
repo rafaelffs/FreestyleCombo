@@ -24,22 +24,21 @@ class ProfileDto {
       );
 }
 
+// No email — GET /account/{id} is unauthenticated (anyone can look up any
+// user's profile by id), so the API no longer includes it here.
 class PublicProfileDto {
   final String id;
   final String userName;
-  final String email;
 
   const PublicProfileDto({
     required this.id,
     required this.userName,
-    required this.email,
   });
 
   factory PublicProfileDto.fromJson(Map<String, dynamic> json) =>
       PublicProfileDto(
         id: json['id'] as String,
         userName: json['userName'] as String,
-        email: json['email'] as String,
       );
 }
 

@@ -31,7 +31,6 @@ export function UserProfilePage() {
           {profile.userName.charAt(0).toUpperCase()}
         </div>
         <h1 className="text-xl font-bold text-gray-900">{profile.userName}</h1>
-        <p className="mt-1 text-sm text-gray-500">{profile.email}</p>
       </div>
     </div>
   )

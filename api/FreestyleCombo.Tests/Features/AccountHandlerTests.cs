@@ -182,7 +182,6 @@ public class AccountHandlerTests
 
         result.Id.Should().Be(targetUserId);
         result.UserName.Should().Be("rafael");
-        result.Email.Should().Be("r@example.com");
     }
 
     [Fact]

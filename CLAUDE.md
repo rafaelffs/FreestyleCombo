@@ -328,9 +328,9 @@ Navbar right side shows a profile dropdown (username + chevron) when authenticat
 - `PUT /api/account/me` — update username/email
 - `PUT /api/account/me/password` — change password (requires currentPassword)
 - `DELETE /api/account/me` — self-service account deletion (auth required, no admin needed) — deletes the calling user via `UserManager.DeleteAsync`, same EF-cascade behavior as the admin delete endpoint. Required by Apple App Review Guideline 5.1.1(v) (any app with account creation must offer in-app account deletion).
-- `GET /api/account/{id}` — public profile `PublicProfileDto { id, userName, email }` (no auth)
+- `GET /api/account/{id}` — public profile `PublicProfileDto { id, userName }` (no auth) — **no `Email`**: this endpoint has no `[Authorize]`, so anyone who knows (or enumerates) a user's guid could fetch it; `Email` was removed from the DTO/handler (`GetPublicProfile.cs`) rather than just hidden client-side, since hiding it in the UI alone would still leak it to a direct API call. `ProfileDto` (the authenticated `/account/me` shape) and `AdminUserDto` (admin-only) both still carry `Email` — this only affects the public-by-id lookup.
 - `AccountPage` at `/account` — three sections: edit profile form, change password form, and a "Delete Account" danger-zone section (confirm via `window.confirm`, then clears the token and redirects to `/login`)
-- `UserProfilePage` at `/users/:id` — shows username + email with initial avatar
+- `UserProfilePage` at `/users/:id` — shows username with initial avatar (no email — see above)
 - "by [username]" on ComboCard links to `/users/{ownerId}`
 
 ### Admin User Management (`/api/admin/users`) — moderation dashboard
@@ -474,9 +474,9 @@ mobile/lib/
 
 `account_screen.dart` at `/account` is now the "Profile" screen: gradient header (avatar initial, username, Combos/Done/Avg★ stats aggregated client-side from `getMyCombos()` — no new API calls), then "Edit profile & password" / "My combos" / "Log out" / "Delete account" row-links. Edit profile + change password now live in a pushed `_EditProfileScreen` (`Navigator.push`, not a router route). Logout navigates to `/combos` (previously navigated to the non-existent `/public` route from `preferences_screen.dart` — fixed as part of relocating the control). "Delete account" is a destructive-styled `_RowLink` (red icon/text, `AppColors.redBg` chip) that confirms via `AlertDialog`, calls `ApiClient.instance.deleteAccount()` (`DELETE /api/account/me`), then clears auth and goes to `/combos` — required by Apple App Review Guideline 5.1.1(v).
 
-`user_profile_screen.dart` at `/users/:id` — restyled with the same gradient hero pattern as `account_screen.dart` (back button, avatar initial, username, email), scaled down since public profiles carry no stats/actions.
+`user_profile_screen.dart` at `/users/:id` — restyled with the same gradient hero pattern as `account_screen.dart` (back button, avatar initial, username — no email, see "Account & User Profile" above), scaled down since public profiles carry no stats/actions.
 
-`admin_users_screen.dart` at `/admin/users` — ListView of restyled user row cards (avatar tile, ADMIN badge, PopupMenuButton unchanged: Edit/Reset password/Toggle admin/Delete). Edit and reset-password dialogs use the shared `_FormDialog`/`_DialogField` look (rounded 20, indigo confirm button); delete confirmation uses a red `FilledButton`.
+`admin_users_screen.dart` at `/admin/users` — ListView of restyled user row cards (avatar tile, ADMIN badge, PopupMenuButton unchanged: Edit/Reset password/Toggle admin/Delete). Edit and reset-password dialogs use the shared `_FormDialog`/`_DialogField` look (rounded 20, indigo confirm button); delete confirmation uses a red `FilledButton`. **No in-app entry point existed to reach this screen** from launch through several review rounds — the route was registered and the screen fully built, but the bottom-nav Admin tab only ever routed to `/admin/approvals`, with nothing else linking to `/admin/users` anywhere in the app (web has a separate top-level "Users" nav link; mobile never got an equivalent). Fixed by adding a `people_outline` icon button to `admin_submissions_screen.dart`'s `AppBar` actions (next to the existing refresh button) that does `context.push('/admin/users')`.
 
 `admin_submissions_screen.dart` at `/admin/approvals` — restyled with `_SectionHeader`s ("Combo publication requests" / "Trick submissions"), card-shell items (`_ComboReviewCard`, `_TrickSubmissionCard`) reusing `DifficultyChip` and mono trick chips, and a shared Approve (indigo)/Reject (red outline) row.
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/api/api_client.dart';
 import '../../core/models/combo.dart';
@@ -55,6 +56,15 @@ class _AdminSubmissionsScreenState extends State<AdminSubmissionsScreen> {
         titleSpacing: 22,
         title: const Text('Approvals'),
         actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 10),
+            // No other entry point to the admin user list exists on
+            // mobile — the bottom-nav Admin tab only ever routes to
+            // /admin/approvals, so /admin/users (the screen itself has
+            // existed since the admin moderation dashboard shipped) was
+            // otherwise unreachable in the app.
+            child: _CircleIconButton(icon: Icons.people_outline, onTap: () => context.push('/admin/users')),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 22),
             child: _CircleIconButton(icon: Icons.refresh, onTap: _load),

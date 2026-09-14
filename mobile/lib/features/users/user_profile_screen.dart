@@ -109,11 +109,6 @@ class _ProfileHero extends StatelessWidget {
                             profile?.userName ?? '',
                             style: GoogleFonts.plusJakartaSans(fontSize: 23, fontWeight: FontWeight.w800, letterSpacing: -0.4, color: Colors.white),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            profile?.email ?? '',
-                            style: GoogleFonts.plusJakartaSans(fontSize: 13.5, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.85)),
-                          ),
                         ],
                       ),
                     ),
