@@ -9,6 +9,7 @@ import '../../core/models/combo.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/combo_card.dart';
 import '../../widgets/display_options.dart';
+import 'instagram_share/instagram_share_sheet.dart';
 
 enum _DoneFilter { all, done, undone }
 enum _NoTouchFilter { all, noNt, hasNt }
@@ -796,6 +797,14 @@ class _CombosScreenState extends State<CombosScreen> with SingleTickerProviderSt
             child: _AppBarIconButton(
               icon: Icons.refresh,
               onTap: _refreshAll,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: _AppBarIconButton(
+              icon: Icons.ios_share,
+              gradient: true,
+              onTap: () => showInstagramShareSheet(context),
             ),
           ),
           Padding(

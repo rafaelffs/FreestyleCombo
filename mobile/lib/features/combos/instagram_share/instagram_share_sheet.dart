@@ -1,19 +1,64 @@
+import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/models/combo.dart';
 import '../../../core/models/instagram_overlay_content.dart';
 import '../../../theme/app_colors.dart';
+import '../../../widgets/combo_slot_tile.dart';
+import 'combo_slot_editor.dart';
 import 'instagram_overlay.dart';
 import 'instagram_share_service.dart';
 
-Future<void> showInstagramShareSheet(BuildContext context, ComboDto combo) {
+/// [combo] is null when opened from the new toolbar icon on the Combos/
+/// Tricks pages (no existing combo to share yet). In that case there's
+/// nothing to preview until the user actually builds a trick list, so this
+/// pushes the full-screen [showComboSlotEditorScreen] first — the Share
+/// Image sheet itself only ever opens with a real (if synthetic,
+/// never-persisted) combo. Backing out of that editor without adding
+/// anything (result null) means there's nothing to share, so the sheet
+/// never opens at all. Passing an existing combo (the per-combo share flow)
+/// skips straight to the sheet, as before.
+Future<void> showInstagramShareSheet(BuildContext context,
+    [ComboDto? combo]) async {
+  if (combo == null) {
+    final built = await showComboSlotEditorScreen(context,
+        initialName: '', initialSlots: const []);
+    if (built == null || !context.mounted) return;
+    combo = built;
+  }
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => _InstagramShareSheet(combo: combo),
+    builder: (_) => _InstagramShareSheet(combo: combo!),
   );
+}
+
+List<SlotItem> _slotsFromComboTricks(List<ComboTrickDto>? tricks) {
+  final slots = <SlotItem>[];
+  for (final t in tricks ?? const <ComboTrickDto>[]) {
+    if (t.type == 'combo') {
+      slots.add(SlotItem.combo(
+        subComboId: t.subComboId!,
+        subComboName: t.subComboName ?? '',
+        subComboTricks: t.subComboTricks ?? [],
+        position: t.position,
+      )..strongFoot = t.strongFoot);
+    } else {
+      slots.add(SlotItem.trick(
+        trickId: t.trickId!,
+        trickName: t.name ?? '',
+        abbreviation: t.abbreviation ?? '',
+        crossOver: t.crossOver,
+        position: t.position,
+        strongFoot: t.strongFoot,
+        noTouch: t.noTouch,
+        isTransition: t.isTransition,
+      ));
+    }
+  }
+  return slots;
 }
 
 class _InstagramShareSheet extends StatefulWidget {
@@ -33,8 +78,13 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
   bool _saving = false;
   String? _error;
 
-  bool get _nameDisabled => overlayNameToggleDisabled(widget.combo);
-  bool get _sequenceForced => overlaySequenceForced(widget.combo);
+  // The combo actually rendered/exported — starts as widget.combo and gets
+  // swapped for whatever the full-screen trick editor returns once the user
+  // taps Done there. Never saved anywhere; purely drives this preview/export.
+  late ComboDto _liveCombo = widget.combo;
+
+  bool get _nameDisabled => overlayNameToggleDisabled(_liveCombo);
+  bool get _sequenceForced => overlaySequenceForced(_liveCombo);
 
   @override
   Widget build(BuildContext context) {
@@ -58,17 +108,33 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
           physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
           children: [
+            // The preview used to be pinned outside this list (a fix for a
+            // real image-capture bug — see instagram_share_service.dart's
+            // doc comment — from when the inline SELECT COMBO/TRICK editor
+            // made this list tall enough to scroll the preview's
+            // RepaintBoundary off-screen). That editor is now its own
+            // full-screen route (combo_slot_editor.dart), so this list is
+            // short again and the preview never scrolls far enough to be at
+            // risk — pinning it back here just meant a swipe starting over
+            // the image did nothing (it wasn't part of any Scrollable), a
+            // dead zone right where people naturally put their thumb. Back
+            // to one plain scrollable list, image included.
             Center(
               child: Container(
                 width: 40,
                 height: 4,
-                decoration: BoxDecoration(color: AppColors.line2, borderRadius: BorderRadius.circular(2)),
+                decoration: BoxDecoration(
+                    color: AppColors.line2,
+                    borderRadius: BorderRadius.circular(2)),
               ),
             ),
             const SizedBox(height: 20),
             Text(
               'Share Image',
-              style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink),
+              style: GoogleFonts.plusJakartaSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.ink),
             ),
             const SizedBox(height: 20),
             Center(
@@ -89,7 +155,7 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
                   child: RepaintBoundary(
                     key: _boundaryKey,
                     child: InstagramOverlay(
-                      combo: widget.combo,
+                      combo: _liveCombo,
                       style: _style,
                       toggles: _toggles,
                       textSize: _textSize,
@@ -114,34 +180,64 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
             const SizedBox(height: 22),
             Text('SHOW ON OVERLAY', style: _sectionLabelStyle),
             const SizedBox(height: 10),
-            _toggleRow('Combo name', _nameDisabled ? false : _toggles.name, _nameDisabled, (v) => setState(() => _toggles = _toggles.copyWith(name: v))),
-            _toggleRow('Difficulty', _toggles.difficulty, false, (v) => setState(() => _toggles = _toggles.copyWith(difficulty: v))),
-            _toggleRow('Trick count', _toggles.quantity, false, (v) => setState(() => _toggles = _toggles.copyWith(quantity: v))),
-            _toggleRow('Rating', _toggles.rating, false, (v) => setState(() => _toggles = _toggles.copyWith(rating: v))),
-            _toggleRow('Trick sequence', _sequenceForced || _toggles.sequence, _sequenceForced, (v) => setState(() => _toggles = _toggles.copyWith(sequence: v))),
+            _toggleRow(
+                'Combo name',
+                _nameDisabled ? false : _toggles.name,
+                _nameDisabled,
+                (v) => setState(() => _toggles = _toggles.copyWith(name: v))),
+            _toggleRow(
+                'Difficulty',
+                _toggles.difficulty,
+                false,
+                (v) => setState(
+                    () => _toggles = _toggles.copyWith(difficulty: v))),
+            _toggleRow(
+                'Trick count',
+                _toggles.quantity,
+                false,
+                (v) =>
+                    setState(() => _toggles = _toggles.copyWith(quantity: v))),
+            _toggleRow('Rating', _toggles.rating, false,
+                (v) => setState(() => _toggles = _toggles.copyWith(rating: v))),
+            _toggleRow(
+                'Trick sequence',
+                _sequenceForced || _toggles.sequence,
+                _sequenceForced,
+                (v) =>
+                    setState(() => _toggles = _toggles.copyWith(sequence: v))),
+            const SizedBox(height: 22),
+            Text('SELECT COMBO/TRICK', style: _sectionLabelStyle),
+            const SizedBox(height: 10),
+            _comboSummaryRow(),
             const SizedBox(height: 24),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Text(_error!, style: const TextStyle(color: AppColors.red, fontSize: 13)),
+                child: Text(_error!,
+                    style: const TextStyle(color: AppColors.red, fontSize: 13)),
               ),
             SizedBox(
               height: 52,
               child: FilledButton(
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.indigo,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                 ),
                 onPressed: _saving ? null : _saveImage,
                 child: _saving
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
                       )
                     : Text(
                         'Save to device',
-                        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white),
+                        style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                            color: Colors.white),
                       ),
               ),
             ),
@@ -165,7 +261,8 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
   // so a row that doesn't fit (e.g. Text Size's 4 chips including the long
   // "Smallest" label) scrolls sideways rather than breaking to a second
   // line — on most devices it still fits and there's nothing to scroll.
-  Widget _chipRow<T>(List<(T, String)> options, T selected, ValueChanged<T> onSelected) {
+  Widget _chipRow<T>(
+      List<(T, String)> options, T selected, ValueChanged<T> onSelected) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -185,7 +282,9 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(999),
-                side: BorderSide(color: selected == value ? AppColors.indigo : AppColors.line2),
+                side: BorderSide(
+                    color:
+                        selected == value ? AppColors.indigo : AppColors.line2),
               ),
             ),
           ],
@@ -230,7 +329,8 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
     );
   }
 
-  Widget _toggleRow(String label, bool value, bool disabled, ValueChanged<bool> onChanged) {
+  Widget _toggleRow(
+      String label, bool value, bool disabled, ValueChanged<bool> onChanged) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -255,15 +355,72 @@ class _InstagramShareSheetState extends State<_InstagramShareSheet> {
     );
   }
 
+  Widget _comboSummaryRow() {
+    final count = _liveCombo.tricks?.length ?? 0;
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: _editTricks,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+        decoration: BoxDecoration(
+          color: AppColors.chipBg,
+          border: Border.all(color: AppColors.line2),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.edit_outlined, size: 18, color: AppColors.indigo),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                count == 0
+                    ? 'Edit tricks'
+                    : '$count trick${count == 1 ? '' : 's'} selected — tap to edit',
+                style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink2),
+              ),
+            ),
+            const Icon(Icons.chevron_right, size: 20, color: AppColors.faint),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _editTricks() async {
+    final result = await showComboSlotEditorScreen(
+      context,
+      initialName: _liveCombo.name ?? '',
+      initialSlots: _slotsFromComboTricks(_liveCombo.tricks),
+    );
+    if (result != null && mounted) setState(() => _liveCombo = result);
+  }
+
   Future<void> _saveImage() async {
+    // Capture before any setState — see InstagramShareService's doc comment
+    // for why: flipping the button into its spinner state first would
+    // rebuild this whole sheet (including the preview) right before the
+    // capture, racing RenderRepaintBoundary.toImage()'s requirement that
+    // the render object already be freshly painted.
+    final Uint8List pngBytes;
+    try {
+      pngBytes = await InstagramShareService.capturePng(_boundaryKey,
+          pixelRatio: kInstagramOverlayExportPixelRatio);
+    } catch (e) {
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;
     });
     try {
-      await InstagramShareService.saveImage(_boundaryKey, pixelRatio: kInstagramOverlayExportPixelRatio);
+      await InstagramShareService.saveBytes(pngBytes);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved to Photos')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Saved to Photos')));
         Navigator.pop(context);
       }
     } catch (e) {

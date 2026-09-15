@@ -73,8 +73,15 @@ class _InstagramOverlayState extends State<InstagramOverlay> {
       padding: EdgeInsets.fromLTRB(
           18, isTop ? 0 : _kContentLeadingGap, 18, isTop ? _kContentLeadingGap : 0),
       child: _MeasureSize(
+        // A tolerance, not exact inequality: comparing raw doubles across
+        // separate text-layout passes can report a change of a fraction of
+        // a pixel even when nothing visually moved, re-triggering setState
+        // every single frame forever — which left this render object
+        // permanently "needs paint" and broke image capture (see
+        // InstagramShareService.capturePng).
         onChange: (size) {
-          if (size.height != _measuredContentOnlyHeight) {
+          final prev = _measuredContentOnlyHeight;
+          if (prev == null || (size.height - prev).abs() > 0.5) {
             setState(() => _measuredContentOnlyHeight = size.height);
           }
         },
@@ -177,8 +184,11 @@ class _InstagramOverlayState extends State<InstagramOverlay> {
             top: isTop ? 0 : null,
             bottom: isTop ? null : 0,
             child: _MeasureSize(
+              // Same tolerance rationale as the contentPadding _MeasureSize
+              // above — avoid re-triggering setState on sub-pixel jitter.
               onChange: (size) {
-                if (size.height != _measuredHeight) {
+                final prev = _measuredHeight;
+                if (prev == null || (size.height - prev).abs() > 0.5) {
                   setState(() => _measuredHeight = size.height);
                 }
               },

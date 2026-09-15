@@ -8,6 +8,7 @@ import '../../widgets/combo_card.dart' show TrickNameDisplay;
 import '../../widgets/difficulty_chip.dart';
 import '../../widgets/display_options.dart';
 import '../../widgets/submit_trick_sheet.dart';
+import '../combos/instagram_share/instagram_share_sheet.dart';
 
 enum _SortKey { abbreviation, name, revolution, difficulty }
 
@@ -751,8 +752,12 @@ class _TricksScreenState extends State<TricksScreen> {
         ),
         actions: [
           Padding(
-            padding: EdgeInsets.only(right: authed ? 8 : 22),
+            padding: const EdgeInsets.only(right: 8),
             child: _CircleIconButton(icon: Icons.refresh, onTap: _load),
+          ),
+          Padding(
+            padding: EdgeInsets.only(right: authed ? 8 : 22),
+            child: _CircleIconButton(icon: Icons.ios_share, gradient: true, onTap: () => showInstagramShareSheet(context)),
           ),
           if (authed)
             Padding(
