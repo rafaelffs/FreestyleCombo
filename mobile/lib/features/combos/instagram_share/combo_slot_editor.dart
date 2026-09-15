@@ -27,7 +27,8 @@ Future<ComboDto?> showComboSlotEditorScreen(
 }) {
   return Navigator.of(context).push<ComboDto>(
     MaterialPageRoute(
-      builder: (_) => ComboSlotEditorScreen(initialName: initialName, initialSlots: initialSlots),
+      builder: (_) => ComboSlotEditorScreen(
+          initialName: initialName, initialSlots: initialSlots),
     ),
   );
 }
@@ -38,14 +39,16 @@ class ComboSlotEditorScreen extends StatefulWidget {
   final String initialName;
   final List<SlotItem> initialSlots;
 
-  const ComboSlotEditorScreen({super.key, required this.initialName, required this.initialSlots});
+  const ComboSlotEditorScreen(
+      {super.key, required this.initialName, required this.initialSlots});
 
   @override
   State<ComboSlotEditorScreen> createState() => _ComboSlotEditorScreenState();
 }
 
 class _ComboSlotEditorScreenState extends State<ComboSlotEditorScreen> {
-  late final TextEditingController _nameCtrl = TextEditingController(text: widget.initialName);
+  late final TextEditingController _nameCtrl =
+      TextEditingController(text: widget.initialName);
   late final List<SlotItem> _slots = List.of(widget.initialSlots);
   late int _tab = _slots.isEmpty ? 0 : 1; // 0 = Add tricks, 1 = Sequence
 
@@ -95,7 +98,10 @@ class _ComboSlotEditorScreenState extends State<ComboSlotEditorScreen> {
           count++;
         }
       } else {
-        final trick = _items.whereType<TrickItem>().where((t) => t.id == s.trickId).firstOrNull;
+        final trick = _items
+            .whereType<TrickItem>()
+            .where((t) => t.id == s.trickId)
+            .firstOrNull;
         if (trick != null) diff += trick.difficulty;
         count++;
       }
@@ -139,7 +145,10 @@ class _ComboSlotEditorScreenState extends State<ComboSlotEditorScreen> {
       totalDifficulty: diff.toDouble(),
       trickCount: count,
       createdAt: '',
-      displayText: _slots.map((s) => s.isSubCombo ? (s.subComboName ?? '') : (s.abbreviation ?? '')).join(' '),
+      displayText: _slots
+          .map((s) =>
+              s.isSubCombo ? (s.subComboName ?? '') : (s.abbreviation ?? ''))
+          .join(' '),
       tricks: _toComboTricks(),
       averageRating: 0,
       totalRatings: 0,
@@ -194,7 +203,8 @@ class _ComboSlotEditorScreenState extends State<ComboSlotEditorScreen> {
       if (item is TrickItem) {
         if (_typeFilter == _TypeFilter.combos) return false;
         if (q.isEmpty) return true;
-        return item.name.toLowerCase().contains(q) || item.abbreviation.toLowerCase().contains(q);
+        return item.name.toLowerCase().contains(q) ||
+            item.abbreviation.toLowerCase().contains(q);
       } else if (item is ComboItem) {
         if (_typeFilter == _TypeFilter.tricks) return false;
         if (q.isEmpty) return true;
@@ -204,10 +214,13 @@ class _ComboSlotEditorScreenState extends State<ComboSlotEditorScreen> {
     }).toList();
     if (q.isEmpty) return list;
     bool isExact(TrickListItem item) {
-      if (item is TrickItem) return item.abbreviation.toLowerCase() == q || item.name.toLowerCase() == q;
+      if (item is TrickItem)
+        return item.abbreviation.toLowerCase() == q ||
+            item.name.toLowerCase() == q;
       if (item is ComboItem) return item.displayName.toLowerCase() == q;
       return false;
     }
+
     final exact = list.where(isExact).toList();
     final rest = list.where((item) => !isExact(item)).toList();
     return [...exact, ...rest];
@@ -220,7 +233,9 @@ class _ComboSlotEditorScreenState extends State<ComboSlotEditorScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.bg,
         elevation: 0,
-        title: Text('Select Tricks', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: AppColors.ink)),
+        title: Text('Select Tricks',
+            style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w800, color: AppColors.ink)),
       ),
       body: SafeArea(
         child: Padding(
@@ -228,17 +243,49 @@ class _ComboSlotEditorScreenState extends State<ComboSlotEditorScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextField(
-                controller: _nameCtrl,
-                autocorrect: false,
-                style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
-                decoration: InputDecoration(
-                  hintText: 'Combo name (optional)',
-                  hintStyle: GoogleFonts.plusJakartaSans(color: AppColors.faint, fontWeight: FontWeight.w600),
-                  filled: true,
-                  fillColor: AppColors.chipBg,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                        color: AppColors.ink.withValues(alpha: 0.06),
+                        blurRadius: 12,
+                        offset: const Offset(0, 3)),
+                  ],
+                ),
+                // Same look as create_combo_screen.dart's _AppTextField —
+                // white fill, bordered, pencil icon — rather than the
+                // greyed chip-style fill used elsewhere in this editor, so
+                // this reads as the primary "name your combo" field it is,
+                // matching the build/generate screen it mirrors.
+                child: TextField(
+                  controller: _nameCtrl,
+                  autocorrect: false,
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.ink),
+                  decoration: InputDecoration(
+                    hintText: 'Combo name (optional)',
+                    hintStyle: GoogleFonts.plusJakartaSans(
+                        color: AppColors.faint, fontWeight: FontWeight.w600),
+                    prefixIcon: const Icon(Icons.edit_outlined,
+                        size: 19, color: AppColors.indigo),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 15),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: const BorderSide(color: AppColors.line2)),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: const BorderSide(color: AppColors.line2)),
+                    focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: const BorderSide(
+                            color: AppColors.indigo, width: 1.5)),
+                  ),
                 ),
               ),
               const SizedBox(height: 14),
@@ -260,10 +307,15 @@ class _ComboSlotEditorScreenState extends State<ComboSlotEditorScreen> {
           child: FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.indigo,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
             ),
             onPressed: _done,
-            child: Text('Done', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white)),
+            child: Text('Done',
+                style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: Colors.white)),
           ),
         ),
       ),
@@ -275,7 +327,8 @@ class _ComboSlotEditorScreenState extends State<ComboSlotEditorScreen> {
       return Center(
         child: Text(
           'No tricks selected yet.',
-          style: GoogleFonts.plusJakartaSans(color: AppColors.muted, fontWeight: FontWeight.w600),
+          style: GoogleFonts.plusJakartaSans(
+              color: AppColors.muted, fontWeight: FontWeight.w600),
         ),
       );
     }
@@ -312,8 +365,11 @@ class _ComboSlotEditorScreenState extends State<ComboSlotEditorScreen> {
 
   Widget _buildPicker() {
     final filtered = _filtered;
-    final pinned = filtered.whereType<TrickItem>().where((t) => t.isTransition).toList();
-    final rest = filtered.where((item) => !(item is TrickItem && item.isTransition)).toList();
+    final pinned =
+        filtered.whereType<TrickItem>().where((t) => t.isTransition).toList();
+    final rest = filtered
+        .where((item) => !(item is TrickItem && item.isTransition))
+        .toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -321,17 +377,29 @@ class _ComboSlotEditorScreenState extends State<ComboSlotEditorScreen> {
           controller: _searchCtrl,
           autocorrect: false,
           enableSuggestions: false,
-          style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink),
+          style: GoogleFonts.plusJakartaSans(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w600,
+              color: AppColors.ink),
           decoration: InputDecoration(
             hintText: 'Search…',
-            hintStyle: GoogleFonts.plusJakartaSans(color: AppColors.faint, fontWeight: FontWeight.w600),
+            hintStyle: GoogleFonts.plusJakartaSans(
+                color: AppColors.faint, fontWeight: FontWeight.w600),
             prefixIcon: const Icon(Icons.search, color: AppColors.faint),
             filled: true,
             fillColor: AppColors.surface,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.line2)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.line2)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.indigo, width: 1.5)),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: AppColors.line2)),
+            enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: AppColors.line2)),
+            focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide:
+                    const BorderSide(color: AppColors.indigo, width: 1.5)),
             suffixIcon: _search.isNotEmpty
                 ? IconButton(
                     icon: const Icon(Icons.clear, color: AppColors.faint),
@@ -355,16 +423,23 @@ class _ComboSlotEditorScreenState extends State<ComboSlotEditorScreen> {
           ],
         ),
         const SizedBox(height: 10),
-        if (pinned.isNotEmpty) ...pinned.map((t) => _PickerRow.trick(item: t, onAdd: () => _addTrick(t))),
+        if (pinned.isNotEmpty)
+          ...pinned
+              .map((t) => _PickerRow.trick(item: t, onAdd: () => _addTrick(t))),
         Expanded(
           child: _loading
-              ? const Center(child: CircularProgressIndicator(color: AppColors.indigo))
+              ? const Center(
+                  child: CircularProgressIndicator(color: AppColors.indigo))
               : rest.isEmpty
                   ? Center(
                       child: Text(
-                        _search.trim().isEmpty ? 'No tricks found.' : 'No tricks found for "${_search.trim()}".',
+                        _search.trim().isEmpty
+                            ? 'No tricks found.'
+                            : 'No tricks found for "${_search.trim()}".',
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(color: AppColors.muted, fontWeight: FontWeight.w600),
+                        style: GoogleFonts.plusJakartaSans(
+                            color: AppColors.muted,
+                            fontWeight: FontWeight.w600),
                       ),
                     )
                   : ListView.builder(
@@ -372,8 +447,12 @@ class _ComboSlotEditorScreenState extends State<ComboSlotEditorScreen> {
                       itemCount: rest.length,
                       itemBuilder: (_, i) {
                         final item = rest[i];
-                        if (item is TrickItem) return _PickerRow.trick(item: item, onAdd: () => _addTrick(item));
-                        if (item is ComboItem) return _PickerRow.combo(item: item, onAdd: () => _addCombo(item));
+                        if (item is TrickItem)
+                          return _PickerRow.trick(
+                              item: item, onAdd: () => _addTrick(item));
+                        if (item is ComboItem)
+                          return _PickerRow.combo(
+                              item: item, onAdd: () => _addCombo(item));
                         return const SizedBox.shrink();
                       },
                     ),
@@ -394,7 +473,10 @@ class _ComboSlotEditorScreenState extends State<ComboSlotEditorScreen> {
         ),
         child: Text(
           label,
-          style: GoogleFonts.plusJakartaSans(fontSize: 12.5, fontWeight: FontWeight.w700, color: active ? Colors.white : AppColors.ink2),
+          style: GoogleFonts.plusJakartaSans(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: active ? Colors.white : AppColors.ink2),
         ),
       ),
     );
@@ -405,13 +487,17 @@ class _EditorSegmented extends StatelessWidget {
   final List<String> labels;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
-  const _EditorSegmented({required this.labels, required this.selectedIndex, required this.onSelected});
+  const _EditorSegmented(
+      {required this.labels,
+      required this.selectedIndex,
+      required this.onSelected});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: AppColors.chipBg, borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(
+          color: AppColors.chipBg, borderRadius: BorderRadius.circular(14)),
       child: Row(
         children: [
           for (var i = 0; i < labels.length; i++)
@@ -421,9 +507,18 @@ class _EditorSegmented extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 9),
                   decoration: BoxDecoration(
-                    color: selectedIndex == i ? AppColors.surface : Colors.transparent,
+                    color: selectedIndex == i
+                        ? AppColors.surface
+                        : Colors.transparent,
                     borderRadius: BorderRadius.circular(11),
-                    boxShadow: selectedIndex == i ? [BoxShadow(color: AppColors.ink.withValues(alpha: 0.08), blurRadius: 6, offset: const Offset(0, 1))] : null,
+                    boxShadow: selectedIndex == i
+                        ? [
+                            BoxShadow(
+                                color: AppColors.ink.withValues(alpha: 0.08),
+                                blurRadius: 6,
+                                offset: const Offset(0, 1))
+                          ]
+                        : null,
                   ),
                   child: Text(
                     labels[i],
@@ -431,7 +526,9 @@ class _EditorSegmented extends StatelessWidget {
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w800,
-                      color: selectedIndex == i ? AppColors.indigo : AppColors.muted,
+                      color: selectedIndex == i
+                          ? AppColors.indigo
+                          : AppColors.muted,
                     ),
                   ),
                 ),
@@ -471,7 +568,8 @@ class _PickerRow extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
             decoration: BoxDecoration(
-              border: Border.all(color: t != null ? AppColors.line : const Color(0xFFE5E0FB)),
+              border: Border.all(
+                  color: t != null ? AppColors.line : const Color(0xFFE5E0FB)),
               borderRadius: BorderRadius.circular(18),
             ),
             child: Row(
@@ -480,12 +578,19 @@ class _PickerRow extends StatelessWidget {
                   Container(
                     width: 40,
                     height: 40,
-                    padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(color: AppColors.chipBg, borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(
+                        color: AppColors.chipBg,
+                        borderRadius: BorderRadius.circular(12)),
                     child: Text(
                       t.abbreviation,
-                      style: GoogleFonts.jetBrainsMono(fontSize: 8.5, height: 1.15, fontWeight: FontWeight.w800, color: AppColors.indigo),
+                      style: GoogleFonts.jetBrainsMono(
+                          fontSize: 8.5,
+                          height: 1.15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.indigo),
                       textAlign: TextAlign.center,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -496,8 +601,11 @@ class _PickerRow extends StatelessWidget {
                     width: 40,
                     height: 40,
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(color: const Color(0xFFEDE9FE), borderRadius: BorderRadius.circular(12)),
-                    child: const Icon(Icons.layers, size: 18, color: AppColors.noTouchText),
+                    decoration: BoxDecoration(
+                        color: const Color(0xFFEDE9FE),
+                        borderRadius: BorderRadius.circular(12)),
+                    child: const Icon(Icons.layers,
+                        size: 18, color: AppColors.noTouchText),
                   ),
                 const SizedBox(width: 13),
                 Expanded(
@@ -506,8 +614,14 @@ class _PickerRow extends StatelessWidget {
                     children: [
                       if (t != null)
                         Text(
-                          TrickNameDisplay.label(isTransition: t.isTransition, name: t.name, abbreviation: t.abbreviation),
-                          style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink),
+                          TrickNameDisplay.label(
+                              isTransition: t.isTransition,
+                              name: t.name,
+                              abbreviation: t.abbreviation),
+                          style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink),
                           overflow: TextOverflow.ellipsis,
                         )
                       else
@@ -516,27 +630,43 @@ class _PickerRow extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 c!.displayName,
-                                style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w800, color: AppColors.ink),
+                                style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.ink),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(color: const Color(0xFFEDE9FE), borderRadius: BorderRadius.circular(6)),
-                              child: Text('COMBO', style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.noTouchText)),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                  color: const Color(0xFFEDE9FE),
+                                  borderRadius: BorderRadius.circular(6)),
+                              child: Text('COMBO',
+                                  style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.noTouchText)),
                             ),
                           ],
                         ),
                       const SizedBox(height: 2),
                       Text(
-                        t != null ? '${t.revolution} rev${t.crossOver ? ' · crossover' : ''}${t.knee ? ' · knee' : ''}' : '${c!.trickCount} tricks',
-                        style: GoogleFonts.plusJakartaSans(fontSize: 11.5, color: AppColors.muted, fontWeight: FontWeight.w600),
+                        t != null
+                            ? '${t.revolution} rev${t.crossOver ? ' · crossover' : ''}${t.knee ? ' · knee' : ''}'
+                            : '${c!.trickCount} tricks',
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11.5,
+                            color: AppColors.muted,
+                            fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                DifficultyChip(t != null ? t.difficulty : c!.totalDifficulty.toInt()),
+                DifficultyChip(
+                    t != null ? t.difficulty : c!.totalDifficulty.toInt()),
               ],
             ),
           ),
