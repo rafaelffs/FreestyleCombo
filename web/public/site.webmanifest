@@ -5,12 +5,24 @@
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F8F9FF",
-  "theme_color": "#5B4AD4",
+  "theme_color": "#4F46E5",
   "icons": [
     {
       "src": "/favicon.svg",
       "type": "image/svg+xml",
       "sizes": "any",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
       "purpose": "any maskable"
     }
   ]

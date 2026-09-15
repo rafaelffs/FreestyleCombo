@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/models/combo.dart';
 import '../../../core/models/instagram_overlay_content.dart';
 import '../../../theme/app_colors.dart';
+import '../../../widgets/brand_mark.dart';
 
 /// Base design canvas — captured via
 /// RenderRepaintBoundary.toImage(pixelRatio: kInstagramOverlayExportPixelRatio)
@@ -92,17 +93,16 @@ class _InstagramOverlayState extends State<InstagramOverlay> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 2.5,
-              height: 2.5,
-              decoration: const BoxDecoration(
-                  color: AppColors.lime, shape: BoxShape.circle),
+            BrandMark(
+              size: 7,
+              markColor: Colors.white.withValues(alpha: 0.85),
+              boltColor: AppColors.lime,
             ),
             const SizedBox(width: 2),
             Text(
               'FSCOMBO',
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 4.5,
+                fontSize: 3.2,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.3,
                 color: Colors.white.withValues(alpha: 0.85),

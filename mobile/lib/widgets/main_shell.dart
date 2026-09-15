@@ -7,6 +7,7 @@ import '../core/api/api_client.dart';
 import '../core/auth/auth_service.dart';
 import '../features/combos/unsaved_combo_guard.dart';
 import '../theme/app_colors.dart';
+import 'brand_mark.dart';
 
 class MainShell extends StatefulWidget {
   final Widget child;
@@ -100,7 +101,11 @@ class _MainShellState extends State<MainShell> {
     // auth state.
     final tabs = <Widget>[
       _NavItem(
-        icon: Icons.sports_soccer_outlined,
+        // The brand mark itself, not a generic icon — Combos is the app's
+        // home tab, matching the "app-icon" slot mark/logo-mark-indigo.svg
+        // and logo-mark-black.svg are meant for (single flat colour, no
+        // gradient — see design/logo-kit/README.md).
+        customIconBuilder: (color) => BrandMark(size: 23, markColor: color, boltColor: Colors.white),
         label: 'Combos',
         selected: selected == 'combos',
         onTap: () => _navigateGuarded(context, '/combos'),
@@ -180,44 +185,51 @@ class _MainShellState extends State<MainShell> {
 }
 
 class _NavItem extends StatelessWidget {
-  final IconData icon;
+  final IconData? icon;
   final String label;
   final bool selected;
   final VoidCallback? onTap;
   final int? badgeCount;
   final bool gradient;
+  // Overrides [icon] with a custom widget (the brand mark, for Combos) —
+  // a builder so it can pick up the same selected/unselected colour the
+  // plain-icon tabs use, which is only resolved inside build() below.
+  final Widget Function(Color color)? customIconBuilder;
 
   const _NavItem({
-    required this.icon,
+    this.icon,
     required this.label,
     required this.selected,
     required this.onTap,
     this.badgeCount,
     this.gradient = false,
-  });
+    this.customIconBuilder,
+  }) : assert(icon != null || customIconBuilder != null);
 
   @override
   Widget build(BuildContext context) {
     final color = selected ? AppColors.indigo : AppColors.faint;
 
-    Widget iconWidget = gradient
-        ? Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              gradient: AppColors.grad,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.violet.withValues(alpha: 0.5),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
+    Widget iconWidget = customIconBuilder != null
+        ? customIconBuilder!(color)
+        : gradient
+            ? Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  gradient: AppColors.grad,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.violet.withValues(alpha: 0.5),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Icon(icon, size: 17, color: Colors.white),
-          )
-        : Icon(icon, size: 23, color: color);
+                child: Icon(icon, size: 17, color: Colors.white),
+              )
+            : Icon(icon, size: 23, color: color);
 
     if (badgeCount != null && badgeCount! > 0) {
       iconWidget = Badge(

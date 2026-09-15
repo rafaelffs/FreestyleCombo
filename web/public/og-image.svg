@@ -1,66 +1,47 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
   <defs>
     <linearGradient id="icon-bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#7C6EF0"/>
-      <stop offset="100%" stop-color="#5B4AD4"/>
+      <stop offset="0%" stop-color="#5B4FE9"/>
+      <stop offset="55%" stop-color="#7A5AF0"/>
+      <stop offset="100%" stop-color="#8E6BF5"/>
     </linearGradient>
     <radialGradient id="glow" cx="30%" cy="50%" r="55%">
       <stop offset="0%" stop-color="#EEEAFF" stop-opacity="0.9"/>
       <stop offset="100%" stop-color="#F8F9FF" stop-opacity="0"/>
     </radialGradient>
-    <clipPath id="ball-clip">
-      <circle cx="97.20" cy="97.20" r="89.42"/>
-    </clipPath>
   </defs>
 
   <!-- Background -->
   <rect width="1200" height="630" fill="#F8F9FF"/>
   <rect width="1200" height="630" fill="url(#glow)"/>
 
-  <!-- App Icon (rounded rect + ball) -->
+  <!-- App Icon (rounded rect + ATW mark) -->
   <rect x="90" y="180" width="270" height="270"
         rx="70.2"
         fill="url(#icon-bg)"
         filter="drop-shadow(0 6px 20px #5B4AD455)"/>
 
-  <!-- Football inside icon -->
-  <g transform="translate(127.80, 217.80)">
-    <circle cx="97.20" cy="97.20" r="89.42" fill="white"/>
-    <g clip-path="url(#ball-clip)">
-      <polygon points="154.64,35.13 169.86,53.92 156.69,74.19 133.34,67.94 132.07,43.79" fill="#5B4AD4"/>
-      <polygon points="173.99,132.65 160.82,152.93 137.46,146.67 136.20,122.53 158.77,113.86" fill="#5B4AD4"/>
-      <polygon points="87.21,181.18 63.86,174.93 62.59,150.78 85.16,142.12 100.38,160.91" fill="#5B4AD4"/>
-      <polygon points="14.24,113.65 12.97,89.51 35.55,80.84 50.76,99.63 37.59,119.91" fill="#5B4AD4"/>
-      <polygon points="55.92,23.38 78.49,14.72 93.70,33.51 80.54,53.79 57.18,47.53" fill="#5B4AD4"/>
-      <polygon points="105.07,67.83 127.56,95.61 108.10,125.58 73.57,116.33 71.70,80.64" fill="#5B4AD4"/>
-      <g fill="none">
-        <path d="M105.07,67.83 Q132.94,54.56 149.32,54.99" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
-      <path d="M105.07,67.83 Q87.57,42.40 73.16,34.59" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
-      <path d="M127.56,95.61 Q148.80,118.01 153.45,133.73" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
-      <path d="M127.56,95.61 Q146.34,71.11 149.32,54.99" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
-      <path d="M108.10,125.58 Q93.35,152.70 79.84,161.98" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
-      <path d="M108.10,125.58 Q137.20,135.87 153.45,133.73" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
-      <path d="M73.57,116.33 Q43.22,110.69 30.22,100.71" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
-      <path d="M73.57,116.33 Q72.78,147.19 79.84,161.98" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
-      <path d="M71.70,80.64 Q67.69,50.03 73.16,34.59" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
-      <path d="M71.70,80.64 Q42.11,89.43 30.22,100.71" stroke="#5B4AD4" stroke-width="6.08" stroke-linecap="round"/>
-      </g>
-    </g>
-    <circle cx="97.20" cy="97.20" r="89.42"
-            fill="none" stroke="#5B4AD4" stroke-width="3.04" opacity="0.2"/>
+  <!-- ATW mark inside icon: orbit ring + ball + bolt + satellite -->
+  <g transform="translate(90, 180) scale(2.7)">
+    <ellipse cx="50" cy="50" rx="44" ry="19" transform="rotate(-28 50 50)"
+             fill="none" stroke="#fff" stroke-width="6.5" opacity=".7"/>
+    <circle cx="50" cy="50" r="28" fill="#fff"/>
+    <path d="M59 13L26 56h19l-4 31 33-44H54z" fill="#6A54EE"
+          transform="translate(50 50) scale(.56) translate(-50 -50)"/>
+    <circle cx="88.85" cy="29.36" r="9" fill="#fff"/>
   </g>
 
   <!-- FREESTYLE -->
   <text x="412" y="262.6"
         font-family="'Helvetica Neue', Arial, sans-serif"
         font-size="44" font-weight="600"
-        fill="#5B4AD4" letter-spacing="9.7"
+        fill="#4F46E5" letter-spacing="9.7"
         text-anchor="start">FREESTYLE</text>
 
   <!-- Combo -->
   <text x="408.0" y="386.8"
         font-family="'Helvetica Neue', Arial, sans-serif"
         font-size="138" font-weight="800"
-        fill="#1C1B2E" letter-spacing="-2"
+        fill="#15131F" letter-spacing="-2"
         text-anchor="start">Combo</text>
 </svg>

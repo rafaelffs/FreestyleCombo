@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/brand_mark.dart';
 
 /// Shared gradient-hero + white-sheet chrome for the Welcome/auth screens
 /// (login & register). See design/mobile-redesign/design_spec.md, screen 1.
@@ -69,7 +70,9 @@ class AuthScaffold extends StatelessWidget {
                                     border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
-                                  child: const Icon(Icons.sports_soccer, color: Colors.white, size: 32),
+                                  child: const Center(
+                                    child: BrandMark(size: 34, markColor: Colors.white, boltColor: Color(0xFF15131F)),
+                                  ),
                                 ),
                                 const SizedBox(height: 26),
                                 Text.rich(
