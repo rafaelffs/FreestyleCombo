@@ -403,7 +403,21 @@ platform :ios do
     # passing ios/ExportOptions.plist explicitly, with signingStyle manual
     # and the profile named directly, is what actually works.
     export_options_path = File.expand_path("../ios/ExportOptions.plist", __dir__)
-    sh("flutter build ipa --release --export-options-plist=#{export_options_path.shellescape}")
+    # fastlane's own Ruby process (when running under a fastlane install on
+    # Ruby 4.0, e.g. ~/.local/share/fastlane/4.0.0) sets GEM_HOME/GEM_PATH
+    # for itself, and sh() leaks that into `pod --version` (`flutter build
+    # ipa`'s CocoaPods validity check). CocoaPods is installed as its own
+    # standalone Homebrew formula with a vendored GEM_HOME
+    # (/opt/homebrew/Cellar/cocoapods/<version>/libexec), so the leaked
+    # GEM_PATH collides with it on an activesupport version mismatch and
+    # `pod --version` throws a Gem::Specification#activate_dependencies
+    # error — surfaces as flutter's generic "CocoaPods not installed or not
+    # in valid state", identical-looking to (but a different cause than) the
+    # stale-PATH issue this file's homebrew_ruby_bin prepend above already
+    # fixes. `pod --version` works fine directly in a plain shell; only the
+    # inherited GEM_HOME/GEM_PATH/BUNDLE_GEMFILE need clearing for this one
+    # subprocess.
+    sh("unset GEM_HOME GEM_PATH BUNDLE_GEMFILE; flutter build ipa --release --export-options-plist=#{export_options_path.shellescape}")
   end
 
   desc "Upload the latest build to TestFlight"
